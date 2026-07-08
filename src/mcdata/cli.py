@@ -8,15 +8,16 @@ from rich.console import Console
 
 from mcdata.actions import generate_strategy
 from mcdata.actions.viz import load_trajectory, render_trajectory_map
-from mcdata.config import load_profile, load_yaml
+from mcdata.config import load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
+    matrix_trajectory_path,
     remote_tmux_command,
-    resolve_game_version,
+    run_matrix_profiles,
 )
 from mcdata.settings import apply_display_override
 
@@ -158,39 +159,26 @@ def run_matrix(
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
     names = [item.strip() for item in profiles.split(",") if item.strip()]
-    trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix_{lane or 'main'}.json"
-    generate_strategy(paths.configs, strategy, trajectory_path)
-    console.print(f"Wrote shared trajectory: {trajectory_path}")
     if not names:
         raise typer.BadParameter("At least one profile is required")
-    first_profile = load_profile(paths.configs, names[0])
-    resolved_game_version = game_version or resolve_game_version(first_profile)
-    console.print(f"Resolved matrix Minecraft version once: {resolved_game_version}")
-    for name in names:
-        console.print(f"Matrix profile: {name}")
-        if bootstrap:
-            bootstrap_profile(
-                root,
-                name,
-                game_version=resolved_game_version,
-                server_port=server_port,
-                lane=lane,
-            )
-        launch_profile(
-            root,
-            name,
-            dry_run=False,
-            capture=capture,
-            strategy=strategy,
-            duration=duration,
-            with_server=with_server,
-            replay_actions=replay_actions,
-            trajectory_path=trajectory_path,
-            game_version=resolved_game_version,
-            server_port=server_port,
-            lane=lane,
-            probe_interval=probe_interval,
-        )
+    trajectory_path = matrix_trajectory_path(paths, strategy=strategy, lane=lane)
+    generate_strategy(paths.configs, strategy, trajectory_path)
+    console.print(f"Wrote shared trajectory: {trajectory_path}")
+    run_matrix_profiles(
+        root,
+        names,
+        strategy=strategy,
+        duration=duration,
+        capture=capture,
+        with_server=with_server,
+        replay_actions=replay_actions,
+        bootstrap=bootstrap,
+        trajectory_path=trajectory_path,
+        game_version=game_version,
+        server_port=server_port,
+        lane=lane,
+        probe_interval=probe_interval,
+    )
 
 
 @app.command("qa-run")

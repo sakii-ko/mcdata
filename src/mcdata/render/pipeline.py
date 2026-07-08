@@ -293,6 +293,59 @@ def launch_profile(
     return plan.metadata
 
 
+def matrix_trajectory_path(paths: ProjectPaths, *, strategy: str, lane: str | None) -> Path:
+    return paths.output_dir / "trajectories" / f"{strategy}_matrix_{lane or 'main'}.json"
+
+
+def run_matrix_profiles(
+    root: Path,
+    profiles: list[str],
+    *,
+    strategy: str,
+    duration: int,
+    capture: bool,
+    with_server: bool,
+    replay_actions: bool,
+    bootstrap: bool,
+    trajectory_path: Path,
+    game_version: str | None,
+    server_port: int | None,
+    lane: str | None,
+    probe_interval: float,
+) -> None:
+    if not profiles:
+        raise ValueError("At least one profile is required")
+    paths = ProjectPaths.from_root(root)
+    first_profile = load_profile(paths.configs, profiles[0])
+    resolved_game_version = game_version or resolve_game_version(first_profile)
+    console.print(f"Resolved matrix Minecraft version once: {resolved_game_version}")
+    for name in profiles:
+        console.print(f"Matrix profile: {name}")
+        if bootstrap:
+            bootstrap_profile(
+                root,
+                name,
+                game_version=resolved_game_version,
+                server_port=server_port,
+                lane=lane,
+            )
+        launch_profile(
+            root,
+            name,
+            dry_run=False,
+            capture=capture,
+            strategy=strategy,
+            duration=duration,
+            with_server=with_server,
+            replay_actions=replay_actions,
+            trajectory_path=trajectory_path,
+            game_version=resolved_game_version,
+            server_port=server_port,
+            lane=lane,
+            probe_interval=probe_interval,
+        )
+
+
 def _plan_run(
     root: Path,
     profile_name: str,
