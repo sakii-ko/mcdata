@@ -188,6 +188,19 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：步骤 5 的 4+2 个验证产物 + 步骤 6 的重采产物全部入库/落盘；dev_check 全绿。
 
+### T1e — 行走速度标定（P5，最后一环）+ 终局重采
+
+背景：T1d 后 yaw 门完美（max 0.00003°，转向修复生效），位置门仍 FAIL 且两台机器偏差一致（22.3/21.4 blocks）——**行走距离是错的**：`seconds_per_block: 0.32` 假设步速 3.125 b/s，MC 实际步行速度 4.317 m/s（0.2317 s/block），每段 leg 超走 ~38%。这是 ITER-01 遗留的第三个开环标定错误（P3 按键、P4 转向、P5 行走），也是最后一个可动部件。**以下设计 planner 定死；标定值以实测为准，不拍脑袋。**
+
+1. **探针采样间隔参数化**：`start_position_probe(..., interval_sec: float = 5.0)`；`run`/`run-matrix` 加 hidden option `--probe-interval`（default 5.0）透传。标定 run 用 1.0（服务端 1Hz 查询无压力）。
+2. **`walk_calibration_probe` 入库**（scripted，actions.yml）：pause 2s → w-hold 4.0s → pause 2s → 2×{600px,0.35s} 转 180° → pause 2s → w-hold 4.0s → 再重复一轮（共 4 个 hold，来回穿梭不出平台：起点 (0.5,-13.5) 朝南 4s×4.3≈17 格，z 到 ~4 后折返）。
+3. **在 l40s 实测**：`run --profile matrix_low ... --strategy walk_calibration_probe --duration 40 --probe-interval 1 --lane walkcal`。从 positions.jsonl 对每个 hold 计算净位移 d_i（yaw 恒定段的欧氏位移）。四个 hold 按 `d = v × (T − t0)` 最小二乘拟合（T=4.0，两未知 v/t0），得实测步速 v 与起步亏损 t0。拟合残差 >0.5 block → 停，上报。
+4. **generator 修正**（`strategies.py` astar_walk，通用参数）：hold 时长公式改为 `distance × seconds_per_block + walk_startup_comp_sec`（新 spec 参数，default 0.0，不写死场景）。`configs/actions.yml` 全部 astar_walk 设 `seconds_per_block: <1/v 实测值>`（预期 ≈0.2317）与 `walk_startup_comp_sec: <t0 实测值>`（预期 0.05–0.15）。`simulate_track` 维持匀速模型不改（起步亏损在 leg 内造成的瞬时偏差 ≤ v×t0 ≈ 0.4 格，位置门 3.0 容差覆盖）。
+5. **golden / docs/trajectories 重生成**（独立 commit，注明 P5 标定修正）。
+6. **验证 + 终局重采**（同 T1d 步骤 5/6 但免转向探针）：两台各连续 2× `ground_astar_loop` 60s 默认 run，位置门 + yaw 门全 PASS → 4090 四路同批次重采（替换 `docs/qa_samples/iter02_4090_3way/`）→ 回传 + purge。任一 FAIL：停、留证据、上报。
+
+**验收**：标定 run 的拟合数据（v、t0、残差）写进 report；四个验证 run + 重采产物入库；dev_check 全绿。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
