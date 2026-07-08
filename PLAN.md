@@ -245,6 +245,21 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：场景回执校验单测 + 新验证 run 的 server.log 无失败样式 + 双门 PASS + 重采产物；dev_check 全绿。
 
+### T4 — 架构清账（T1g + 终局重采完成后执行，T3 等待期的填充任务）
+
+planner 2026-07-09 架构巡检结论（风格无问题；以下为计划性债务，账期已到）。**每步独立 commit，重构前后 dev_check 全绿 + 一次 l40s 60s 双门验证 run 证明行为不变。**
+
+1. **launch_profile 分解**（872 行 pipeline.py / 269 行函数）：拆为显式阶段，各自输入输出明确，`launch_profile` 收缩为 ~40 行协调器：
+   - `_plan_run(...)` 纯函数：profile overlay、命令构建、CaptureSettings、run dir 布局 → `RunPlan` dataclass；
+   - `_server_phase / _client_phase / _capture_phase(plan, state)`：进程编排，返回各自句柄；
+   - teardown 与 manifest 组装维持现有语义（finally + error 字段），逐行搬运不改行为。
+2. **server.py 拆分**：`render/scene.py`（场景命令 + 构建回执校验）、`render/probe.py`（位置/朝向探针 + 日志解析）；server.py 只留 server 生命周期。import 白名单同步（ARCHITECTURE 表 + checker：render 包内部模块，无新跨包依赖）。
+3. **门逻辑归位**：`check_route_reference` 及其 helpers 从 qa/report.py 迁至 qa/route.py；report.py 只留组装/排版。
+4. **测试拆分**：test_pipeline_files.py（620 行）按特性拆为 test_manifest_files / test_lane_isolation / test_position_probe / test_scene_verify。
+5. cli.py `run_matrix`（59 行）中版本解析+循环逻辑下沉到 pipeline 模块函数，CLI 回归薄分发（R24）。
+
+**验收**：结构如上；`git log` 每步独立可回退；行为不变证据（验证 run 双门 PASS + golden 未变）。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
