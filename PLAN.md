@@ -100,7 +100,7 @@ scripts/pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge
 ```
 
 
-### T1b — 3-way 对齐修复与重采（T1 数据验收未过，最高优先级）
+### T1b — 3-way 对齐修复与重采 —— 代码项通过，数据验收 FAIL（2026-07-08，见 review-t1b），由 T1c 接续
 
 背景：T1 四路采集中 matrix_low（冷启动首个 run）中途偏航入水，其余三路相互对齐；证据与根因分析见 `docs/iterations/ITER-02-review-interim.md`。**以下设计 planner 定死，照此实现。**
 
@@ -119,6 +119,41 @@ def start_position_probe(proc, username: str, *, interval_sec: float = 5.0) -> t
 7. **重采**：修复合入后，用 CLI（`--game-version 26.2`）重采完整 3-way + night 同批次四路；qa-run ×4、两两 qa-compare（含位置对齐结果）；替换 `docs/qa_samples/iter02_4090_3way/` 全部产物；回传 + purge；本地删除两个带空格的 stray 目录。
 
 **验收**：四路位置对齐 max 偏差 ≤2.0 block（positions.jsonl 为证）；视觉抽帧 t=30 四路同机位；其余同 T1 验收标准。
+
+### T1c — 定位 T1b 回归 + 路线基准门 + 重采（最高优先级）
+
+背景：T1b 重采四路"相互对齐但集体偏航"（自第二个拐角起转向丢失，直线出岛入海），证据见 `docs/iterations/ITER-02-review-t1b.md`。第一批（无 T1b 改动）同轨迹是正确的 ⇒ 回归由 T1b 批次引入。**以下设计 planner 定死。**
+
+**步骤 0 — 零成本诊断（先做，结果写进 report 再动代码）**：
+本地对比 `runs/remote_4090/20260708T062500Z_matrix_textured`（第一批，正确）与 T1b 批次 textured run 的 `pipeline.jsonl`：逐事件时间线（join→apply→warmup→re_apply→view_prepared→capture start→probe first_sample→replay 释放）、各间隔秒数、以及 `replay_log.jsonl` 首事件的墙钟对位。找出两批次在 replay 开始前后的一切行为差异，列表写进 report。
+
+**步骤 1 — 路线基准门（ground truth，系统性修复）**：
+1. 探针加时间戳：`start_position_probe` 每次发送记录 `time.monotonic()`；`launch_profile` 在 `ready_event.set()` 处记录 `replay_start_mono` 并传给 `write_positions_jsonl`，每条记录增加 `"t_rel"`（秒，相对 replay 释放；释放前的样本允许为负）。
+2. 新纯函数模块 `src/mcdata/actions/simulate.py`：
+
+```python
+def simulate_track(trajectory: dict) -> list[dict]:
+    # 由 route + events 推演理想位置时间线：w 按下期间沿 route 匀速推进
+    # （该 leg 距离 /（按下时长）），转向期间原地不动；返回 [{"t":, "x":, "z":}]
+```
+
+   配单测：合成小轨迹验证若干时刻位置。
+3. qa 增加 `check_route_reference(positions, ideal_track, *, max_dev=3.0)`：对每个带 `t_rel≥0` 的样本，在理想时间线上插值取 (x,z)，算欧氏偏差；同时校验 y∈[63.0, 66.0]。max 偏差 >3.0 或 y 越界 → FAIL。`qa-run` 在 run dir 同时存在 `positions.jsonl` 与 `trajectory.json` 时自动执行，结果写 qa_report md/json 头部。合成数据单测覆盖 pass/fail。
+4. 既有的四路交叉对齐门（≤2.0）保留，两门都过才算数。
+
+**步骤 2 — 回归定位实验（4090，matrix_low 30s ×4，探针常开）**：
+`run` 命令加两个 hidden typer Option：`--debug-no-reapply`（跳过 capture 前二次 apply_join_state）、`--debug-no-replay-gate`（不等首个探针样本，capture start 即释放 replay），布尔透传 launch_profile。四组：
+- A：两个 debug flag 全开（= 第一批行为 + 探针）
+- B：仅 `--debug-no-replay-gate`（只加 re_apply）
+- C：仅 `--debug-no-reapply`（只加 gate）
+- D：默认（完整 T1b）
+每组跑前先做一次 10s 丢弃 run。用步骤 1 的路线基准门判定各组在/不在路线上，锁定引入回归的机制。**若 A 也偏航，停下来上报 planner**（说明回归不在 T1b 代码，而在环境/时序因素）。
+
+**步骤 3 — 修复**：按实验结论移除/修复肇事机制（探针是测量工具原则上保留；若 C 证明探针本身干扰，改探针实现——降频到 10s 或改用其他查询方式——再验证）。debug flags 保留（hidden）供未来诊断。
+
+**步骤 4 — 全量重采**：修复合入后四路同批次重采（丢弃 run 先行），验收 = 每路路线基准门 PASS（≤3.0）+ 四路交叉门 PASS（≤2.0）+ t=30 抽帧与 `docs/trajectories/ground_astar_loop.png` 预期场景一致（平台上）；整体替换 `docs/qa_samples/iter02_4090_3way/`；回传 + purge。
+
+**验收**：上述四步全部有落盘证据；report 含步骤 0 的差异列表与步骤 2 的四组判定表。
 
 ### T2 — run-matrix 多实例并行化改造
 
