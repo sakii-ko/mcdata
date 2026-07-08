@@ -114,9 +114,9 @@ scene:
 
 ## Backlog（ITER-02+，暂不执行）
 
-1. `launch_profile`（`pipeline.py:141-258`）编排层分解（plan 阶段纯函数化 + 进程管理拆到 procutil/capture 模块）——等 T2/T3 的观测和 QA 就位后再动，降低回归风险。
+1. ~~launch_profile 编排层分解~~ ✅ ITER-02 T4 完成（RunPlan/RunState + 阶段函数）。pipeline.py 文件级拆分（plan/phases 分文件）为可选 polish，触碰该文件时顺路。
 3. 轨迹相机契约从像素改成角度（`yaw_deg`/`pitch_deg`），px-per-degree 换算下沉到 replay 层并按 profile 标定；向后兼容旧字段。
-4. 渲染机上优先 XTEST backend（避免 xdotool 每步 spawn 子进程的抖动），补全 keycode 表。
+4. XTEST keycode 表补全（渲染机已实际使用 XTEST backend；表仍只覆盖基础键位）。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
 6. 数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。
 5b. **录制→轨迹转换管线**：捕获一段真人/智能体的输入流转成 trajectory JSON 再逐 profile 重放——接入 Baritone/VPT/MineRL 的通用入口（ITER-04 起）。
