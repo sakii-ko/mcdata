@@ -17,6 +17,7 @@ def test_write_options_includes_quiet_capture_keys(tmp_path: Path) -> None:
 
     for key, value in QUIET_CAPTURE_OPTIONS.items():
         assert options[key] == value
+    assert options["rawMouseInput"] == "true"
 
 
 def test_write_options_resourcepack_format(tmp_path: Path) -> None:

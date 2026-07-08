@@ -246,6 +246,7 @@ def launch_profile(
     game_proc: subprocess.Popen | None = None
     capture_proc: subprocess.Popen | None = None
     replay_thread: threading.Thread | None = None
+    replay_stop = threading.Event()
     position_probe_stop: threading.Event | None = None
     capture_cmd: list[str] | None = None
     error: str | None = None
@@ -279,6 +280,7 @@ def launch_profile(
                 replay_thread = _start_replay_thread(
                     run_trajectory_path,
                     start_event=ready_event,
+                    stop_event=replay_stop,
                     run_dir=run_dir,
                 )
                 runlog.log("replay", "thread_started", trajectory=str(run_trajectory_path))
@@ -361,9 +363,13 @@ def launch_profile(
             runlog.log("teardown", "error", error=error)
             raise
         finally:
+            replay_stop.set()
             ready_event.set()
             if position_probe_stop:
                 position_probe_stop.set()
+            if replay_thread:
+                replay_thread.join(timeout=5)
+                runlog.log("replay", "thread_joined", alive=replay_thread.is_alive())
             if capture_proc and capture_proc.poll() is None:
                 _terminate_process_tree(capture_proc, timeout=10)
                 runlog.log("teardown", "capture_terminated", returncode=capture_proc.returncode)
@@ -373,9 +379,6 @@ def launch_profile(
             if server_proc and server_proc.poll() is None:
                 _terminate_process_tree(server_proc, timeout=20)
                 runlog.log("teardown", "server_terminated", returncode=server_proc.returncode)
-            if replay_thread:
-                replay_thread.join(timeout=2)
-                runlog.log("replay", "thread_joined", alive=replay_thread.is_alive())
             if server_proc:
                 count = write_positions_jsonl(
                     run_dir / "server.log",
@@ -443,6 +446,7 @@ def _start_replay_thread(
     trajectory_path: Path,
     *,
     start_event: threading.Event,
+    stop_event: threading.Event,
     run_dir: Path,
 ) -> threading.Thread:
     from mcdata.actions.replay import replay_trajectory
@@ -450,7 +454,7 @@ def _start_replay_thread(
     thread = threading.Thread(
         target=replay_trajectory,
         args=(trajectory_path,),
-        kwargs={"start_event": start_event, "run_dir": run_dir},
+        kwargs={"start_event": start_event, "stop_event": stop_event, "run_dir": run_dir},
         daemon=True,
     )
     thread.start()

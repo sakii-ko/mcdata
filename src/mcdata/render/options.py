@@ -51,6 +51,7 @@ QUIET_CAPTURE_OPTIONS: dict[str, str] = {
     "joinedFirstServer": "true",
     "notificationDisplayTime": "1.0",
     "pauseOnLostFocus": "false",
+    "rawMouseInput": "true",
     "showAutosaveIndicator": "false",
     "showSubtitles": "false",
     "skipMultiplayerWarning": "true",
