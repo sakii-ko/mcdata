@@ -208,11 +208,14 @@ def start_position_probe(
     username: str,
     *,
     interval_sec: float = 5.0,
+    sent_at: list[float] | None = None,
 ) -> threading.Event:
     stop_event = threading.Event()
 
     def run() -> None:
         while not stop_event.is_set():
+            if sent_at is not None:
+                sent_at.append(time.monotonic())
             _write_commands(proc, [f"data get entity {username} Pos"])
             stop_event.wait(interval_sec)
 
@@ -239,12 +242,21 @@ def wait_for_position_sample(
     raise TimeoutError(f"Timed out waiting for position probe sample; see {log_path}")
 
 
-def write_positions_jsonl(log_path: Path, out_path: Path, *, username: str) -> int:
+def write_positions_jsonl(
+    log_path: Path,
+    out_path: Path,
+    *,
+    username: str,
+    sent_at: list[float] | None = None,
+    replay_start_mono: float | None = None,
+) -> int:
     positions = parse_position_log(log_path, username=username)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         for idx, item in enumerate(positions):
             row = {"idx": idx, **item}
+            if sent_at is not None and replay_start_mono is not None and idx < len(sent_at):
+                row["t_rel"] = sent_at[idx] - replay_start_mono
             fh.write(json.dumps(row, sort_keys=True) + "\n")
     return len(positions)
 

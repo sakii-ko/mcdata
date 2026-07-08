@@ -79,7 +79,13 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
     )
     out = tmp_path / "positions.jsonl"
 
-    count = write_positions_jsonl(log, out, username="mcdata_bot")
+    count = write_positions_jsonl(
+        log,
+        out,
+        username="mcdata_bot",
+        sent_at=[9.0, 14.5],
+        replay_start_mono=10.0,
+    )
 
     assert count == 2
     assert parse_position_log(log, username="mcdata_bot") == [
@@ -88,8 +94,8 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
     ]
     rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
     assert rows == [
-        {"idx": 0, "x": 1.5, "y": 64.0, "z": -2.25},
-        {"idx": 1, "x": 2.0, "y": 65.0, "z": -3.0},
+        {"idx": 0, "t_rel": -1.0, "x": 1.5, "y": 64.0, "z": -2.25},
+        {"idx": 1, "t_rel": 4.5, "x": 2.0, "y": 65.0, "z": -3.0},
     ]
 
 
@@ -275,6 +281,7 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         for line in (run_dir / "pipeline.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     assert any(item["stage"] == "join" and item["event"] == "re_apply_state" for item in pipeline_events)
+    assert any(item["stage"] == "replay" and item["event"] == "released" for item in pipeline_events)
     assert any(
         item["stage"] == "position_probe" and item["event"] == "positions_written" and item["count"] == 2
         for item in pipeline_events

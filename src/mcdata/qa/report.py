@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 from mcdata.qa.frames import extract_frames_at, uniform_timestamps
 from mcdata.qa.metrics import black_border_metrics, brightness_percentiles, zero_mean_ncc
 from mcdata.qa.probe import summarize_probe
+from mcdata.qa.route import distance_xz, interpolate_track, simulate_track
 
 _BILINEAR = getattr(getattr(Image, "Resampling", Image), "BILINEAR")
 
@@ -55,12 +56,16 @@ def write_run_report(
     expected = {"fps": 24.0, "width": probe.get("width"), "height": probe.get("height")}
     if abs(float(probe.get("fps") or 0) - 24.0) > 0.01:
         warnings.append(f"fps is {probe.get('fps')}, expected 24")
+    route_reference = route_reference_report(default_out_dir)
+    if route_reference and not route_reference.get("passed"):
+        warnings.append("route reference check failed")
 
     report = {
         "input": str(input_path),
         "video": str(video),
         "probe": probe,
         "expected": expected,
+        "route_reference": route_reference,
         "frames": frame_metrics,
         "warnings": warnings,
         "outputs": {
@@ -73,6 +78,77 @@ def write_run_report(
     _write_run_markdown(out / "qa_report.md", report)
     _write_contact_sheet(out / "contact_sheet.jpg", images, timestamps)
     return report
+
+
+def route_reference_report(run_dir: Path) -> dict[str, Any] | None:
+    positions_path = run_dir / "positions.jsonl"
+    trajectory_path = run_dir / "trajectory.json"
+    if not positions_path.exists() or not trajectory_path.exists():
+        return None
+    trajectory = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    if not trajectory.get("route"):
+        return None
+    positions = _read_positions(run_dir)
+    if positions is None:
+        return None
+    try:
+        ideal_track = simulate_track(trajectory)
+    except ValueError as exc:
+        return {"passed": False, "error": str(exc)}
+    return check_route_reference(positions, ideal_track)
+
+
+def check_route_reference(
+    positions: list[dict[str, float]],
+    ideal_track: list[dict[str, float]],
+    *,
+    max_dev: float = 3.0,
+    min_y: float = 63.0,
+    max_y: float = 66.0,
+) -> dict[str, Any]:
+    samples = []
+    for position in positions:
+        t_rel = position.get("t_rel")
+        if t_rel is None or t_rel < 0:
+            continue
+        ideal = interpolate_track(ideal_track, t_rel)
+        deviation = distance_xz(position, ideal)
+        y = float(position["y"])
+        samples.append(
+            {
+                "idx": position.get("idx"),
+                "t_rel": t_rel,
+                "x": position["x"],
+                "y": y,
+                "z": position["z"],
+                "ideal_x": ideal["x"],
+                "ideal_z": ideal["z"],
+                "deviation_blocks": deviation,
+                "y_in_range": min_y <= y <= max_y,
+            }
+        )
+    deviations = [sample["deviation_blocks"] for sample in samples]
+    y_values = [sample["y"] for sample in samples]
+    y_out_of_range = sum(1 for sample in samples if not sample["y_in_range"])
+    max_deviation = max(deviations) if deviations else None
+    mean_deviation = sum(deviations) / len(deviations) if deviations else None
+    return {
+        "threshold_blocks": max_dev,
+        "y_min": min_y,
+        "y_max": max_y,
+        "count": len(samples),
+        "max_deviation_blocks": max_deviation,
+        "mean_deviation_blocks": mean_deviation,
+        "observed_y_min": min(y_values) if y_values else None,
+        "observed_y_max": max(y_values) if y_values else None,
+        "y_out_of_range_count": y_out_of_range,
+        "passed": (
+            max_deviation is not None
+            and max_deviation <= max_dev
+            and y_out_of_range == 0
+        ),
+        "samples": samples,
+    }
 
 
 def write_compare_report(
@@ -201,16 +277,36 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
     lines = [
         "# QA Run Report",
         "",
-        f"- video: `{report['video']}`",
-        f"- codec: `{probe.get('codec')}`",
-        f"- size: `{probe.get('width')}x{probe.get('height')}`",
-        f"- fps: `{probe.get('fps')}`",
-        f"- duration: `{probe.get('duration_sec')}`",
-        f"- warnings: `{len(report['warnings'])}`",
-        "",
-        "| t_sec | p5 | p50 | p95 | black_border |",
-        "|---:|---:|---:|---:|---|",
     ]
+    route_reference = report.get("route_reference")
+    if route_reference:
+        status = "PASS" if route_reference.get("passed") else "FAIL"
+        lines.extend(
+            [
+                f"- route_reference: `{status}`",
+                "- route_max_deviation_blocks: "
+                f"`{_format_optional_float(route_reference.get('max_deviation_blocks'))}`",
+                "- route_mean_deviation_blocks: "
+                f"`{_format_optional_float(route_reference.get('mean_deviation_blocks'))}`",
+                f"- route_threshold_blocks: `{route_reference.get('threshold_blocks')}`",
+                f"- route_y_range: `{route_reference.get('y_min')}..{route_reference.get('y_max')}`",
+                f"- route_y_out_of_range_count: `{route_reference.get('y_out_of_range_count')}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            f"- video: `{report['video']}`",
+            f"- codec: `{probe.get('codec')}`",
+            f"- size: `{probe.get('width')}x{probe.get('height')}`",
+            f"- fps: `{probe.get('fps')}`",
+            f"- duration: `{probe.get('duration_sec')}`",
+            f"- warnings: `{len(report['warnings'])}`",
+            "",
+            "| t_sec | p5 | p50 | p95 | black_border |",
+            "|---:|---:|---:|---:|---|",
+        ]
+    )
     for item in report["frames"]:
         b = item["brightness"]
         lines.append(
@@ -268,7 +364,12 @@ def _read_positions(input_path: Path) -> list[dict[str, float]] | None:
         if not line.strip():
             continue
         row = json.loads(line)
-        items.append({"x": float(row["x"]), "y": float(row["y"]), "z": float(row["z"])})
+        item = {"x": float(row["x"]), "y": float(row["y"]), "z": float(row["z"])}
+        if "idx" in row:
+            item["idx"] = int(row["idx"])
+        if "t_rel" in row:
+            item["t_rel"] = float(row["t_rel"])
+        items.append(item)
     return items
 
 

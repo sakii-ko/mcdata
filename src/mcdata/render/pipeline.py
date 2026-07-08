@@ -247,6 +247,8 @@ def launch_profile(
     error: str | None = None
     ready_event = threading.Event()
     position_probe_baseline = 0
+    position_probe_sent_at: list[float] = []
+    replay_start_mono: float | None = None
     with RunLogger(run_dir, console=console) as runlog:
         runlog.log(
             "launch",
@@ -319,6 +321,7 @@ def launch_profile(
                         position_probe_stop = start_position_probe(
                             server_proc,
                             str(profile.get("username")),
+                            sent_at=position_probe_sent_at,
                         )
                         runlog.log("position_probe", "start", interval_sec=5.0)
                         count = wait_for_position_sample(
@@ -329,14 +332,18 @@ def launch_profile(
                             wait_sec=10.0,
                         )
                         runlog.log("position_probe", "first_sample", count=count)
+                    replay_start_mono = time.monotonic()
                     ready_event.set()
+                    runlog.log("replay", "released")
                     _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
                     runlog.log("capture", "stop", returncode=capture_proc.returncode)
                     if position_probe_stop:
                         position_probe_stop.set()
                         runlog.log("position_probe", "stop")
                 else:
+                    replay_start_mono = time.monotonic()
                     ready_event.set()
+                    runlog.log("replay", "released")
                     _wait_for_game(game_proc, run_dir / "game.exitcode", duration=duration)
                     runlog.log("launch", "process_exit", returncode=game_proc.returncode)
         except Exception as exc:
@@ -364,6 +371,8 @@ def launch_profile(
                     run_dir / "server.log",
                     run_dir / "positions.jsonl",
                     username=str(profile.get("username")),
+                    sent_at=position_probe_sent_at,
+                    replay_start_mono=replay_start_mono,
                 )
                 runlog.log("position_probe", "positions_written", count=count)
             manifest = build_run_manifest(
