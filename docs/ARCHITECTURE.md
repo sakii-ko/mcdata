@@ -105,9 +105,10 @@
 
 - canonical repo：`/root/nas/bigdata1/cjw/projs/mcdata`（NAS）。`/home/chijw/workspace/projs/mcdata` 是历史遗留的手工镜像，后续如需本地盘加速应改为 `git clone`/worktree，禁止双向手工 rsync。
 - 大文件（视频、jar、resource/shader pack、世界存档）永不入库；文档配图压缩到单张 <300KB。
-- 身份区分：planner 用仓库默认身份 `mcdata-planner`；coder 提交前在 shell 里
-  `export GIT_AUTHOR_NAME=mcdata-coder GIT_AUTHOR_EMAIL=coder@mcdata.local GIT_COMMITTER_NAME=mcdata-coder GIT_COMMITTER_EMAIL=coder@mcdata.local`。
+- 身份区分：仓库默认身份是 `mcdata-coder`（coder 是主 checkout 的主要提交者）；planner 提交时用环境变量覆盖：
+  `GIT_AUTHOR_NAME=mcdata-planner GIT_AUTHOR_EMAIL=planner@mcdata.local GIT_COMMITTER_NAME=mcdata-planner GIT_COMMITTER_EMAIL=planner@mcdata.local git commit ...`。
   这样 `git log --author=mcdata-coder` / `git blame` 可以直接区分进度和归属。
+  勘误：2026-07-08 的 `5cd13d1`（standards/checker）和 `efb2980`（merge）实际是 planner 所写，因身份配置被覆盖而署名 coder；不重写历史，以此记录为准。任何一方都不要再改仓库级 `git config user.*`。
 - commit 前缀：`[plan]` 计划、`[arch]` 架构、`[impl]` 功能、`[test]` 测试、`[qa]` QA 工具/报告、`[fix]` 修复、`[docs]` 文档。一个任务多个小 commit，禁止大杂烩 squash。
 - 分支：coder 在 `iter/NN-<slug>` 分支上工作，完成后**不自行 merge**，由 planner review 后 `merge --no-ff` 进 main 并打 `iter-NN-done` tag。
 - 禁止 force push，禁止移动已有 tag。
