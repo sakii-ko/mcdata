@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Any
@@ -109,12 +110,14 @@ def write_compare_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     image_path = out_dir / "qa_compare_contact_sheet.jpg"
     _write_compare_sheet(image_path, extracted, timestamps)
+    position_alignment = compare_position_alignment(inputs)
     report = {
         "inputs": [str(path) for path in inputs],
         "videos": [str(video) for video in videos],
         "probe": probes,
         "timestamps_sec": timestamps,
         "rows": rows,
+        "position_alignment": position_alignment,
         "outputs": {
             "json": str(out_dir / "qa_compare_report.json"),
             "markdown": str(out_dir / "qa_compare_report.md"),
@@ -124,6 +127,49 @@ def write_compare_report(
     _write_json(out_dir / "qa_compare_report.json", report)
     _write_compare_markdown(out_dir / "qa_compare_report.md", report)
     return report
+
+
+def compare_position_alignment(
+    inputs: list[Path],
+    *,
+    max_threshold_blocks: float = 2.0,
+) -> dict[str, Any] | None:
+    series = [_read_positions(path) for path in inputs]
+    if any(items is None for items in series):
+        return None
+    assert all(items is not None for items in series)
+    pair_results = []
+    for left in range(len(series)):
+        for right in range(left + 1, len(series)):
+            left_items = series[left] or []
+            right_items = series[right] or []
+            count = min(len(left_items), len(right_items))
+            distances = [
+                _position_distance(left_items[idx], right_items[idx])
+                for idx in range(count)
+            ]
+            max_distance = max(distances) if distances else None
+            mean_distance = sum(distances) / len(distances) if distances else None
+            pair_results.append(
+                {
+                    "left": str(inputs[left]),
+                    "right": str(inputs[right]),
+                    "count": count,
+                    "max_distance_blocks": max_distance,
+                    "mean_distance_blocks": mean_distance,
+                    "passed": max_distance is not None and max_distance <= max_threshold_blocks,
+                }
+            )
+    overall_max = max(
+        (item["max_distance_blocks"] for item in pair_results if item["max_distance_blocks"] is not None),
+        default=None,
+    )
+    return {
+        "threshold_blocks": max_threshold_blocks,
+        "passed": overall_max is not None and overall_max <= max_threshold_blocks,
+        "max_distance_blocks": overall_max,
+        "pairs": pair_results,
+    }
 
 
 def copy_report_outputs(report: dict[str, Any], dest: Path, *, prefix: str) -> list[Path]:
@@ -173,11 +219,28 @@ def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:
     lines = [
         "# QA Compare Report",
         "",
-        *[f"- input: `{item}`" for item in report["inputs"]],
-        "",
-        "| t_sec | pair | ncc |",
-        "|---:|---|---:|",
     ]
+    alignment = report.get("position_alignment")
+    if alignment:
+        status = "PASS" if alignment.get("passed") else "FAIL"
+        max_distance = alignment.get("max_distance_blocks")
+        max_text = "n/a" if max_distance is None else f"{float(max_distance):.3f}"
+        lines.extend(
+            [
+                f"- position_alignment: `{status}`",
+                f"- position_max_distance_blocks: `{max_text}`",
+                f"- position_threshold_blocks: `{alignment.get('threshold_blocks')}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            *[f"- input: `{item}`" for item in report["inputs"]],
+            "",
+            "| t_sec | pair | ncc |",
+            "|---:|---|---:|",
+        ]
+    )
     for row in report["rows"]:
         for pair in row["pairs"]:
             lines.append(
@@ -185,6 +248,27 @@ def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"`{Path(pair['right']).name}` | {pair['ncc']:.4f} |"
             )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _read_positions(input_path: Path) -> list[dict[str, float]] | None:
+    path = input_path / "positions.jsonl" if input_path.is_dir() else input_path.parent / "positions.jsonl"
+    if not path.exists():
+        return None
+    items: list[dict[str, float]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        items.append({"x": float(row["x"]), "y": float(row["y"]), "z": float(row["z"])})
+    return items
+
+
+def _position_distance(left: dict[str, float], right: dict[str, float]) -> float:
+    return math.sqrt(
+        (left["x"] - right["x"]) ** 2
+        + (left["y"] - right["y"]) ** 2
+        + (left["z"] - right["z"]) ** 2
+    )
 
 
 def _write_contact_sheet(path: Path, images: list[Image.Image], timestamps: list[float]) -> None:

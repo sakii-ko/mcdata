@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import json
+import re
 import subprocess
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -198,6 +201,59 @@ def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
     if player:
         commands.append(_tp_command("@a", player))
     _write_commands(proc, commands)
+
+
+def start_position_probe(
+    proc: subprocess.Popen,
+    username: str,
+    *,
+    interval_sec: float = 5.0,
+) -> threading.Event:
+    stop_event = threading.Event()
+
+    def run() -> None:
+        while not stop_event.is_set():
+            _write_commands(proc, [f"data get entity {username} Pos"])
+            stop_event.wait(interval_sec)
+
+    threading.Thread(target=run, daemon=True).start()
+    return stop_event
+
+
+def write_positions_jsonl(log_path: Path, out_path: Path, *, username: str) -> int:
+    positions = parse_position_log(log_path, username=username)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        for idx, item in enumerate(positions):
+            row = {"idx": idx, **item}
+            fh.write(json.dumps(row, sort_keys=True) + "\n")
+    return len(positions)
+
+
+def parse_position_log(log_path: Path, *, username: str) -> list[dict[str, float]]:
+    if not log_path.exists():
+        return []
+    needle = f"{username} has the following entity data:"
+    positions: list[dict[str, float]] = []
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if needle not in line:
+            continue
+        raw = line.split(needle, 1)[1]
+        values = _parse_position_values(raw)
+        if values is not None:
+            x, y, z = values
+            positions.append({"x": x, "y": y, "z": z})
+    return positions
+
+
+def _parse_position_values(raw: str) -> tuple[float, float, float] | None:
+    values = [
+        float(match.group(1))
+        for match in re.finditer(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[dDfF]?", raw)
+    ]
+    if len(values) < 3:
+        return None
+    return values[0], values[1], values[2]
 
 
 def _write_commands(proc: subprocess.Popen, commands: list[str]) -> None:

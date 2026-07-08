@@ -21,7 +21,10 @@ def test_run_matrix_uses_lane_trajectory_and_overrides(tmp_path: Path, monkeypat
 
     monkeypatch.setattr(cli, "generate_strategy", fake_generate_strategy)
     monkeypatch.setattr(cli, "load_profile", lambda _configs, _name: {"game_version": "26.2"})
-    monkeypatch.setattr(cli, "resolve_game_version", lambda _profile: "26.2")
+    def fail_resolve(_profile):
+        raise AssertionError("explicit --game-version should skip resolver")
+
+    monkeypatch.setattr(cli, "resolve_game_version", fail_resolve)
     monkeypatch.setattr(cli, "bootstrap_profile", fake_bootstrap_profile)
     monkeypatch.setattr(cli, "launch_profile", fake_launch_profile)
 
@@ -37,6 +40,7 @@ def test_run_matrix_uses_lane_trajectory_and_overrides(tmp_path: Path, monkeypat
         display=":78",
         server_port=25601,
         lane="gpu1",
+        game_version="26.2",
     )
 
     generated = [call for call in calls if call[0] == "generate"]

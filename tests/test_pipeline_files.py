@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from mcdata.render import pipeline
 from mcdata.render.pipeline import _copy_trajectory, _profile_with_overrides, _run_dir
-from mcdata.render.server import ensure_server, server_profile_name
+from mcdata.render.server import ensure_server, parse_position_log, server_profile_name, write_positions_jsonl
 
 
 def test_copy_trajectory_uses_final_path_without_tmp_leftover(tmp_path: Path) -> None:
@@ -62,6 +62,29 @@ def test_server_lane_isolates_world_directory_and_level_name(tmp_path: Path) -> 
     assert "level-name=render_matrix_base__gpu3\n" in properties
     assert "server-port=25603\n" in properties
     assert server_profile_name(profile, profile_name="matrix_low", lane="gpu3") == "render_matrix_base__gpu3"
+
+
+def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [1.5d, 64.0d, -2.25d]\n"
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [2.0d, 65.0d, -3.0d]\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "positions.jsonl"
+
+    count = write_positions_jsonl(log, out, username="mcdata_bot")
+
+    assert count == 2
+    assert parse_position_log(log, username="mcdata_bot") == [
+        {"x": 1.5, "y": 64.0, "z": -2.25},
+        {"x": 2.0, "y": 65.0, "z": -3.0},
+    ]
+    rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    assert rows == [
+        {"idx": 0, "x": 1.5, "y": 64.0, "z": -2.25},
+        {"idx": 1, "x": 2.0, "y": 65.0, "z": -3.0},
+    ]
 
 
 def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monkeypatch) -> None:
@@ -134,6 +157,104 @@ def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monk
     assert manifest_a["profile"]["server_port"] == 25600
     assert manifest_b["profile"]["server_port"] == 25601
     assert run_a != run_b
+
+
+def test_git_manifest_falls_back_to_sync_commit(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(pipeline, "_git_output", lambda _root, *args: None)
+    (tmp_path / ".sync_commit").write_text("abc123\n", encoding="utf-8")
+
+    manifest = pipeline._git_manifest(tmp_path)
+
+    assert manifest["commit"] == "abc123"
+    assert manifest["source"] == "sync_commit"
+    assert manifest["dirty"] is False
+
+
+def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatch) -> None:
+    events: list[tuple[str, object | None]] = []
+    profile = {
+        "loader": "fabric",
+        "quality": "low",
+        "asset_set": "vanilla",
+        "width": 320,
+        "height": 180,
+        "username": "mcdata_bot",
+        "jvm_args": "-Xmx1G",
+        "server_port": 25570,
+        "world_seed": 1,
+        "world_profile": "render_matrix_base",
+        "world_state": {},
+        "capture_ready_delay_sec": 0,
+    }
+
+    class FakeProc:
+        args = ["fake"]
+        returncode = 0
+        pid = 123
+
+        def poll(self):
+            return None
+
+    class FakeStop:
+        def set(self) -> None:
+            events.append(("probe_stop", None))
+
+    monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
+    monkeypatch.setenv("MCDATA_OUTPUT_DIR", str(tmp_path / "runs"))
+    (tmp_path / "instances" / "matrix_low").mkdir(parents=True)
+    monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
+    monkeypatch.setattr(pipeline, "_start_replay_thread", lambda *args, **kwargs: None)
+    monkeypatch.setattr(pipeline, "start_server", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(pipeline, "wait_for_player_join", lambda *args, **kwargs: events.append(("join", None)))
+    monkeypatch.setattr(pipeline, "apply_join_state", lambda _proc, _profile: events.append(("apply_join_state", None)))
+    monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
+    monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
+    monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
+    monkeypatch.setattr(pipeline, "start_position_probe", lambda *args, **kwargs: events.append(("probe_start", None)) or FakeStop())
+    monkeypatch.setattr(pipeline, "write_positions_jsonl", lambda *args, **kwargs: events.append(("positions_written", None)) or 2)
+    monkeypatch.setattr(pipeline, "_terminate_process_tree", lambda proc, *, timeout: events.append(("terminate", timeout)))
+    monkeypatch.setattr(pipeline, "_resource_manifest", lambda _work_dir, _profile: {
+        "asset_set": "vanilla",
+        "mods": [],
+        "resourcepacks": [],
+        "shaderpacks": [],
+    })
+    monkeypatch.setattr(pipeline, "_env_manifest", lambda *, display: {"hostname": "host", "display": display})
+    monkeypatch.setattr(pipeline, "_git_manifest", lambda _root: {"commit": "abc", "dirty": False})
+    monkeypatch.setattr(pipeline.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+
+    pipeline.launch_profile(
+        tmp_path,
+        "matrix_low",
+        dry_run=False,
+        capture=True,
+        strategy=None,
+        duration=1,
+        with_server=True,
+        replay_actions=False,
+        trajectory_path=None,
+        game_version="26.2",
+    )
+
+    assert events[:4] == [
+        ("join", None),
+        ("apply_join_state", None),
+        ("apply_join_state", None),
+        ("prepare_view", None),
+    ]
+    assert ("probe_start", None) in events
+    assert ("probe_stop", None) in events
+    assert ("positions_written", None) in events
+    run_dir = next((tmp_path / "runs").glob("*_matrix_low"))
+    pipeline_events = [
+        json.loads(line)
+        for line in (run_dir / "pipeline.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(item["stage"] == "join" and item["event"] == "re_apply_state" for item in pipeline_events)
+    assert any(
+        item["stage"] == "position_probe" and item["event"] == "positions_written" and item["count"] == 2
+        for item in pipeline_events
+    )
 
 
 def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, monkeypatch) -> None:
@@ -245,6 +366,7 @@ cli.run(
     display=display,
     server_port=server_port,
     lane=lane,
+    game_version="26.2",
 )
 
 run_dir = sorted((root / "runs").glob(f"*_matrix_low__{lane}"))[-1]

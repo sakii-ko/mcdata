@@ -27,7 +27,14 @@ from mcdata.packs import install_asset_set, install_mods
 from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.render.options import write_iris_config, write_options
-from mcdata.render.server import apply_join_state, server_profile_name, start_server, wait_for_player_join
+from mcdata.render.server import (
+    apply_join_state,
+    server_profile_name,
+    start_position_probe,
+    start_server,
+    wait_for_player_join,
+    write_positions_jsonl,
+)
 from mcdata.runlog import RunLogger
 from mcdata.settings import CaptureSettings
 
@@ -234,6 +241,7 @@ def launch_profile(
     game_proc: subprocess.Popen | None = None
     capture_proc: subprocess.Popen | None = None
     replay_thread: threading.Thread | None = None
+    position_probe_stop: threading.Event | None = None
     capture_cmd: list[str] | None = None
     error: str | None = None
     ready_event = threading.Event()
@@ -293,6 +301,9 @@ def launch_profile(
                         _wait_or_raise_if_exited(game_proc, capture_settings.ready_delay_sec)
                         runlog.log("warmup", "end")
                     if capture:
+                        apply_join_state(server_proc, profile)
+                        runlog.log("join", "re_apply_state")
+                        _wait_or_raise_if_exited(game_proc, 1.0)
                         _prepare_capture_view(capture_settings)
                         runlog.log("capture", "view_prepared")
                 if capture:
@@ -302,9 +313,18 @@ def launch_profile(
                         duration=duration,
                     )
                     runlog.log("capture", "start", cmd=capture_cmd, pid=capture_proc.pid)
+                    if with_server and server_proc:
+                        position_probe_stop = start_position_probe(
+                            server_proc,
+                            str(profile.get("username")),
+                        )
+                        runlog.log("position_probe", "start", interval_sec=5.0)
                     ready_event.set()
                     _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
                     runlog.log("capture", "stop", returncode=capture_proc.returncode)
+                    if position_probe_stop:
+                        position_probe_stop.set()
+                        runlog.log("position_probe", "stop")
                 else:
                     ready_event.set()
                     _wait_for_game(game_proc, run_dir / "game.exitcode", duration=duration)
@@ -315,6 +335,8 @@ def launch_profile(
             raise
         finally:
             ready_event.set()
+            if position_probe_stop:
+                position_probe_stop.set()
             if capture_proc and capture_proc.poll() is None:
                 _terminate_process_tree(capture_proc, timeout=10)
                 runlog.log("teardown", "capture_terminated", returncode=capture_proc.returncode)
@@ -327,6 +349,13 @@ def launch_profile(
             if replay_thread:
                 replay_thread.join(timeout=2)
                 runlog.log("replay", "thread_joined", alive=replay_thread.is_alive())
+            if server_proc:
+                count = write_positions_jsonl(
+                    run_dir / "server.log",
+                    run_dir / "positions.jsonl",
+                    username=str(profile.get("username")),
+                )
+                runlog.log("position_probe", "positions_written", count=count)
             manifest = build_run_manifest(
                 run_id=run_dir.name,
                 profile_name=profile_name,
@@ -677,11 +706,26 @@ def _nvidia_smi() -> list[dict[str, str]]:
 def _git_manifest(root: Path) -> dict[str, Any]:
     commit = _git_output(root, "rev-parse", "HEAD")
     status = _git_output(root, "status", "--porcelain")
+    source = "git" if commit is not None else None
+    if commit is None:
+        sync_commit = _sync_commit(root)
+        if sync_commit:
+            commit = sync_commit
+            source = "sync_commit"
     return {
         "commit": commit,
         "dirty": bool(status),
+        "source": source,
         "status_porcelain": status.splitlines() if status else [],
     }
+
+
+def _sync_commit(root: Path) -> str | None:
+    path = root / ".sync_commit"
+    if not path.exists():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
 
 
 def _git_output(root: Path, *args: str) -> str | None:

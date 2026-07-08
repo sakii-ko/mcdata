@@ -52,6 +52,7 @@ def run(
     display: Optional[str] = typer.Option(None, "--display"),
     server_port: Optional[int] = typer.Option(None, "--server-port"),
     lane: Optional[str] = typer.Option(None, "--lane"),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Launch Minecraft for a profile."""
     if display:
@@ -74,6 +75,7 @@ def run(
         with_server=with_server,
         replay_actions=replay_actions,
         trajectory_path=trajectory_path,
+        game_version=game_version,
         server_port=server_port,
         lane=lane,
     )
@@ -126,6 +128,7 @@ def run_matrix(
     display: Optional[str] = typer.Option(None, "--display"),
     server_port: Optional[int] = typer.Option(None, "--server-port"),
     lane: Optional[str] = typer.Option(None, "--lane"),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Run the same trajectory/world through multiple render-quality profiles."""
     if display:
@@ -139,15 +142,15 @@ def run_matrix(
     if not names:
         raise typer.BadParameter("At least one profile is required")
     first_profile = load_profile(paths.configs, names[0])
-    game_version = resolve_game_version(first_profile)
-    console.print(f"Resolved matrix Minecraft version once: {game_version}")
+    resolved_game_version = game_version or resolve_game_version(first_profile)
+    console.print(f"Resolved matrix Minecraft version once: {resolved_game_version}")
     for name in names:
         console.print(f"Matrix profile: {name}")
         if bootstrap:
             bootstrap_profile(
                 root,
                 name,
-                game_version=game_version,
+                game_version=resolved_game_version,
                 server_port=server_port,
                 lane=lane,
             )
@@ -161,7 +164,7 @@ def run_matrix(
             with_server=with_server,
             replay_actions=replay_actions,
             trajectory_path=trajectory_path,
-            game_version=game_version,
+            game_version=resolved_game_version,
             server_port=server_port,
             lane=lane,
         )
