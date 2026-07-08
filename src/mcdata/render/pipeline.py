@@ -180,6 +180,7 @@ def launch_profile(
     game_version: str | None = None,
     server_port: int | None = None,
     lane: str | None = None,
+    probe_interval: float = 5.0,
     debug_no_reapply: bool = False,
     debug_no_replay_gate: bool = False,
 ) -> dict[str, Any]:
@@ -219,6 +220,7 @@ def launch_profile(
         "with_server": with_server,
         "replay_actions": replay_actions,
         "lane": lane,
+        "probe_interval": probe_interval,
         "debug_no_reapply": debug_no_reapply,
         "debug_no_replay_gate": debug_no_replay_gate,
         "started_at": started_at,
@@ -330,9 +332,10 @@ def launch_profile(
                         position_probe_stop = start_position_probe(
                             server_proc,
                             str(profile.get("username")),
+                            interval_sec=probe_interval,
                             sent_at=position_probe_sent_at,
                         )
-                        runlog.log("position_probe", "start", interval_sec=5.0)
+                        runlog.log("position_probe", "start", interval_sec=probe_interval)
                         if debug_no_replay_gate:
                             runlog.log("position_probe", "first_sample_skipped", debug=True)
                         else:

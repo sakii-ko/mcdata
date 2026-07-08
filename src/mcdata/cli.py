@@ -24,6 +24,16 @@ app = typer.Typer(no_args_is_help=True)
 console = Console()
 
 
+def _hidden_positive_float(value: object, default: float, option_name: str) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        result = default
+    if result <= 0:
+        raise typer.BadParameter(f"{option_name} must be greater than 0")
+    return result
+
+
 @app.command()
 def doctor() -> None:
     """Check local rendering/bootstrap capabilities."""
@@ -54,12 +64,14 @@ def run(
     server_port: Optional[int] = typer.Option(None, "--server-port"),
     lane: Optional[str] = typer.Option(None, "--lane"),
     game_version: Optional[str] = typer.Option(None, "--game-version"),
+    probe_interval: float = typer.Option(5.0, "--probe-interval", hidden=True),
     debug_no_reapply: bool = typer.Option(False, "--debug-no-reapply", hidden=True),
     debug_no_replay_gate: bool = typer.Option(False, "--debug-no-replay-gate", hidden=True),
 ) -> None:
     """Launch Minecraft for a profile."""
     debug_no_reapply = debug_no_reapply if isinstance(debug_no_reapply, bool) else False
     debug_no_replay_gate = debug_no_replay_gate if isinstance(debug_no_replay_gate, bool) else False
+    probe_interval = _hidden_positive_float(probe_interval, 5.0, "--probe-interval")
     if display:
         apply_display_override(display)
     root = root.resolve()
@@ -83,6 +95,7 @@ def run(
         game_version=game_version,
         server_port=server_port,
         lane=lane,
+        probe_interval=probe_interval,
         debug_no_reapply=debug_no_reapply,
         debug_no_replay_gate=debug_no_replay_gate,
     )
@@ -135,9 +148,11 @@ def run_matrix(
     display: Optional[str] = typer.Option(None, "--display"),
     server_port: Optional[int] = typer.Option(None, "--server-port"),
     lane: Optional[str] = typer.Option(None, "--lane"),
+    probe_interval: float = typer.Option(5.0, "--probe-interval", hidden=True),
     game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Run the same trajectory/world through multiple render-quality profiles."""
+    probe_interval = _hidden_positive_float(probe_interval, 5.0, "--probe-interval")
     if display:
         apply_display_override(display)
     root = root.resolve()
@@ -174,6 +189,7 @@ def run_matrix(
             game_version=resolved_game_version,
             server_port=server_port,
             lane=lane,
+            probe_interval=probe_interval,
         )
 
 

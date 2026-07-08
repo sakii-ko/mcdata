@@ -44,10 +44,12 @@ def test_run_passes_hidden_debug_flags(tmp_path: Path, monkeypatch) -> None:
         server_port=None,
         lane=None,
         game_version="26.2",
+        probe_interval=1.25,
         debug_no_reapply=True,
         debug_no_replay_gate=True,
     )
 
+    assert calls[0]["probe_interval"] == 1.25
     assert calls[0]["debug_no_reapply"] is True
     assert calls[0]["debug_no_replay_gate"] is True
 
@@ -88,6 +90,7 @@ def test_run_matrix_uses_lane_trajectory_and_overrides(tmp_path: Path, monkeypat
         display=":78",
         server_port=25601,
         lane="gpu1",
+        probe_interval=1.5,
         game_version="26.2",
     )
 
@@ -101,4 +104,5 @@ def test_run_matrix_uses_lane_trajectory_and_overrides(tmp_path: Path, monkeypat
     assert {item["server_port"] for item in bootstraps + launches} == {25601}
     assert {item["lane"] for item in bootstraps + launches} == {"gpu1"}
     assert {item["game_version"] for item in bootstraps + launches} == {"26.2"}
+    assert {item["probe_interval"] for item in launches} == {1.5}
     assert CaptureSettings.from_env({"width": 320, "height": 180}).display == ":78"

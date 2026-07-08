@@ -237,7 +237,11 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
     monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
     monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
-    monkeypatch.setattr(pipeline, "start_position_probe", lambda *args, **kwargs: events.append(("probe_start", None)) or FakeStop())
+    monkeypatch.setattr(
+        pipeline,
+        "start_position_probe",
+        lambda *args, **kwargs: events.append(("probe_start", kwargs.get("interval_sec"))) or FakeStop(),
+    )
     monkeypatch.setattr(
         pipeline,
         "wait_for_position_sample",
@@ -266,6 +270,7 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         replay_actions=False,
         trajectory_path=None,
         game_version="26.2",
+        probe_interval=1.25,
     )
 
     assert events[:4] == [
@@ -274,7 +279,7 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         ("apply_join_state", None),
         ("prepare_view", None),
     ]
-    assert ("probe_start", None) in events
+    assert ("probe_start", 1.25) in events
     assert events.index(("probe_first_sample", None)) < events.index(("wait_capture", None))
     assert ("probe_stop", None) in events
     assert ("positions_written", None) in events
@@ -287,6 +292,10 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
     assert any(item["stage"] == "replay" and item["event"] == "released" for item in pipeline_events)
     assert any(
         item["stage"] == "position_probe" and item["event"] == "positions_written" and item["count"] == 2
+        for item in pipeline_events
+    )
+    assert any(
+        item["stage"] == "position_probe" and item["event"] == "start" and item["interval_sec"] == 1.25
         for item in pipeline_events
     )
 
@@ -331,7 +340,11 @@ def test_capture_debug_flags_skip_reapply_and_replay_gate(tmp_path: Path, monkey
     monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
     monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
-    monkeypatch.setattr(pipeline, "start_position_probe", lambda *args, **kwargs: events.append(("probe_start", None)) or FakeStop())
+    monkeypatch.setattr(
+        pipeline,
+        "start_position_probe",
+        lambda *args, **kwargs: events.append(("probe_start", kwargs.get("interval_sec"))) or FakeStop(),
+    )
     monkeypatch.setattr(
         pipeline,
         "wait_for_position_sample",
@@ -365,7 +378,7 @@ def test_capture_debug_flags_skip_reapply_and_replay_gate(tmp_path: Path, monkey
     )
 
     assert events.count(("apply_join_state", None)) == 1
-    assert ("probe_start", None) in events
+    assert ("probe_start", 5.0) in events
     assert ("probe_first_sample", None) not in events
     run_dir = next((tmp_path / "runs").glob("*_matrix_low"))
     pipeline_events = [
