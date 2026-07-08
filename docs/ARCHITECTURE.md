@@ -105,10 +105,11 @@
 
 - canonical repo：`/root/nas/bigdata1/cjw/projs/mcdata`（NAS）。`/home/chijw/workspace/projs/mcdata` 是历史遗留的手工镜像，后续如需本地盘加速应改为 `git clone`/worktree，禁止双向手工 rsync。
 - 大文件（视频、jar、resource/shader pack、世界存档）永不入库；文档配图压缩到单张 <300KB。
-- 身份区分：仓库默认身份是 `mcdata-coder`（coder 是主 checkout 的主要提交者）；planner 提交时用环境变量覆盖：
-  `GIT_AUTHOR_NAME=mcdata-planner GIT_AUTHOR_EMAIL=planner@mcdata.local GIT_COMMITTER_NAME=mcdata-planner GIT_COMMITTER_EMAIL=planner@mcdata.local git commit ...`。
-  这样 `git log --author=mcdata-coder` / `git blame` 可以直接区分进度和归属。
-  勘误：2026-07-08 的 `5cd13d1`（standards/checker）和 `efb2980`（merge）实际是 planner 所写，因身份配置被覆盖而署名 coder；不重写历史，以此记录为准。任何一方都不要再改仓库级 `git config user.*`。
+- 身份署名（2026-07-08 第二次修订，现行规则）：所有 commit 的 author/committer 统一为 **`sakii-ko <chijw2004@outlook.com>`**（仓库级 git config 已设，任何一方不要再改 `user.*`）。角色归属改由 commit message 承载：
+  - commit 前缀照旧（`[plan]`/`[impl]`/…）；
+  - 消息末尾必须带角色 trailer：`Role: planner` 或 `Role: coder`（放在 Claude 的 `Co-Authored-By` 之前）；
+  - 用 `git log --grep "Role: coder"` 区分进度/blame/credit。
+  历史勘误（不重写）：`iter-01-done` 之前的提交用的是 `mcdata-planner`/`mcdata-coder` 双身份方案，其中 `5cd13d1`、`efb2980`、`8960a68` 实为 planner 所写但署名 coder。
 - commit 前缀：`[plan]` 计划、`[arch]` 架构、`[impl]` 功能、`[test]` 测试、`[qa]` QA 工具/报告、`[fix]` 修复、`[docs]` 文档。一个任务多个小 commit，禁止大杂烩 squash。
 - 分支：coder 在 `iter/NN-<slug>` 分支上工作，完成后**不自行 merge**，由 planner review 后 `merge --no-ff` 进 main 并打 `iter-NN-done` tag。
 - 禁止 force push，禁止移动已有 tag。
