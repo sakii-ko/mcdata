@@ -1,24 +1,24 @@
 {
   "inputs": [
-    "runs/20260708T082306Z_matrix_textured",
-    "runs/20260708T082510Z_matrix_shader_high"
+    "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+    "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
   ],
   "outputs": {
-    "contact_sheet": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_contact_sheet.jpg",
-    "json": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_report.json",
-    "markdown": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_report.md"
+    "contact_sheet": "runs/remote_l40s/qa_pair_textured_vs_shader_high/qa_compare_contact_sheet.jpg",
+    "json": "runs/remote_l40s/qa_pair_textured_vs_shader_high/qa_compare_report.json",
+    "markdown": "runs/remote_l40s/qa_pair_textured_vs_shader_high/qa_compare_report.md"
   },
   "position_alignment": {
-    "max_distance_blocks": 0.358211764079412,
-    "mean_distance_blocks": 0.2645079782966662,
+    "max_distance_blocks": 0.2158590684078341,
+    "mean_distance_blocks": 0.052516367696739744,
     "pairs": [
       {
         "count": 13,
-        "left": "runs/20260708T082306Z_matrix_textured",
-        "max_distance_blocks": 0.358211764079412,
-        "mean_distance_blocks": 0.2645079782966662,
+        "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+        "max_distance_blocks": 0.2158590684078341,
+        "mean_distance_blocks": 0.052516367696739744,
         "passed": true,
-        "right": "runs/20260708T082510Z_matrix_shader_high"
+        "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
       }
     ],
     "passed": true,
@@ -32,15 +32,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1108710",
+          "bit_rate": "1655634",
           "duration": "60.000000",
-          "filename": "runs/20260708T082306Z_matrix_textured/capture.mp4",
+          "filename": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "8315326",
+          "size": "12417261",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -52,7 +52,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1106408",
+            "bit_rate": "1653377",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -111,15 +111,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1232894",
+          "bit_rate": "1754369",
           "duration": "60.000000",
-          "filename": "runs/20260708T082510Z_matrix_shader_high/capture.mp4",
+          "filename": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "9246708",
+          "size": "13157768",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -131,7 +131,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1230659",
+            "bit_rate": "1752110",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -188,9 +188,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.9144136309623718,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.8893866539001465,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 4.615
@@ -198,9 +198,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.924133837223053,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.872843325138092,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 9.231
@@ -208,9 +208,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.6207466125488281,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.5963021516799927,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 13.846
@@ -218,9 +218,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.8491171598434448,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.7881154417991638,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 18.462
@@ -228,9 +228,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.6010640859603882,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.9150899648666382,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 23.077
@@ -238,9 +238,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.5913705825805664,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.867637574672699,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 27.692
@@ -248,9 +248,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.5930410623550415,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.9245048761367798,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 32.308
@@ -258,9 +258,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.46806269884109497,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.8601801991462708,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 36.923
@@ -268,9 +268,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.5144413709640503,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.9018096327781677,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 41.538
@@ -278,9 +278,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.40505915880203247,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.9015429615974426,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 46.154
@@ -288,9 +288,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.44209909439086914,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.9019907712936401,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 50.769
@@ -298,9 +298,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T082306Z_matrix_textured",
-          "ncc": 0.4402067959308624,
-          "right": "runs/20260708T082510Z_matrix_shader_high"
+          "left": "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal",
+          "ncc": 0.900896430015564,
+          "right": "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal"
         }
       ],
       "timestamp_sec": 55.385
@@ -321,7 +321,7 @@
     55.385
   ],
   "videos": [
-    "runs/20260708T082306Z_matrix_textured/capture.mp4",
-    "runs/20260708T082510Z_matrix_shader_high/capture.mp4"
+    "runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal/capture.mp4",
+    "runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal/capture.mp4"
   ]
 }

@@ -1,6 +1,19 @@
 # QA Run Report
 
-- video: `runs/20260708T082306Z_matrix_textured/capture.mp4`
+- route_reference: `PASS`
+- route_max_deviation_blocks: `0.847`
+- route_mean_deviation_blocks: `0.748`
+- route_threshold_blocks: `3.0`
+- route_max_yaw_error_degrees: `0.000`
+- route_mean_yaw_error_degrees: `0.000`
+- route_yaw_threshold_degrees: `10.0`
+- route_yaw_sample_count: `8`
+- route_missing_yaw_count: `0`
+- route_skipped_yaw_count: `4`
+- route_y_range: `63.0..66.0`
+- route_y_out_of_range_count: `0`
+
+- video: `runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal/capture.mp4`
 - codec: `h264`
 - size: `1280x720`
 - fps: `24.0`
@@ -9,15 +22,15 @@
 
 | t_sec | p5 | p50 | p95 | black_border |
 |---:|---:|---:|---:|---|
-| 4.615 | 51.4 | 145.5 | 213.8 | False |
-| 9.231 | 32.7 | 92.8 | 204.1 | False |
-| 13.846 | 38.2 | 149.7 | 218.5 | False |
-| 18.462 | 65.2 | 156.7 | 206.9 | False |
-| 23.077 | 31.3 | 42.5 | 54.7 | False |
-| 27.692 | 26.6 | 42.1 | 53.5 | False |
-| 32.308 | 15.0 | 27.8 | 35.1 | False |
-| 36.923 | 14.7 | 26.7 | 31.8 | False |
-| 41.538 | 17.6 | 27.7 | 34.0 | False |
-| 46.154 | 10.2 | 19.3 | 26.8 | False |
-| 50.769 | 10.2 | 16.6 | 23.4 | False |
-| 55.385 | 9.7 | 15.8 | 22.4 | False |
+| 4.615 | 92.7 | 201.9 | 239.1 | False |
+| 9.231 | 85.3 | 209.7 | 239.7 | False |
+| 13.846 | 61.9 | 115.6 | 222.0 | False |
+| 18.462 | 77.3 | 189.5 | 229.1 | False |
+| 23.077 | 84.6 | 196.7 | 230.5 | False |
+| 27.692 | 49.1 | 157.8 | 229.3 | False |
+| 32.308 | 51.9 | 170.6 | 229.7 | False |
+| 36.923 | 89.0 | 179.3 | 228.5 | False |
+| 41.538 | 90.7 | 189.3 | 235.9 | False |
+| 46.154 | 90.7 | 189.3 | 235.9 | False |
+| 50.769 | 91.0 | 189.0 | 235.6 | False |
+| 55.385 | 91.0 | 188.9 | 235.6 | False |

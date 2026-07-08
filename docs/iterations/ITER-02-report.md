@@ -950,6 +950,100 @@ Operational notes:
 - Because the first l40s validation failed the position gate, I did not run l40s B, did not run four-way recapture, and did not replace `docs/qa_samples/iter02_4090_3way/`.
 - Per the latest user instruction, I did not perform 4090 checks or workloads for T1g.
 
+## T1h P10 Sink Pool, Toast Suppression, Window Geometry, And Final l40s Recapture
+
+Commits:
+
+- `dd876dbdc17ec2b8e46765a14cfd0e34f4b05dde` `[fix] sink pool and capture minecraft window geometry`
+- `5a84c1db400c42c113ab72c79b0c35ca8545b5da` `[fix] keep minecraft capture window onscreen`
+
+Local verification:
+
+```text
+scripts/dev_check.sh
+check_standards: 0 failure(s), 3 warning(s)
+All checks passed!
+84 passed
+```
+
+Implementation notes:
+
+- P10 pool fix: `server.py` now places pool water at `oy-1` and blue concrete at `oy-2`, so the water surface is one block below the walk plane. The pool remains blocked by config, but the y=64 scene mirror no longer treats pool water as occupied.
+- Toast source: t=22-26 crops from T1g showed a Minecraft recipe toast (`New Recipes Unlocked...`) clipped at the top-right of the full-display capture, not an OS/window-manager overlay. Jar constants confirmed recipe toasts flow through Minecraft's `ToastManager` and `notificationDisplayTime`; no separate recipe-toast option was visible.
+- Toast suppression: quiet capture options now write `inGameNotification:false`, `musicToast:"never"`, `realmsNotifications:false`, and `notificationDisplayTime:0.0`. Minecraft logged that `0.0` is outside the option range `[0.5:10.0]` on some fresh profile launches, but the formal l40s validation and recapture frames had no visible toast and QA warnings stayed empty. Review should decide whether to keep this empirical setting or clamp it to Minecraft's documented minimum in a later cleanup.
+- Window geometry: capture now prefers `xdotool search --name Minecraft`, selects the largest matching window, parses `xdotool getwindowgeometry --shell`, and records `capture/window_geometry` in `pipeline.jsonl`. If xdotool reports a negative coordinate, the code first moves the window to `(0,0)` and rereads geometry; if it remains offscreen, capture falls back to the display rather than generating invalid x11grab inputs such as `:77+-128,-72`.
+
+Non-acceptance retry note:
+
+- The first post-geometry l40s retry (`20260708T171210Z_matrix_low__t1hl40sA`) exposed the offscreen case: xdotool reported `x=-128,y=-72,width=1280,height=720`, ffmpeg was invoked with `:77+-128,-72`, and the MP4 had no video stream. I stopped treating that as business validation, added the onscreen move/fallback guard in commit `5a84c1d`, reran `dev_check`, pushed, resynced to l40s, and restarted validation.
+
+l40s validation, user-requested l40s-only scope:
+
+```text
+scripts/sync_to_remote.sh l40s /root/mcdata
+ssh l40s '/tmp/t1h_verify_one.sh t1hl40sA2 25673'
+ssh l40s '/tmp/t1h_verify_one.sh t1hl40sB2 25674'
+```
+
+Validation results:
+
+| run | route | max dev | max yaw | skipped yaw | warnings | geometry |
+|---|---|---:|---:|---:|---:|---|
+| `20260708T171833Z_matrix_low__t1hl40sA2` | PASS | 0.916 | 0.000030 | 4 | 0 | `0,0 1280x720` |
+| `20260708T172041Z_matrix_low__t1hl40sB2` | PASS | 0.924 | 0.000030 | 4 | 0 | `0,0 1280x720` |
+
+Manual frame check: t=26 frame from `t1hl40sA2` shows the pool visibly below the platform rim, no overflow on the walk surface, no black border, and no top-right toast.
+
+Final l40s recapture:
+
+```text
+python3 -m mcdata.cli run-matrix \
+  --profiles matrix_low,matrix_textured,matrix_shader_high \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+  --display :77 --server-port 25675 --lane t1hfinal --no-bootstrap
+
+python3 -m mcdata.cli run --profile matrix_night_complementary \
+  --with-server --replay-actions --capture \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+  --display :77 --server-port 25675 --lane t1hfinal
+```
+
+The missing l40s NAS-backed instances for `matrix_textured`, `matrix_shader_high`, and `matrix_night_complementary` were bootstrapped before recapture. One Modrinth CDN timeout occurred while downloading `vanilla-glowing-ores-0.2.zip`, then the retry completed and bootstrap succeeded.
+
+Final recapture run dirs:
+
+- `runs/remote_l40s/20260708T172734Z_matrix_low__t1hfinal`
+- `runs/remote_l40s/20260708T172923Z_matrix_textured__t1hfinal`
+- `runs/remote_l40s/20260708T173106Z_matrix_shader_high__t1hfinal`
+- `runs/remote_l40s/20260708T173252Z_matrix_night_complementary__t1hfinal`
+
+Per-run QA:
+
+| profile | route | max dev | max yaw | warnings | geometry |
+|---|---|---:|---:|---:|---|
+| `matrix_low` | PASS | 0.778 | 0.000030 | 0 | `0,0 1280x720` |
+| `matrix_textured` | PASS | 0.847 | 0.000030 | 0 | `0,0 1280x720` |
+| `matrix_shader_high` | PASS | 0.923 | 0.000030 | 0 | `0,0 1280x720` |
+| `matrix_night_complementary` | PASS | 0.955 | 0.000030 | 0 | `0,0 1280x720` |
+
+Pairwise compare:
+
+| pair | position | max distance | mean distance |
+|---|---|---:|---:|
+| low vs textured | PASS | 0.305 | 0.206 |
+| low vs shader_high | PASS | 0.305 | 0.214 |
+| low vs night | PASS | 0.251 | 0.185 |
+| textured vs shader_high | PASS | 0.216 | 0.053 |
+| textured vs night | PASS | 0.475 | 0.280 |
+| shader_high vs night | PASS | 0.320 | 0.254 |
+
+Artifacts and cleanup:
+
+- `docs/qa_samples/iter02_4090_3way/` was replaced with the l40s T1h final QA reports, positions, pairwise compare reports, and four t=30 representative frames. The directory name is unchanged per PLAN.
+- Full l40s evidence was pulled to ignored `runs/remote_l40s/` with a verified zero-transfer second rsync pass.
+- Remote `/root/nas/bigdata1/tmp/mcdata/runs` was manually purged after confirming no real `mcdata.cli`, `portablemc`, `x11grab`, `ffmpeg`, Minecraft server, or Minecraft Java process remained.
+- I did not perform any 4090 work after the user redirected scope to l40s-only.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -982,6 +1076,11 @@ Operational notes:
   - T1g l40s evidence:
     - Formal NAS-backed validation FAIL: `20260708T163311Z_matrix_low__t1gl40sA`
     - Remote wrapper log: `/root/nas/bigdata1/tmp/mcdata/logs/t1gl40sA.log` on l40s during execution; pulled run contains pipeline/server/replay/QA artifacts.
+  - T1h l40s evidence:
+    - Non-acceptance offscreen capture retry: `20260708T171210Z_matrix_low__t1hl40sA`
+    - Validation PASS: `20260708T171833Z_matrix_low__t1hl40sA2`, `20260708T172041Z_matrix_low__t1hl40sB2`
+    - Final recapture PASS: `20260708T172734Z_matrix_low__t1hfinal`, `20260708T172923Z_matrix_textured__t1hfinal`, `20260708T173106Z_matrix_shader_high__t1hfinal`, `20260708T173252Z_matrix_night_complementary__t1hfinal`
+    - Compare outputs: `qa_compare_t1hfinal`, `qa_pair_*`
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
@@ -1010,6 +1109,7 @@ Operational notes:
 - T1f P7 added the PLAN-specified occupied cells to every `astar_walk.blocked`, but the route JSON did not change because the generated integer-center routes already avoided those exact cells. The visualization PNGs changed to show the new blocked points; I did not expand blocked cells beyond the audited y=64/65 occupied grid.
 - T1g stopped after the first formal l40s validation A run failed the position gate. P8 and P9 instrumentation behaved as expected: scene receipts were complete, server.log had no scene failure pattern, and `positions.jsonl` used the replay-log start baseline.
 - T1g black-border investigation found `xwininfo` geometry unavailable (`geometry=null`), capture falling back to full display `:77`, and black-border warnings on all sampled frames. I recorded the data and did not attempt a display/window workaround without planner direction.
+- T1h completed on l40s-only scope: both 60s validation runs and all four final recapture runs passed route/yaw gates, QA black-border checks, and visual toast checks. The largest final pairwise position distance was `0.475` blocks.
 - I did not start 4090 validation after l40s validation A failed. 4090 `nvidia-smi` was also blocked by other active/stuck GPU-query state at the time of validation.
 - After the user redirected work to l40s-only, I did not perform further 4090 checks or workloads.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
@@ -1026,4 +1126,5 @@ Operational notes:
 - T1e v2 failure interpretation: initial route samples now pass position/yaw after P5/P6; validation fails later around the new P6 detour with yaw residuals >10 degrees and then terminal position divergence.
 - T1f failure interpretation: yaw residuals are removed after turn-window filtering, scene occupied cells are now covered by config/tests, but l40s still fails the position gate by `23.813` blocks on A. Review should focus on the remaining position-model / collision-margin mismatch rather than P3/P4/P5/yaw sampling.
 - T1g failure interpretation: scene construction is now verified cleanly and `t_rel` starts from actual replay start, but l40s still fails position by `25.244` blocks with yaw effectively exact. Review should also decide the black-border/window-geometry path because `xwininfo` did not find usable Minecraft geometry on l40s.
+- T1h review focus: P10 pool sinking fixed the route divergence; xdotool geometry plus onscreen move removed black borders; toast did not recur in validation/recapture, though Minecraft logs show `notificationDisplayTime:0.0` is outside the accepted range.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.

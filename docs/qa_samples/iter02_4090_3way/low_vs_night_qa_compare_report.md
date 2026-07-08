@@ -1,24 +1,24 @@
 # QA Compare Report
 
 - position_alignment: `PASS`
-- position_max_distance_blocks: `0.157`
-- position_mean_distance_blocks: `0.081`
+- position_max_distance_blocks: `0.251`
+- position_mean_distance_blocks: `0.185`
 - position_threshold_blocks: `2.0`
 
-- input: `runs/20260708T082056Z_matrix_low`
-- input: `runs/20260708T082753Z_matrix_night_complementary`
+- input: `runs/remote_l40s/20260708T172734Z_matrix_low__t1hfinal`
+- input: `runs/remote_l40s/20260708T173252Z_matrix_night_complementary__t1hfinal`
 
 | t_sec | pair | ncc |
 |---:|---|---:|
-| 4.615 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.0474 |
-| 9.231 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.6918 |
-| 13.846 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.7017 |
-| 18.462 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.3373 |
-| 23.077 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.4282 |
-| 27.692 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.2488 |
-| 32.308 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.8938 |
-| 36.923 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.8018 |
-| 41.538 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.8304 |
-| 46.154 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.8197 |
-| 50.769 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.7643 |
-| 55.385 | `20260708T082056Z_matrix_low` vs `20260708T082753Z_matrix_night_complementary` | 0.8439 |
+| 4.615 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | -0.1337 |
+| 9.231 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | -0.0582 |
+| 13.846 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.1258 |
+| 18.462 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.2592 |
+| 23.077 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.1832 |
+| 27.692 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.3943 |
+| 32.308 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.3603 |
+| 36.923 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.0317 |
+| 41.538 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.0487 |
+| 46.154 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.0484 |
+| 50.769 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.0471 |
+| 55.385 | `20260708T172734Z_matrix_low__t1hfinal` vs `20260708T173252Z_matrix_night_complementary__t1hfinal` | 0.0458 |
