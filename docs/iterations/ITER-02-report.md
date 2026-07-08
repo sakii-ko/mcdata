@@ -397,6 +397,169 @@ local copy: /home/chijw/workspace/projs/mcdata/runs/remote_4090
 size: 172M
 ```
 
+## T1d Turn Calibration / Yaw Gate Validation
+
+T1d code/data commits:
+
+- `e397c56389e93dd9f496e4c80facd8b17c03be99` `[qa] add yaw route reference gate`
+- `52832ea916ee57db6426b88b4732667eaae5c815` `[data] regenerate trajectories for P4 turn calibration`
+
+Local validation before remote sync:
+
+```text
+scripts/dev_check.sh
+WARN  R19: render/pipeline.py has 839 lines (>600) -- justify in report
+WARN  R19: render/pipeline.py:169 function launch_profile spans 245 lines (>80)
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+67 passed
+```
+
+Implemented T1d surface:
+
+- `configs/actions.yml`: all four `astar_walk` strategies use `turn_px_per_degree: 6.6667`.
+- `configs/actions.yml`: added `turn_calibration_probe`, scripted 8 x 600px turns at 2.5s intervals.
+- `options.py`: `QUIET_CAPTURE_OPTIONS` now pins `mouseSensitivity: "0.5"` in addition to `rawMouseInput: "true"`.
+- Position probe now sends `data get entity <user> Pos` and `Rotation` every cycle; `positions.jsonl` includes `yaw`.
+- `simulate_track` emits an ideal yaw timeline, including circular interpolation through turn spans.
+- Route reference QA now enforces yaw residual `<=10.0` degrees and fails if expected yaw samples are missing.
+
+Preflight and sync:
+
+```text
+ssh 4090 'nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits'
+0, NVIDIA GeForce RTX 4090, 16466, 24564, 0
+
+ssh l40s 'nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits | head'
+0, NVIDIA L40S, 37, 46068, 0
+```
+
+Both hosts were synced to `.sync_commit = 52832ea916ee57db6426b88b4732667eaae5c815`. The sync overwrote planner's temporary `turn_fidelity_probe` / `turn_probe_600` entries with the committed `turn_calibration_probe`. Bootstrap on both hosts wrote:
+
+```text
+mouseSensitivity:0.5
+rawMouseInput:true
+```
+
+Cleanup requested by planner was performed:
+
+- 4090: `/home/lyf/pointer_probe.py` absent after cleanup.
+- l40s: `/root/mcdata/l40sval*.log` and `/root/mcdata/turn600.log` removed.
+- Both remote run directories were purged after pulling evidence; l40s required manual `find ... -exec rm -rf` after `pull_runs_from_remote.sh` refused purge because `pgrep` matched its own check command.
+
+### Turn calibration probe
+
+4090 command:
+
+```text
+DISPLAY=:77 MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+  --strategy turn_calibration_probe --duration 24 --game-version 26.2 \
+  --server-port 25610 --lane t1dturn4090
+```
+
+l40s command:
+
+```text
+MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata DISPLAY=:77 \
+MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+  --strategy turn_calibration_probe --duration 24 --game-version 26.2 \
+  --server-port 25620 --lane t1dturnl40s
+```
+
+Pulled artifacts:
+
+- `runs/remote_4090/20260708T111535Z_matrix_low__t1dturn4090`
+- `runs/remote_l40s/20260708T111536Z_matrix_low__t1dturnl40s`
+- NCC/contact sheet scratch output: `runs/t1d_turn_ncc/summary.json`
+
+NCC was measured against the baseline frame at replay release + 1s, then +360 at release + 10.8s and +720 at release + 20.8s:
+
+```text
+4090 timestamps: 1.203s, 11.003s, 21.003s
+4090 NCC baseline/+360: 0.7867
+4090 NCC baseline/+720: 0.7887
+4090 visual check: overlap by contact sheet; numeric NCC is just below 0.8, likely affected by animated lava.
+
+l40s timestamps: 1.202s, 11.002s, 21.002s
+l40s NCC baseline/+360: 0.9057
+l40s NCC baseline/+720: 0.9105
+l40s visual check: overlap by contact sheet.
+```
+
+The 4090 numeric NCC alone is below the T1d threshold, and the following ground validation also failed on both hosts, so T1d stopped before full recapture.
+
+### Ground validation
+
+4090 command:
+
+```text
+DISPLAY=:77 MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+  --server-port 25611 --lane t1d4090a
+PYTHONPATH=src python3 -m mcdata.cli qa-run runs/20260708T111716Z_matrix_low__t1d4090a \
+  --frames 12 --out-dir runs/20260708T111716Z_matrix_low__t1d4090a/qa
+```
+
+l40s command:
+
+```text
+MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata DISPLAY=:77 \
+MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+  --server-port 25621 --lane t1dl40sa
+PYTHONPATH=src python3 -m mcdata.cli qa-run \
+  /root/nas/bigdata1/tmp/mcdata/runs/20260708T111650Z_matrix_low__t1dl40sa \
+  --frames 12 --out-dir /root/nas/bigdata1/tmp/mcdata/runs/20260708T111650Z_matrix_low__t1dl40sa/qa
+```
+
+Both first ground validation runs failed the position gate while the yaw gate was effectively perfect and complete:
+
+```text
+4090 run: runs/remote_4090/20260708T111716Z_matrix_low__t1d4090a
+route_reference: FAIL
+route_max_deviation_blocks: 22.252
+route_mean_deviation_blocks: 15.565
+route_max_yaw_error_degrees: 0.000030
+route_mean_yaw_error_degrees: 0.000022
+route_missing_yaw_count: 0
+route_sample_count: 12
+
+l40s run: runs/remote_l40s/20260708T111650Z_matrix_low__t1dl40sa
+route_reference: FAIL
+route_max_deviation_blocks: 21.425
+route_mean_deviation_blocks: 15.293
+route_max_yaw_error_degrees: 0.000030
+route_mean_yaw_error_degrees: 0.000022
+route_missing_yaw_count: 0
+route_sample_count: 12
+```
+
+Representative samples show the same pattern on both machines: yaw matches the ideal heading, but position is far behind/off the ideal route by the first post-release sample.
+
+| host | idx | t_rel | observed `(x,z)` | ideal `(x,z)` | deviation | observed yaw | ideal yaw |
+|---|---:|---:|---|---|---:|---:|---:|
+| 4090 | 1 | 4.797 | `(1.901,-11.036)` | `(6.273,-12.000)` | 4.476 | -90.00001 | -90.0 |
+| 4090 | 2 | 9.797 | `(3.714,-9.424)` | `(12.000,-3.820)` | 10.003 | -0.00001 | 0.0 |
+| 4090 | 3 | 14.798 | `(1.847,-8.035)` | `(4.000,0.368)` | 8.674 | -0.00000 | 0.0 |
+| 4090 | 4 | 19.798 | `(7.383,-4.346)` | `(8.274,10.000)` | 14.374 | -90.00001 | -90.0 |
+| l40s | 1 | 4.799 | `(1.826,-11.026)` | `(6.278,-12.000)` | 4.558 | -90.00001 | -90.0 |
+| l40s | 2 | 9.799 | `(3.693,-9.541)` | `(12.000,-3.815)` | 10.089 | -0.00001 | 0.0 |
+| l40s | 3 | 14.799 | `(1.845,-8.170)` | `(4.000,0.373)` | 8.810 | -0.00000 | 0.0 |
+| l40s | 4 | 19.799 | `(7.158,-4.346)` | `(8.279,10.000)` | 14.389 | -90.00001 | -90.0 |
+
+Stop condition: T1d requires both hosts to pass two consecutive default `ground_astar_loop` 60s runs. The first completed run on both hosts failed the route position gate, so I stopped and did not run full recapture or replace `docs/qa_samples/iter02_4090_3way/`.
+
+There is no evidence of yaw residual accumulating linearly. The yaw residuals are near zero and complete for every checked sample; the remaining failure is translational/position alignment, not turn angle.
+
+Harness deviations:
+
+- The first l40s tmux wrapper had a shell quoting bug: `$MCDATA_OUTPUT_DIR` expanded before reaching the remote shell, so it exited after writing the first ground run instead of running `qa-run` and B. I ran `qa-run` manually against the completed l40s A run and used that as the stop evidence.
+- The 4090 tmux wrapper did not parse `qa_report.json` after A, and `qa-run` itself exits zero even when route_reference is FAIL. It briefly started `t1d4090b`; I interrupted and killed the session once the A FAIL was confirmed. The pulled `runs/remote_4090/20260708T111930Z_matrix_low__t1d4090b` is partial/empty and is evidence only, not part of acceptance.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -409,6 +572,16 @@ size: 172M
     - Formal FAIL: `20260708T102445Z_matrix_low__t1cval1`
     - Interrupted partial second run: `20260708T102710Z_matrix_low__t1cval2`
     - Pointer probe: `pointer_probe_t1cval1.jsonl`, `pointer_probe_t1cval1_meta.json`, `pointer_probe_t1cval1.log`
+  - T1d evidence:
+    - Turn probe: `20260708T111535Z_matrix_low__t1dturn4090`
+    - Formal FAIL: `20260708T111716Z_matrix_low__t1d4090a`
+    - Interrupted partial B: `20260708T111930Z_matrix_low__t1d4090b`
+    - Remote wrapper log: `t1d_verify_4090.log`
+  - T1d l40s evidence is pulled under ignored `runs/remote_l40s/`:
+    - Turn probe: `20260708T111536Z_matrix_low__t1dturnl40s`
+    - Formal FAIL: `20260708T111650Z_matrix_low__t1dl40sa`
+    - Remote wrapper log: `t1d_verify_l40s.log`
+  - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
   - Four `*_qa_report.{json,md}` files.
@@ -429,6 +602,8 @@ size: 172M
 - `matrix_night_complementary` has one low median brightness warning. This matches the intentional night profile; there were no black-border or FPS warnings.
 - T1c Step 2 B/C/D were not run because A, with both debug skips enabled, already failed the route-reference gate. This follows the PLAN.md stop condition for A off-route.
 - T1c Step 3.5 failed on the first default 60s no-discard run despite replay key cleanup, normal replay thread completion, and no inherited-stuck-key replay log record. I stopped before Step 4 per PLAN.md.
+- T1d stopped before full recapture. The first completed `ground_astar_loop` run on both 4090 and l40s failed the position gate while yaw samples were present and matched the ideal yaw timeline. I did not implement the waypoint yaw resync fallback because the yaw residual did not accumulate or exceed threshold.
+- The T1d turn probe on 4090 visually overlapped at +360/+720 but measured NCC `0.7867/0.7887`, just below the numeric `0.8` threshold; l40s measured `0.9057/0.9105`. The ground validation failures independently satisfy the stop condition.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
@@ -439,4 +614,5 @@ size: 172M
 - `.sync_commit` provenance for rsync-without-git render hosts.
 - T1c A failure interpretation: both hidden skips are active in the formal run, but route-reference still fails with max deviation `31.127` blocks and y drop to `51.0`.
 - T1c Step 3.5 failure interpretation: key-state cleanup behaved as designed (`thread_joined alive=false`, no inherited/released replay-control records), but route-reference still failed and pointer edge parking was 95.7% during gameplay.
+- T1d failure interpretation: after P4 correction, yaw aligns to the ideal route on both hosts, but observed position diverges from the ideal path by >21 blocks. This points away from residual turn calibration and toward movement/translation timing or route-model calibration.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
