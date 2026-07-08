@@ -174,6 +174,20 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：上述四步全部有落盘证据；report 含步骤 0 的差异列表与步骤 2 的四组判定表。
 
+### T1d — 转向标定修正 + 朝向观测 + 全量重采（T1c 步骤 3.5/4 由此取代）
+
+背景：第二根因 P4（转向欠转 10%，自 ITER-01 存在）已由 planner 定位并实证，见 `docs/iterations/ITER-02-t1c-diagnosis.md` 追加节。**以下设计 planner 定死。**
+
+1. **标定修正**：`configs/actions.yml` 全部 astar_walk 策略的 `turn_px_per_degree` 从 `6.0` 改为 `6.6667`（= 600px/90°，对应 MC sensitivity 0.5 的 0.15°/px）。`options.py` QUIET_CAPTURE_OPTIONS 增加 `"mouseSensitivity": "0.5"` 显式钉死（不依赖游戏默认值），同步 test_options。
+2. **golden 更新**：轨迹事件因此变化，golden 全量重生成——单独一个 commit，message 说明"P4 标定修正导致的预期行为变更"。`docs/trajectories/` 的 JSON/PNG 同步重生成。
+3. **朝向观测**：位置探针的查询从 `data get entity <user> Pos` 扩为 Pos 与 Rotation 两条（同周期发送）；positions.jsonl 每条增加 `"yaw"`（浮点，MC 值域 -180..180）。`simulate_track` 增加输出理想 yaw 时间线；route gate 增加 yaw 校验：**每样本 |实际yaw − 理想yaw| 循环差 > 10° 判 FAIL**（阈值参数化）。合成单测覆盖。
+4. **转向保真探针入库**：`configs/actions.yml` 正式加入 `turn_calibration_probe`（scripted，8×600px、间隔 2.5s；planner 已在 l40s 临时验证过），作为标定回归工具；README 或 PLAN 不需要额外文档，策略名自说明。
+5. **验证（两台机器都要）**：4090 与 l40s 各跑 `turn_calibration_probe`（+360°/+720° 回归点抽帧 NCC ≥0.8 且目检重合）+ 各连续两个 `ground_astar_loop` 60s 默认 run，**路线门（位置+yaw）四个 run 全 PASS**。任一 FAIL：停，收集证据上报。
+6. **全量重采**（原 T1c 步骤 4）：验证过后 4090 四路同批次重采（无丢弃 run），双门+yaw 门 PASS，t=30 抽帧对照路线图，替换 `docs/qa_samples/iter02_4090_3way/`，回传 + purge。l40s 侧临时文件清理（/root/mcdata/l40sval*.log、turn600.log、configs 里 planner 临时加的 turn_probe_600 条目由正式 turn_calibration_probe 取代）。
+7. 疑难备案：若步骤 5 中 yaw 门显示残差随转向次数线性累积并最终突破阈值，上报 planner（预案是 waypoint 处服务端 yaw 重同步，暂不实现）。
+
+**验收**：步骤 5 的 4+2 个验证产物 + 步骤 6 的重采产物全部入库/落盘；dev_check 全绿。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
