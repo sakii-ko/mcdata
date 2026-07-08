@@ -27,7 +27,7 @@ from mcdata.packs import install_asset_set, install_mods
 from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.render.options import write_iris_config, write_options
-from mcdata.render.server import apply_join_state, start_server, wait_for_player_join
+from mcdata.render.server import apply_join_state, server_profile_name, start_server, wait_for_player_join
 from mcdata.runlog import RunLogger
 from mcdata.settings import CaptureSettings
 
@@ -84,9 +84,19 @@ def portablemc_version(profile: dict[str, Any], game_version: str) -> str:
     raise RuntimeError(f"Unsupported loader: {loader}")
 
 
-def bootstrap_profile(root: Path, profile_name: str, *, game_version: str | None = None) -> dict[str, Any]:
+def bootstrap_profile(
+    root: Path,
+    profile_name: str,
+    *,
+    game_version: str | None = None,
+    server_port: int | None = None,
+    lane: str | None = None,
+) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
-    profile = load_profile(paths.configs, profile_name)
+    profile = _profile_with_overrides(
+        load_profile(paths.configs, profile_name),
+        server_port=server_port,
+    )
     game_version = game_version or resolve_game_version(profile)
     work_dir = ensure_dir(paths.instance_dir(profile_name))
     server_root = ensure_dir((paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve())
@@ -125,8 +135,9 @@ def bootstrap_profile(root: Path, profile_name: str, *, game_version: str | None
             "mods": mods,
             "resourcepacks": resourcepacks,
             "shaderpack": shaderpack,
-            "server_dir": str(server_root / profile_name),
+            "server_dir": str(server_root / server_profile_name(profile, profile_name=profile_name, lane=lane)),
             "server_port": profile.get("server_port", 25565),
+            "lane": lane,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -159,15 +170,26 @@ def launch_profile(
     replay_actions: bool,
     trajectory_path: Path | None,
     game_version: str | None = None,
+    server_port: int | None = None,
+    lane: str | None = None,
 ) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
-    profile = load_profile(paths.configs, profile_name)
+    profile = _profile_with_overrides(
+        load_profile(paths.configs, profile_name),
+        server_port=server_port,
+    )
     game_version = game_version or resolve_game_version(profile)
     work_dir = paths.instance_dir(profile_name)
     if not work_dir.exists():
-        bootstrap_profile(root, profile_name, game_version=game_version)
+        bootstrap_profile(
+            root,
+            profile_name,
+            game_version=game_version,
+            server_port=server_port,
+            lane=lane,
+        )
 
-    run_dir = _run_dir(paths.output_dir, profile_name)
+    run_dir = _run_dir(paths.output_dir, profile_name, lane=lane)
     started_at = datetime.now(timezone.utc).isoformat()
     capture_settings = CaptureSettings.from_env(profile)
     run_trajectory_path = _copy_trajectory(run_dir, trajectory_path) if trajectory_path else None
@@ -186,6 +208,7 @@ def launch_profile(
         "capture": capture,
         "with_server": with_server,
         "replay_actions": replay_actions,
+        "lane": lane,
         "started_at": started_at,
     }
     _write_json(run_dir / "metadata.json", metadata)
@@ -233,6 +256,7 @@ def launch_profile(
                     profile_name=profile_name,
                     profile=profile,
                     run_dir=run_dir,
+                    lane=lane,
                 )
                 runlog.log("server", "started", pid=server_proc.pid)
             if replay_actions and run_trajectory_path and not dry_run:
@@ -321,6 +345,7 @@ def launch_profile(
                 started_at=started_at,
                 ended_at=datetime.now(timezone.utc).isoformat(),
                 error=error,
+                lane=lane,
             )
             write_run_manifest(run_dir, manifest)
             runlog.log("teardown", "manifest_written", path=str(run_dir / "manifest.json"))
@@ -709,9 +734,20 @@ def _terminate_process_tree(proc: subprocess.Popen, *, timeout: int) -> None:
         proc.wait(timeout=10)
 
 
-def _run_dir(output_dir: Path, profile: str) -> Path:
+def _profile_with_overrides(
+    profile: dict[str, Any],
+    *,
+    server_port: int | None,
+) -> dict[str, Any]:
+    if server_port is None:
+        return profile
+    return {**profile, "server_port": int(server_port)}
+
+
+def _run_dir(output_dir: Path, profile: str, *, lane: str | None = None) -> Path:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = output_dir / f"{stamp}_{profile}"
+    suffix = f"{profile}__{lane}" if lane else profile
+    path = output_dir / f"{stamp}_{suffix}"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

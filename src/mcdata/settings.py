@@ -47,6 +47,11 @@ class CaptureSettings:
         )
 
 
+def apply_display_override(display: str) -> None:
+    """Process-global DISPLAY override; call before any X client is created."""
+    os.environ["DISPLAY"] = display
+
+
 def _parse_capture_size(raw: str | None, *, default_width: int, default_height: int) -> tuple[int, int]:
     if raw is None or raw == "":
         return default_width, default_height

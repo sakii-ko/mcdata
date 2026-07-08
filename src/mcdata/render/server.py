@@ -21,8 +21,9 @@ def ensure_server(
     game_version: str,
     profile_name: str,
     profile: dict[str, Any],
+    lane: str | None = None,
 ) -> dict[str, Any]:
-    server_profile = str(profile.get("world_profile") or profile_name)
+    server_profile = server_profile_name(profile, profile_name=profile_name, lane=lane)
     server_dir = server_root / server_profile
     cache_dir = server_root / "cache"
     server_dir.mkdir(parents=True, exist_ok=True)
@@ -40,7 +41,7 @@ def ensure_server(
             jar.write_bytes(cached_jar.read_bytes())
 
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
-    _write_server_properties(server_dir / "server.properties", profile)
+    _write_server_properties(server_dir / "server.properties", profile, level_name=server_profile)
     java = _java_path(launcher_dir)
     return {"server_dir": server_dir, "jar": jar, "java": java}
 
@@ -53,6 +54,7 @@ def start_server(
     profile_name: str,
     profile: dict[str, Any],
     run_dir: Path,
+    lane: str | None = None,
     wait_sec: int = 45,
 ) -> subprocess.Popen:
     info = ensure_server(
@@ -61,6 +63,7 @@ def start_server(
         game_version=game_version,
         profile_name=profile_name,
         profile=profile,
+        lane=lane,
     )
     log_path = run_dir / "server.log"
     memory = str(profile.get("server_memory", "2G"))
@@ -105,14 +108,26 @@ def _server_download_url(game_version: str) -> str:
     return str(server["url"])
 
 
-def _write_server_properties(path: Path, profile: dict[str, Any]) -> None:
+def server_profile_name(
+    profile: dict[str, Any],
+    *,
+    profile_name: str,
+    lane: str | None = None,
+) -> str:
+    name = str(profile.get("world_profile") or profile_name)
+    if lane:
+        return f"{name}__{lane}"
+    return name
+
+
+def _write_server_properties(path: Path, profile: dict[str, Any], *, level_name: str | None = None) -> None:
     props = {
         "allow-flight": "true",
         "difficulty": "peaceful",
         "enable-command-block": "true",
         "gamemode": str(profile.get("gamemode", "creative")),
         "generate-structures": "true",
-        "level-name": str(profile.get("world_profile", "world")),
+        "level-name": level_name or str(profile.get("world_profile", "world")),
         "level-seed": str(profile.get("world_seed", 1)),
         "max-players": "4",
         "motd": "mcdata",

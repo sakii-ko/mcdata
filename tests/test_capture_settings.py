@@ -1,6 +1,6 @@
 import pytest
 
-from mcdata.settings import CaptureSettings
+from mcdata.settings import CaptureSettings, apply_display_override
 
 
 def test_capture_settings_uses_profile_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -68,3 +68,12 @@ def test_capture_settings_rejects_invalid_boolean(monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(RuntimeError, match="boolean environment override"):
         CaptureSettings.from_env({"width": 854, "height": 480})
+
+
+def test_apply_display_override_is_used_by_capture_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DISPLAY", raising=False)
+
+    apply_display_override(":82")
+
+    settings = CaptureSettings.from_env({"width": 854, "height": 480})
+    assert settings.display == ":82"

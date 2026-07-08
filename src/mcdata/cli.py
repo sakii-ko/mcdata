@@ -18,6 +18,7 @@ from mcdata.render.pipeline import (
     remote_tmux_command,
     resolve_game_version,
 )
+from mcdata.settings import apply_display_override
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -48,8 +49,13 @@ def run(
     duration: Optional[int] = typer.Option(None, "--duration"),
     with_server: bool = typer.Option(False, "--with-server"),
     replay_actions: bool = typer.Option(False, "--replay-actions"),
+    display: Optional[str] = typer.Option(None, "--display"),
+    server_port: Optional[int] = typer.Option(None, "--server-port"),
+    lane: Optional[str] = typer.Option(None, "--lane"),
 ) -> None:
     """Launch Minecraft for a profile."""
+    if display:
+        apply_display_override(display)
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
     trajectory_path: Path | None = None
@@ -68,6 +74,8 @@ def run(
         with_server=with_server,
         replay_actions=replay_actions,
         trajectory_path=trajectory_path,
+        server_port=server_port,
+        lane=lane,
     )
 
 
@@ -115,12 +123,17 @@ def run_matrix(
     with_server: bool = typer.Option(True, "--with-server/--no-server"),
     replay_actions: bool = typer.Option(True, "--replay-actions/--no-replay-actions"),
     bootstrap: bool = typer.Option(True, "--bootstrap/--no-bootstrap"),
+    display: Optional[str] = typer.Option(None, "--display"),
+    server_port: Optional[int] = typer.Option(None, "--server-port"),
+    lane: Optional[str] = typer.Option(None, "--lane"),
 ) -> None:
     """Run the same trajectory/world through multiple render-quality profiles."""
+    if display:
+        apply_display_override(display)
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
     names = [item.strip() for item in profiles.split(",") if item.strip()]
-    trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix.json"
+    trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix_{lane or 'main'}.json"
     generate_strategy(paths.configs, strategy, trajectory_path)
     console.print(f"Wrote shared trajectory: {trajectory_path}")
     if not names:
@@ -131,7 +144,13 @@ def run_matrix(
     for name in names:
         console.print(f"Matrix profile: {name}")
         if bootstrap:
-            bootstrap_profile(root, name, game_version=game_version)
+            bootstrap_profile(
+                root,
+                name,
+                game_version=game_version,
+                server_port=server_port,
+                lane=lane,
+            )
         launch_profile(
             root,
             name,
@@ -143,6 +162,8 @@ def run_matrix(
             replay_actions=replay_actions,
             trajectory_path=trajectory_path,
             game_version=game_version,
+            server_port=server_port,
+            lane=lane,
         )
 
 

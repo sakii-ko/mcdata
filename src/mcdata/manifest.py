@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def build_run_manifest(
@@ -22,10 +22,12 @@ def build_run_manifest(
     started_at: str,
     ended_at: str | None,
     error: str | None = None,
+    lane: str | None = None,
 ) -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
         "run_id": run_id,
+        "lane": lane,
         "profile": {
             "name": profile_name,
             "loader": profile.get("loader", "vanilla"),

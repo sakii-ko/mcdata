@@ -43,6 +43,7 @@ def _sample_manifest() -> dict:
         git={"commit": "abc", "dirty": False},
         started_at="2026-07-08T00:00:00+00:00",
         ended_at="2026-07-08T00:00:01+00:00",
+        lane="gpu0",
     )
 
 
@@ -53,7 +54,24 @@ def test_build_run_manifest_validates_against_schema() -> None:
         )
     )
 
-    validate(instance=_sample_manifest(), schema=schema)
+    manifest = _sample_manifest()
+
+    validate(instance=manifest, schema=schema)
+    assert manifest["schema_version"] == 2
+    assert manifest["lane"] == "gpu0"
+
+
+def test_example_run_manifest_validates_against_schema() -> None:
+    schema = json.loads(
+        (ROOT / "src" / "mcdata" / "schemas" / "manifest.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    example = json.loads(
+        (ROOT / "docs" / "examples" / "run_manifest_example.json").read_text(encoding="utf-8")
+    )
+
+    validate(instance=example, schema=schema)
 
 
 def test_write_run_manifest_round_trips_json(tmp_path: Path) -> None:
