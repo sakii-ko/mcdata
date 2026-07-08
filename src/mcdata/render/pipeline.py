@@ -548,6 +548,11 @@ def _capture_input(display: str, *, width: int, height: int, desktop: bool) -> s
     if geometry is None:
         return display
     x, y, window_width, window_height = geometry
+    if x < 0 or y < 0:
+        console.print(
+            f"Window is at {x},{y}; falling back to display capture {display}."
+        )
+        return display
     if window_width < width or window_height < height:
         console.print(
             f"Window is {window_width}x{window_height}; falling back to display capture {display}."
@@ -566,13 +571,15 @@ def _window_geometry_record(
     if geometry is None:
         return {"geometry": None, "warning": "unavailable"}
     x, y, width, height = geometry
-    warning = None
+    warnings: list[str] = []
+    if x < 0 or y < 0:
+        warnings.append("offscreen")
     if requested_width is not None and requested_height is not None:
         if width != requested_width or height != requested_height:
-            warning = "size_mismatch"
+            warnings.append("size_mismatch")
     return {
         "geometry": {"x": x, "y": y, "width": width, "height": height},
-        "warning": warning,
+        "warning": ",".join(warnings) if warnings else None,
     }
 
 
@@ -598,14 +605,35 @@ def _minecraft_window_geometry_xdotool(window_name: str) -> tuple[int, int, int,
         return None
     if search.returncode != 0:
         return None
-    candidates: list[tuple[int, int, int, int]] = []
+    candidates: list[tuple[str, tuple[int, int, int, int]]] = []
     for window_id in search.stdout.split():
         geometry = _xdotool_window_geometry(window_id)
         if geometry is not None:
-            candidates.append(geometry)
+            candidates.append((window_id, geometry))
     if not candidates:
         return None
-    return max(candidates, key=lambda item: item[2] * item[3])
+    window_id, geometry = max(candidates, key=lambda item: item[1][2] * item[1][3])
+    if geometry[0] < 0 or geometry[1] < 0:
+        moved_geometry = _move_xdotool_window_onscreen(window_id)
+        if moved_geometry is not None:
+            return moved_geometry
+    return geometry
+
+
+def _move_xdotool_window_onscreen(window_id: str) -> tuple[int, int, int, int] | None:
+    try:
+        result = subprocess.run(
+            ["xdotool", "windowmove", window_id, "0", "0"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    if result.returncode != 0:
+        return None
+    return _xdotool_window_geometry(window_id)
 
 
 def _xdotool_window_geometry(window_id: str) -> tuple[int, int, int, int] | None:

@@ -202,6 +202,36 @@ def test_window_geometry_prefers_largest_xdotool_match(monkeypatch) -> None:
     }
 
 
+def test_window_geometry_moves_offscreen_xdotool_match(monkeypatch) -> None:
+    monkeypatch.setattr(pipeline.shutil, "which", lambda name: "/usr/bin/xdotool" if name == "xdotool" else None)
+    moved = False
+
+    def fake_run(cmd, **_kwargs):
+        nonlocal moved
+        if cmd[:3] == ["xdotool", "search", "--name"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="202\n", stderr="")
+        if cmd == ["xdotool", "getwindowgeometry", "--shell", "202"]:
+            stdout = (
+                "X=0\nY=0\nWIDTH=1280\nHEIGHT=720\n"
+                if moved
+                else "X=-128\nY=-72\nWIDTH=1280\nHEIGHT=720\n"
+            )
+            return subprocess.CompletedProcess(cmd, 0, stdout=stdout, stderr="")
+        if cmd == ["xdotool", "windowmove", "202", "0", "0"]:
+            moved = True
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        raise AssertionError(cmd)
+
+    monkeypatch.setattr(pipeline.subprocess, "run", fake_run)
+
+    assert pipeline._minecraft_window_geometry("Minecraft") == (0, 0, 1280, 720)
+    assert moved is True
+    assert pipeline._window_geometry_record(requested_width=1280, requested_height=720) == {
+        "geometry": {"x": 0, "y": 0, "width": 1280, "height": 720},
+        "warning": None,
+    }
+
+
 def test_window_geometry_falls_back_to_xwininfo(monkeypatch) -> None:
     monkeypatch.setattr(pipeline.shutil, "which", lambda _name: None)
 
@@ -226,6 +256,12 @@ def test_window_geometry_falls_back_to_xwininfo(monkeypatch) -> None:
         "geometry": {"x": 3, "y": 4, "width": 640, "height": 360},
         "warning": "size_mismatch",
     }
+
+
+def test_capture_input_falls_back_for_offscreen_window(monkeypatch) -> None:
+    monkeypatch.setattr(pipeline, "_minecraft_window_geometry", lambda window_name="Minecraft": (-128, -72, 1280, 720))
+
+    assert pipeline._capture_input(":77", width=1280, height=720, desktop=False) == ":77"
 
 
 def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monkeypatch) -> None:
