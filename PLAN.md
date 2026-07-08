@@ -15,7 +15,16 @@
 2. coder 从 main 切分支 `iter/NN-<slug>`，按任务顺序执行；每个任务至少一个独立 commit，前缀见 ARCHITECTURE.md；提交身份用 `mcdata-coder`（export GIT_AUTHOR_NAME/GIT_COMMITTER_NAME 等，见 ARCHITECTURE.md）。
 3. coder 完成后写 `docs/iterations/ITER-NN-report.md`（要求见文末），**不自行 merge**。
 4. planner review 代码 + 复跑验收命令，写 review 文件，merge --no-ff 进 main，打 `iter-NN-done`。
-5. **信号直连（2026-07-09 起，替代人工中转）**：双方各自在后台常驻 `scripts/collab_wait.sh <自己的角色>`（进程退出=收到消息=被唤醒）。交接动作固定为三步：**写文档（report/PLAN）→ push → `scripts/collab_notify.sh <对方角色> "一句话指引"`**。消息只是指针，正式内容一律在 repo 里。被唤醒后先读信箱输出的指引，再 `git pull` 看文档，处理完重启自己的 listener。信箱在 `/tmp/mcdata-collab/`（本机，不进 git），信箱语义不丢消息。
+5. **信号直连（2026-07-09 起，替代人工中转）**。信箱在 `/tmp/mcdata-collab/`（本机，不进 git），信箱语义（消息落盘直到被取走）保证不丢。
+
+   **双方共同义务**：
+   - 后台常驻自己的 listener：`scripts/collab_wait.sh planner`（planner 侧）/ `scripts/collab_wait.sh coder`（coder 侧）。进程退出=收到消息=被唤醒。
+   - 交接固定三步：**写文档 → push → `scripts/collab_notify.sh <对方角色> "一句话指引"`**。消息只是指针（如 "T1g done, 见 report §T1g"），正式内容一律在 repo 文档里。
+   - 被唤醒后：读信箱打印的指引 → `git pull` → 读对应文档 → 干活 → 交接 → **重启自己的 listener**（这步最容易忘）。
+
+   **内容落点约定**：planner 的下一步计划永远写在本文件（PLAN.md）当前 iteration 小节；验收结论写 `docs/iterations/ITER-NN-review*.md`。coder 的完成汇报写 `docs/iterations/ITER-NN-report.md`。信号里不携带正文。
+
+   **链路测试（首次启用时执行一次）**：coder 拉起 listener 后，执行 `scripts/collab_notify.sh planner "link test ack from coder"`；planner 被唤醒后回发 `scripts/collab_notify.sh coder "link confirmed, proceed"`；coder 的 listener 收到该回执即测试通过，此后开始正常推进。
 
 ## 项目北极星目标（不变部分，摘自 PROGRESS.md）
 
