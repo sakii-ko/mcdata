@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from mcdata.qa import report
+from mcdata.qa import route
 
 
 def test_bilinear_filter_supports_pillow_without_resampling(monkeypatch) -> None:
@@ -18,7 +19,7 @@ def test_position_alignment_passes_with_small_offsets(tmp_path: Path) -> None:
     left = _positions(tmp_path, "left", [(0, 64, 0), (1, 64, 1)])
     right = _positions(tmp_path, "right", [(0.5, 64, 0.5), (2, 64, 1)])
 
-    alignment = report.compare_position_alignment([left, right])
+    alignment = route.compare_position_alignment([left, right])
 
     assert alignment is not None
     assert alignment["passed"] is True
@@ -31,7 +32,7 @@ def test_position_alignment_fails_when_max_exceeds_threshold(tmp_path: Path) -> 
     left = _positions(tmp_path, "left", [(0, 64, 0), (1, 64, 1)])
     right = _positions(tmp_path, "right", [(0, 64, 0), (5, 64, 1)])
 
-    alignment = report.compare_position_alignment([left, right])
+    alignment = route.compare_position_alignment([left, right])
 
     assert alignment is not None
     assert alignment["passed"] is False
@@ -49,7 +50,7 @@ def test_route_reference_passes_when_positions_follow_ideal_track() -> None:
         {"t": 1.0, "x": 1.0, "yaw": -90.0, "z": 0.0},
     ]
 
-    result = report.check_route_reference(positions, ideal, max_dev=0.25)
+    result = route.check_route_reference(positions, ideal, max_dev=0.25)
 
     assert result["passed"] is True
     assert result["count"] == 2
@@ -65,7 +66,7 @@ def test_route_reference_fails_on_large_xz_deviation() -> None:
         {"t": 1.0, "x": 1.0, "z": 0.0},
     ]
 
-    result = report.check_route_reference(positions, ideal, max_dev=3.0)
+    result = route.check_route_reference(positions, ideal, max_dev=3.0)
 
     assert result["passed"] is False
     assert result["max_deviation_blocks"] == 4.0
@@ -75,7 +76,7 @@ def test_route_reference_fails_on_y_out_of_range() -> None:
     positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 41.0, "yaw": 0.0, "z": 0.0}]
     ideal = [{"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0}]
 
-    result = report.check_route_reference(positions, ideal)
+    result = route.check_route_reference(positions, ideal)
 
     assert result["passed"] is False
     assert result["y_out_of_range_count"] == 1
@@ -85,7 +86,7 @@ def test_route_reference_fails_when_yaw_sample_is_missing() -> None:
     positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 64.0, "z": 0.0}]
     ideal = [{"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0}]
 
-    result = report.check_route_reference(positions, ideal)
+    result = route.check_route_reference(positions, ideal)
 
     assert result["passed"] is False
     assert result["missing_yaw_count"] == 1
@@ -95,7 +96,7 @@ def test_route_reference_fails_on_large_circular_yaw_error() -> None:
     positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 64.0, "yaw": -170.0, "z": 0.0}]
     ideal = [{"t": 0.0, "x": 0.0, "yaw": 170.0, "z": 0.0}]
 
-    result = report.check_route_reference(positions, ideal, max_yaw_dev_deg=10.0)
+    result = route.check_route_reference(positions, ideal, max_yaw_dev_deg=10.0)
 
     assert result["passed"] is False
     assert result["max_yaw_error_degrees"] == 20.0
@@ -111,7 +112,7 @@ def test_route_reference_skips_yaw_inside_turn_window_but_keeps_position_check()
         {"t": 2.0, "x": 1.0, "yaw": 0.0, "z": 0.0},
     ]
 
-    result = report.check_route_reference(
+    result = route.check_route_reference(
         positions,
         ideal,
         max_yaw_dev_deg=10.0,
