@@ -75,16 +75,67 @@ review 通过并 merge（merge commit `b10a4ec`，tag `iter-01-done`）。任务
 
 **验收**：4 个 manifest 完整且 `env` 里 GL renderer 为 NVIDIA；ffprobe fps=24、1280x720、时长正确；跨 profile NCC 数值记录在案（本轮不设硬阈值，收集定标数据）；回传后远端 runs 已清空。
 
+T1 参考命令（按序执行，遇错在 report 记录后再处理）：
+
+```bash
+# 本机：同步代码
+rsync -az --delete --exclude .git --exclude .venv --exclude .mcdata --exclude runs \
+  /root/nas/bigdata1/cjw/projs/mcdata/ 4090:/home/lyf/mcdata/
+ssh 4090 nvidia-smi          # GPU0 空闲显存 <6G 则整段改在 l40s 执行
+
+# 4090 上（tmux 内）
+cd /home/lyf/mcdata && export DISPLAY=:77 PYTHONPATH=src
+python3 -m mcdata.cli run-matrix \
+  --profiles matrix_low,matrix_textured,matrix_shader_high \
+  --strategy ground_astar_loop --duration 60
+python3 -m mcdata.cli run --profile matrix_night_complementary \
+  --with-server --replay-actions --capture --strategy ground_astar_loop --duration 60
+
+# 本机：回传+清理，然后对回传副本跑 QA
+source scripts/mcdata_env.sh
+scripts/pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge
+.venv/bin/mcdata qa-run "$MCDATA_OUTPUT_DIR/runs/remote_4090/<run_dir>" --frames 12   # 每个 run 一次
+.venv/bin/mcdata qa-compare <low_run> <textured_run> <shader_run> --frames 12 \
+  --out-dir docs/qa_samples/iter02_4090_3way
+```
+
+
 ### T2 — run-matrix 多实例并行化改造
 
-目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。
+目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
 
-- `launch_profile` / `run-matrix` 增加显式覆盖参数：`--display`、`--server-port`；server_dir 按实例隔离。世界一致性依赖固定 seed + scene 命令重建（跨机等价已在 4090/L40S smoke 验证）。
-- 铁律：并行实例之间零共享可写路径（server dir / run dir / instance dir / trajectory 拷贝逐一确认）。DISPLAY 传参优先于环境变量，进 CaptureSettings 并写入 manifest。
-- 新增 `scripts/matrix_shard.sh <gpu_index> <profiles_csv> [duration]`：DISPLAY=:$((77+gpu))、端口偏移、调用 run-matrix；遵守 R21。
-- 本机无 GPU 验证：两个并发 dry-run 实例证明无路径/端口冲突（集成测试或脚本演示均可，证据入 report）。
+并行模型是**进程级并行**：每张卡一个独立的 `run-matrix` 进程（由 `matrix_shard.sh` 启动），进程内各 profile 仍串行。因此 DISPLAY 是进程全局属性，不需要穿透每一层。
 
-**验收**：单测 + 并发 dry-run 证据；dev_check 全绿。
+1. `src/mcdata/settings.py` 新增（env 写同样收敛在 R2 边界文件内）：
+
+```python
+def apply_display_override(display: str) -> None:
+    """Process-global DISPLAY override; call once at CLI entry before anything touches X."""
+    os.environ["DISPLAY"] = display
+```
+
+2. `cli.py`：`run` 与 `run-matrix` 各新增三个 Option：`--display`（str|None）、`--server-port`（int|None）、`--lane`（str|None）。`--display` 给定时在命令体第一行调用 `apply_display_override(display)`；后两者透传给 bootstrap_profile / launch_profile。
+
+3. `pipeline.py`：`bootstrap_profile` / `launch_profile` 各新增 kwargs `server_port: int | None = None`、`lane: str | None = None`。在 `load_profile` 之后立即 overlay：
+
+```python
+if server_port is not None:
+    profile = {**profile, "server_port": int(server_port)}
+```
+
+`launch_profile` 内：lane 存在时 run dir 命名为 `<stamp>_<profile>__<lane>`；lane 透传给 `start_server`；manifest 顶层新增 `lane` 字段（null 允许），`manifest.schema.json` 同步，`SCHEMA_VERSION` 升为 2——此契约变更 planner 在此批准，ARCHITECTURE.md manifest 一节同步一行。
+
+4. `server.py`：`ensure_server` / `start_server` 新增 `lane: str | None = None`；lane 存在时 `server_profile = f"{world_profile}__{lane}"`（世界目录与 level-name 同名隔离）。世界一致性由固定 seed + scene 命令保证，不拷贝世界。
+
+5. `run-matrix` 的共享 trajectory 落盘路径改为 `f"{strategy}_matrix_{lane or 'main'}.json"`，避免并发写同一文件。
+
+6. 新脚本 `scripts/matrix_shard.sh <gpu_index> <profiles_csv> [duration=60]`（R21）：display=`:$((77+gpu_index))`，port=`$((25600+gpu_index))`，lane=`gpu<gpu_index>`，调用 `run-matrix --profiles <csv> --strategy ground_astar_loop --duration <d> --display <:n> --server-port <p> --lane <lane> --no-bootstrap`。脚本开头逐个检查 profile 的 instance dir 存在，缺失则报错退出并提示先串行 bootstrap（并发 bootstrap 会在共享 launcher main_dir 上竞争下载，因此 shard 一律 `--no-bootstrap`）。
+
+7. 测试（全部本机可验证，无需 GPU）：
+   - 单测：server_port overlay；lane 对 run dir / server dir / trajectory 路径的命名；`apply_display_override` 后 `CaptureSettings.from_env` 取到新 DISPLAY；manifest 含 lane 且 schema v2 校验通过。
+   - 并发证据：本机同时起两个 dry-run（不同 `--lane/--server-port/--display`），断言两个 run dir 相互独立、无共享路径写入、两份 manifest 的 lane/port 正确。pytest 或脚本演示均可，证据进 report。
+
+**验收**：dev_check 全绿 + 第 7 条并发证据。
 
 ### T3 — L40S 8 卡全矩阵（依赖用户提供 8 卡容器，代码就绪即可开跑）
 
@@ -107,6 +158,7 @@ review 通过并 merge（merge commit `b10a4ec`，tag `iter-01-done`）。任务
 4. 渲染机上优先 XTEST backend（避免 xdotool 每步 spawn 子进程的抖动），补全 keycode 表。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
 6. 数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。
+6b. **仿真/渲染加速（deferred，ITER-04+，方案由 planner 设计，coder 勿自行引入）**：目标是超实时出片。硬性要求：**加速采集的渲染结果必须与实时采集等价可互换**（同一世界/轨迹/资源下逐帧内容一致或统计上不可区分，QA 工具可验证）。候选主路线 ReplayMod 离线渲染（record-once-render-N，顺带获得完美 N-way 对齐），spike 需验证：MC 版本兼容、Iris 光影渲染、HUD 保留方案、实测速度倍率、与实时采集的等价性对比。tick-rate 加速路线因 correctness 风险已排除。在此之前，采集管线里禁止引入任何时间缩放。
 7. workspace 镜像目录改成 git clone/worktree（planner 处理）。
 
 ## 等待用户/管理员的事项
