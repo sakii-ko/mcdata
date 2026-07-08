@@ -34,9 +34,10 @@ def doctor() -> None:
 def bootstrap(
     profile: str = typer.Option("fabric_low", "--profile", "-p"),
     root: Path = typer.Option(Path("."), "--root"),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Create/update a Minecraft instance for a profile."""
-    bootstrap_profile(root.resolve(), profile)
+    bootstrap_profile(root.resolve(), profile, game_version=game_version)
 
 
 @app.command()

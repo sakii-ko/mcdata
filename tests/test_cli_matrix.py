@@ -4,6 +4,19 @@ from mcdata import cli
 from mcdata.settings import CaptureSettings
 
 
+def test_bootstrap_passes_game_version(tmp_path: Path, monkeypatch) -> None:
+    calls: list[dict] = []
+
+    def fake_bootstrap_profile(_root: Path, _profile: str, **kwargs) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(cli, "bootstrap_profile", fake_bootstrap_profile)
+
+    cli.bootstrap(profile="matrix_low", root=tmp_path, game_version="26.2")
+
+    assert calls == [{"game_version": "26.2"}]
+
+
 def test_run_passes_hidden_debug_flags(tmp_path: Path, monkeypatch) -> None:
     calls: list[dict] = []
 
