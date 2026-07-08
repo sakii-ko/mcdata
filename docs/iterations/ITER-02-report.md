@@ -839,6 +839,117 @@ Operational notes:
 - The formal NAS-backed run above was pulled with `scripts/pull_runs_from_remote.sh l40s /root/nas/bigdata1/tmp/mcdata/runs`; the second rsync pass was zero-transfer (`verify: OK`). I then manually removed `/root/nas/bigdata1/tmp/mcdata/runs/*t1fl40snas*` and confirmed no l40s `portablemc`, Minecraft Java, `ffmpeg`, `mcdata.cli`, or `x11grab` process remained.
 - Per the latest operator instruction, I did not perform further 4090 work in this T1f pass. The current stop evidence is l40s-only.
 
+## T1g Scene Receipts, Replay Baseline, And Validation Stop
+
+Commit:
+
+- `b655ea622a49a492be700434313971f77caabe6a` `[fix] guard scene build receipts and replay baseline`
+
+Local verification:
+
+```text
+.venv/bin/python -m pytest tests/test_pipeline_files.py tests/test_replay_log.py tests/test_configs.py -q
+27 passed
+
+.venv/bin/python -m ruff check src/mcdata/render/server.py src/mcdata/render/pipeline.py \
+  src/mcdata/actions/replay.py tests/test_pipeline_files.py tests/test_replay_log.py tests/test_configs.py
+All checks passed!
+
+scripts/dev_check.sh
+check_standards: 0 failure(s), 3 warning(s)
+All checks passed!
+79 passed
+```
+
+Implementation notes:
+
+- P8 air clear split into two vanilla-safe fills: `37x23x37=31,487` and `37x6x37=8,214`.
+- `launch_profile` now calls `verify_scene_commands` after server start. The count is for receipted scene commands (`fill`/`setblock`) and intentionally excludes `forceload`, whose success line is not one of the PLAN-listed receipt patterns.
+- `replay_log.jsonl` now starts with `{"event":"start","mono":...}` after focus and key hygiene, before replay event scheduling. `positions.jsonl` uses that mono baseline when replay is active and falls back to the old ready-event baseline with a warning if the start row is missing.
+- Capture start now logs `capture/window_geometry` from `xwininfo` into `pipeline.jsonl`.
+
+l40s validation used the NAS-backed environment and the user-requested l40s-only scope:
+
+```text
+scripts/sync_to_remote.sh l40s /root/mcdata
+ssh l40s 'cd /root/mcdata && \
+  export PYTHONPATH=src MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata && \
+  source scripts/mcdata_env.sh && export DISPLAY=:77 && \
+  python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+    --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+    --display :77 --server-port 25662 --lane t1gl40sA && \
+  python3 -m mcdata.cli qa-run \
+    /root/nas/bigdata1/tmp/mcdata/runs/20260708T163311Z_matrix_low__t1gl40sA \
+    --frames 12 --out-dir .../qa'
+```
+
+Validation stopped on l40s A:
+
+```text
+runs/remote_l40s/20260708T163311Z_matrix_low__t1gl40sA
+route_reference: FAIL
+route_max_deviation_blocks: 25.244
+route_mean_deviation_blocks: 13.333
+route_max_yaw_error_degrees: 0.000030
+route_mean_yaw_error_degrees: 0.000024
+route_yaw_sample_count: 8
+route_skipped_yaw_count: 4
+route_missing_yaw_count: 0
+route_y_out_of_range_count: 0
+```
+
+P8 evidence from the validation run:
+
+```text
+server/scene_verified: expected_fill_count=24 receipt_count=24
+server.log failure pattern counts:
+  Too many blocks: 0
+  Cannot place: 0
+  Expected: 0
+  Unknown: 0
+receipt lines:
+  Successfully filled: 10
+  Changed the block: 12
+  No blocks were filled: 2
+```
+
+P9 evidence:
+
+```text
+replay_log.jsonl first row:
+{"event": "start", "mono": 641527.8362912}
+
+positions.jsonl head:
+idx=0 t_rel=-0.277 x=0.500 z=-13.500 yaw=0.000
+idx=1 t_rel=4.723 x=9.306 z=-11.561 yaw=-90.00001
+idx=2 t_rel=9.723 x=7.879 z=-2.715 yaw=90.00000
+```
+
+Representative route-reference samples:
+
+| idx | t_rel | observed `(x,z)` | ideal `(x,z)` | dev | observed yaw | ideal yaw | yaw status |
+|---:|---:|---|---|---:|---:|---:|---|
+| 1 | 4.723 | `(9.306,-11.561)` | `(9.100,-12.000)` | 0.485 | -90.000 | -90.000 | scored |
+| 2 | 9.723 | `(7.879,-2.715)` | `(7.068,-3.000)` | 0.860 | 90.000 | 90.000 | scored |
+| 3 | 14.723 | `(5.228,10.449)` | `(4.765,10.000)` | 0.646 | -90.000 | -90.000 | skipped: turn window |
+| 4 | 19.723 | `(3.561,10.449)` | `(3.000,10.000)` | 0.718 | 54.000 | 54.695 | skipped: turn window |
+| 5 | 24.723 | `(-6.047,13.020)` | `(-12.000,12.000)` | 6.040 | 108.000 | 115.303 | skipped: turn window |
+| 6 | 29.724 | `(-2.471,12.210)` | `(-4.000,5.123)` | 7.250 | 180.000 | 180.000 | scored |
+| 8 | 39.724 | `(1.370,10.771)` | `(-3.086,-14.000)` | 25.169 | -90.000 | -90.000 | scored |
+| 9 | 44.724 | `(4.860,10.772)` | `(0.000,-14.000)` | 25.244 | -90.000 | -90.000 | scored |
+
+Black-border evidence:
+
+- `capture/window_geometry` logged `geometry=null`, requested `1280x720`, desktop false.
+- `capture/start` used x11grab input `:77` rather than a window-offset input because `xwininfo` did not return a usable Minecraft window geometry.
+- `qa-run` emitted black-border warnings for all 12 sampled frames; the first sampled frame flagged bottom and right edges as black (`mean=0.0`, `var=0.0`).
+
+Operational notes:
+
+- `scripts/pull_runs_from_remote.sh l40s /root/nas/bigdata1/tmp/mcdata/runs --purge` pulled the run and the second rsync pass was zero-transfer, but purge was refused by the script's active-process check. A follow-up `pgrep` showed no actual `mcdata.cli`, `portablemc`, `x11grab`, `ffmpeg`, Minecraft server, or Minecraft Java process, so I manually removed the pulled remote run directory. The remote `trajectories` directory was left because it is small and regenerated by CLI.
+- Because the first l40s validation failed the position gate, I did not run l40s B, did not run four-way recapture, and did not replace `docs/qa_samples/iter02_4090_3way/`.
+- Per the latest user instruction, I did not perform 4090 checks or workloads for T1g.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -868,6 +979,9 @@ Operational notes:
     - Root-path wrapper mistake, evidence only: `20260708T143629Z_matrix_low__t1fl40sA`
     - Formal NAS-backed validation FAIL: `20260708T144528Z_matrix_low__t1fl40snasA`
     - Wrapper logs: `t1f_l40s_verify_root.log`, `t1f_l40s_nas_verify.log`
+  - T1g l40s evidence:
+    - Formal NAS-backed validation FAIL: `20260708T163311Z_matrix_low__t1gl40sA`
+    - Remote wrapper log: `/root/nas/bigdata1/tmp/mcdata/logs/t1gl40sA.log` on l40s during execution; pulled run contains pipeline/server/replay/QA artifacts.
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
@@ -894,6 +1008,8 @@ Operational notes:
 - T1e v2 stopped after l40s validation A failed. Calibration itself passed with residual `0.000025` blocks, so the remaining failure is not the same lava/translation fit issue as T1e v1.
 - T1f stopped after the first formal l40s validation A run failed the position gate. Yaw de-artifacting worked (`route_max_yaw_error_degrees=0.000030`, `route_skipped_yaw_count=4`), so the remaining T1f failure is not a yaw-gate artifact.
 - T1f P7 added the PLAN-specified occupied cells to every `astar_walk.blocked`, but the route JSON did not change because the generated integer-center routes already avoided those exact cells. The visualization PNGs changed to show the new blocked points; I did not expand blocked cells beyond the audited y=64/65 occupied grid.
+- T1g stopped after the first formal l40s validation A run failed the position gate. P8 and P9 instrumentation behaved as expected: scene receipts were complete, server.log had no scene failure pattern, and `positions.jsonl` used the replay-log start baseline.
+- T1g black-border investigation found `xwininfo` geometry unavailable (`geometry=null`), capture falling back to full display `:77`, and black-border warnings on all sampled frames. I recorded the data and did not attempt a display/window workaround without planner direction.
 - I did not start 4090 validation after l40s validation A failed. 4090 `nvidia-smi` was also blocked by other active/stuck GPU-query state at the time of validation.
 - After the user redirected work to l40s-only, I did not perform further 4090 checks or workloads.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
@@ -909,4 +1025,5 @@ Operational notes:
 - T1d failure interpretation: after P4 correction, yaw aligns to the ideal route on both hosts, but observed position diverges from the ideal path by >21 blocks. This points away from residual turn calibration and toward movement/translation timing or route-model calibration.
 - T1e v2 failure interpretation: initial route samples now pass position/yaw after P5/P6; validation fails later around the new P6 detour with yaw residuals >10 degrees and then terminal position divergence.
 - T1f failure interpretation: yaw residuals are removed after turn-window filtering, scene occupied cells are now covered by config/tests, but l40s still fails the position gate by `23.813` blocks on A. Review should focus on the remaining position-model / collision-margin mismatch rather than P3/P4/P5/yaw sampling.
+- T1g failure interpretation: scene construction is now verified cleanly and `t_rel` starts from actual replay start, but l40s still fails position by `25.244` blocks with yaw effectively exact. Review should also decide the black-border/window-geometry path because `xwininfo` did not find usable Minecraft geometry on l40s.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
