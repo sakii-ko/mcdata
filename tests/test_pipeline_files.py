@@ -7,7 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 from mcdata.render import pipeline
 from mcdata.render.pipeline import _copy_trajectory, _profile_with_overrides, _run_dir
-from mcdata.render.server import ensure_server, parse_position_log, server_profile_name, write_positions_jsonl
+from mcdata.render.server import (
+    ensure_server,
+    parse_position_log,
+    server_profile_name,
+    wait_for_position_sample,
+    write_positions_jsonl,
+)
 
 
 def test_copy_trajectory_uses_final_path_without_tmp_leftover(tmp_path: Path) -> None:
@@ -85,6 +91,18 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
         {"idx": 0, "x": 1.5, "y": 64.0, "z": -2.25},
         {"idx": 1, "x": 2.0, "y": 65.0, "z": -3.0},
     ]
+
+
+def test_wait_for_position_sample_returns_after_new_sample(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [1.5d, 64.0d, -2.25d]\n",
+        encoding="utf-8",
+    )
+
+    count = wait_for_position_sample(log, "mcdata_bot", after_count=0, wait_sec=0.1)
+
+    assert count == 1
 
 
 def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monkeypatch) -> None:
@@ -211,6 +229,11 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
     monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
     monkeypatch.setattr(pipeline, "start_position_probe", lambda *args, **kwargs: events.append(("probe_start", None)) or FakeStop())
+    monkeypatch.setattr(
+        pipeline,
+        "wait_for_position_sample",
+        lambda *args, **kwargs: events.append(("probe_first_sample", None)) or 1,
+    )
     monkeypatch.setattr(pipeline, "write_positions_jsonl", lambda *args, **kwargs: events.append(("positions_written", None)) or 2)
     monkeypatch.setattr(pipeline, "_terminate_process_tree", lambda proc, *, timeout: events.append(("terminate", timeout)))
     monkeypatch.setattr(pipeline, "_resource_manifest", lambda _work_dir, _profile: {
@@ -243,6 +266,7 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         ("prepare_view", None),
     ]
     assert ("probe_start", None) in events
+    assert events.index(("probe_first_sample", None)) < events.index(("wait_capture", None))
     assert ("probe_stop", None) in events
     assert ("positions_written", None) in events
     run_dir = next((tmp_path / "runs").glob("*_matrix_low"))

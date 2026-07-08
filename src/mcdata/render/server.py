@@ -220,6 +220,25 @@ def start_position_probe(
     return stop_event
 
 
+def wait_for_position_sample(
+    log_path: Path,
+    username: str,
+    *,
+    proc: subprocess.Popen | None = None,
+    after_count: int = 0,
+    wait_sec: float = 10.0,
+) -> int:
+    deadline = time.time() + wait_sec
+    while time.time() < deadline:
+        if proc is not None and proc.poll() is not None:
+            raise RuntimeError(f"Minecraft server exited before position probe sample; see {log_path}")
+        count = len(parse_position_log(log_path, username=username))
+        if count > after_count:
+            return count
+        time.sleep(0.2)
+    raise TimeoutError(f"Timed out waiting for position probe sample; see {log_path}")
+
+
 def write_positions_jsonl(log_path: Path, out_path: Path, *, username: str) -> int:
     positions = parse_position_log(log_path, username=username)
     out_path.parent.mkdir(parents=True, exist_ok=True)

@@ -33,6 +33,7 @@ from mcdata.render.server import (
     start_position_probe,
     start_server,
     wait_for_player_join,
+    wait_for_position_sample,
     write_positions_jsonl,
 )
 from mcdata.runlog import RunLogger
@@ -245,6 +246,7 @@ def launch_profile(
     capture_cmd: list[str] | None = None
     error: str | None = None
     ready_event = threading.Event()
+    position_probe_baseline = 0
     with RunLogger(run_dir, console=console) as runlog:
         runlog.log(
             "launch",
@@ -319,6 +321,14 @@ def launch_profile(
                             str(profile.get("username")),
                         )
                         runlog.log("position_probe", "start", interval_sec=5.0)
+                        count = wait_for_position_sample(
+                            run_dir / "server.log",
+                            str(profile.get("username")),
+                            proc=server_proc,
+                            after_count=position_probe_baseline,
+                            wait_sec=10.0,
+                        )
+                        runlog.log("position_probe", "first_sample", count=count)
                     ready_event.set()
                     _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
                     runlog.log("capture", "stop", returncode=capture_proc.returncode)
