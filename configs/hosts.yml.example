@@ -1,0 +1,15 @@
+hosts:
+  rtx4090:
+    ssh: "user@4090-host"
+    project_dir: "/data/mcdata"
+    tmux_session: "mcdata-render"
+    display: ":0"
+    gpu_hint: "RTX 4090"
+
+  l40s:
+    ssh: "user@l40s-host"
+    project_dir: "/data/mcdata"
+    tmux_session: "mcdata-render"
+    display: ":0"
+    gpu_hint: "L40S"
+

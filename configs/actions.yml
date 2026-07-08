@@ -1,0 +1,86 @@
+strategies:
+  idle_pan:
+    type: "look_scan"
+    duration_sec: 60
+    sweep_px: 520
+    sweep_sec: 6.0
+    vertical_px: 25
+    pause_sec: 0.5
+
+  look_scan:
+    type: "look_scan"
+    duration_sec: 120
+    sweep_px: 760
+    sweep_sec: 8.0
+    vertical_px: 45
+    pause_sec: 0.7
+
+  scene_probe:
+    type: "scene_probe"
+    duration_sec: 90
+    scan_px: 620
+    pitch_px: 95
+    sweep_sec: 5.0
+    move_sec: 2.0
+    pause_sec: 0.4
+    initial_pause_sec: 1.0
+
+  ground_astar_loop:
+    type: "astar_walk"
+    start: [0, -14]
+    goals:
+      - [12, -12]
+      - [12, 10]
+      - [3, 12]
+      - [-12, 10]
+      - [-12, -12]
+      - [0, -14]
+    bounds: [-14, 14, -14, 14]
+    blocked_rects:
+      - [-14, -2, -5, 7]
+      - [5, -2, 14, 7]
+    blocked:
+      - [-10, -10]
+      - [-7, -10]
+      - [-4, -10]
+      - [-1, -10]
+      - [2, -10]
+      - [5, -10]
+      - [8, -10]
+      - [11, -10]
+    turn_px_per_degree: 6.0
+    seconds_per_block: 0.32
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  walk_grid:
+    type: "grid_patrol"
+    loops: 5
+    forward_sec: 7.0
+    strafe_sec: 3.0
+    turn_px: 430
+    turn_sec: 1.2
+
+  random_walk:
+    type: "random"
+    duration_sec: 300
+    seed: 1
+    move_sets:
+      - ["w"]
+      - ["w", "a"]
+      - ["w", "d"]
+      - ["a"]
+      - ["d"]
+      - ["s"]
+    min_hold_sec: 1.2
+    max_hold_sec: 4.0
+    turn_px: 260
+    vertical_px: 40
+    jump_chance: 0.2
+    sprint_chance: 0.25
+
+  rl_placeholder:
+    type: "external"
+    description: "Hook point for MineRL/VPT/Voyager/MineDojo-style policy adapters."
+    command: null

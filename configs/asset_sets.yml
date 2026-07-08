@@ -1,0 +1,234 @@
+assets:
+  resourcepacks:
+    faithful-32x:
+      provider: "modrinth"
+      slug: "faithful-32x"
+      type: "resourcepack"
+    bare-bones:
+      provider: "modrinth"
+      slug: "bare-bones"
+      type: "resourcepack"
+    fresh-animations:
+      provider: "modrinth"
+      slug: "fresh-animations"
+      type: "resourcepack"
+    fresh-animations-extensions:
+      provider: "modrinth"
+      slug: "fresh-animations-extensions"
+      type: "resourcepack"
+    default-hd-64x:
+      provider: "modrinth"
+      slug: "default-hd-64x"
+      type: "resourcepack"
+    default-hd-128x:
+      provider: "modrinth"
+      slug: "default-hd-128x"
+      type: "resourcepack"
+    dramatic-skys:
+      provider: "modrinth"
+      slug: "dramatic-skys"
+      type: "resourcepack"
+    visual-enchantments:
+      provider: "modrinth"
+      slug: "visual-enchantments"
+      type: "resourcepack"
+    vanilla-glowing-ores:
+      provider: "modrinth"
+      slug: "vanilla-glowing-ores"
+      type: "resourcepack"
+    emissive-txf:
+      provider: "modrinth"
+      slug: "emissive-txf"
+      type: "resourcepack"
+    patrix-32x:
+      provider: "modrinth"
+      slug: "patrix-32x"
+      type: "resourcepack"
+    better-leaves:
+      provider: "modrinth"
+      slug: "better-leaves"
+      type: "resourcepack"
+    3d-default:
+      provider: "modrinth"
+      slug: "3d-default"
+      type: "resourcepack"
+    stylista:
+      provider: "modrinth"
+      slug: "stylista"
+      type: "resourcepack"
+    simplista:
+      provider: "modrinth"
+      slug: "simplista"
+      type: "resourcepack"
+    fresh-animations-emissive:
+      provider: "modrinth"
+      slug: "fresh-animations-emissive"
+      type: "resourcepack"
+    new-glowing-ores:
+      provider: "modrinth"
+      slug: "new-glowing-ores"
+      type: "resourcepack"
+    subtly-glowing-ores:
+      provider: "modrinth"
+      slug: "subtly-glowing-ores"
+      type: "resourcepack"
+    realiscraft-demo:
+      provider: "modrinth"
+      slug: "realiscraft-je-realistic-default-textures-1.1.0"
+      type: "resourcepack"
+    fusion-connected-glass:
+      provider: "modrinth"
+      slug: "fusion-connected-glass"
+      type: "resourcepack"
+    mt-ct-d:
+      provider: "modrinth"
+      slug: "mt-ct-d"
+      type: "resourcepack"
+
+  shaderpacks:
+    complementary-reimagined:
+      provider: "modrinth"
+      slug: "complementary-reimagined"
+      type: "shader"
+    bsl-shaders:
+      provider: "modrinth"
+      slug: "bsl-shaders"
+      type: "shader"
+    makeup-ultra-fast-shaders:
+      provider: "modrinth"
+      slug: "makeup-ultra-fast-shaders"
+      type: "shader"
+    bliss-shader:
+      provider: "modrinth"
+      slug: "bliss-shader"
+      type: "shader"
+    solas-shader:
+      provider: "modrinth"
+      slug: "solas-shader"
+      type: "shader"
+    sildurs-vibrant-shaders:
+      provider: "modrinth"
+      slug: "sildurs-vibrant-shaders"
+      type: "shader"
+    complementary-unbound:
+      provider: "modrinth"
+      slug: "complementary-unbound"
+      type: "shader"
+    miniature-shader:
+      provider: "modrinth"
+      slug: "miniature-shader"
+      type: "shader"
+
+asset_sets:
+  vanilla:
+    resourcepacks: []
+    shaderpack: null
+
+  faithful_bsl:
+    description: "Faithful 32x plus BSL shader, intended as medium-quality water/shading pass."
+    resourcepacks:
+      - faithful-32x
+    shaderpack: bsl-shaders
+
+  complementary_high:
+    description: "Faithful 32x + Fresh Animations plus Complementary Reimagined for high-quality water/reflection/emissive lighting tests."
+    resourcepacks:
+      - faithful-32x
+      - fresh-animations
+    shaderpack: complementary-reimagined
+
+  complementary_emissive:
+    description: "Complementary shader with Fresh Animations, Visual Enchantments, and emissive ores."
+    resourcepacks:
+      - fresh-animations
+      - fresh-animations-extensions
+      - visual-enchantments
+      - vanilla-glowing-ores
+    shaderpack: complementary-reimagined
+
+  barebones_fast:
+    resourcepacks:
+      - bare-bones
+    shaderpack: makeup-ultra-fast-shaders
+
+  default_hd_bsl:
+    description: "Default HD 64x plus BSL for sharper material and water comparison."
+    resourcepacks:
+      - default-hd-64x
+    shaderpack: bsl-shaders
+
+  default_hd128_bliss:
+    description: "Default HD 128x plus Bliss for higher-detail water and sky comparison."
+    resourcepacks:
+      - default-hd-128x
+    shaderpack: bliss-shader
+
+  dramatic_solas:
+    description: "Dramatic Skys plus Solas for sky and atmospheric lighting variation."
+    resourcepacks:
+      - dramatic-skys
+    shaderpack: solas-shader
+
+  faithful_sildurs:
+    description: "Faithful 32x plus Sildur's Vibrant Shaders."
+    resourcepacks:
+      - faithful-32x
+    shaderpack: sildurs-vibrant-shaders
+
+  emissive_makeup:
+    description: "Emissive texture pack plus MakeUp Ultra Fast shader."
+    resourcepacks:
+      - emissive-txf
+      - vanilla-glowing-ores
+    shaderpack: makeup-ultra-fast-shaders
+
+  patrix_unbound:
+    description: "Patrix 32x plus Complementary Unbound for high-quality material and water tests."
+    resourcepacks:
+      - patrix-32x
+    shaderpack: complementary-unbound
+
+  better_leaves_solas:
+    description: "Better Leaves plus Solas for foliage and atmosphere variation."
+    resourcepacks:
+      - better-leaves
+    shaderpack: solas-shader
+
+  default3d_miniature:
+    description: "3D Default plus Miniature Shader for geometry-like item/block silhouette variation."
+    resourcepacks:
+      - 3d-default
+    shaderpack: miniature-shader
+
+  simplista_unbound:
+    description: "Simplista LabPBR-style pack plus Complementary Unbound."
+    resourcepacks:
+      - simplista
+    shaderpack: complementary-unbound
+
+  stylista_bliss:
+    description: "Stylista LabPBR-style pack plus Bliss shader."
+    resourcepacks:
+      - stylista
+    shaderpack: bliss-shader
+
+  realiscraft_bsl:
+    description: "RealisCraft demo plus BSL for realistic material pass."
+    resourcepacks:
+      - realiscraft-demo
+    shaderpack: bsl-shaders
+
+  glowing_ores_unbound:
+    description: "Glowing ores plus Complementary Unbound for emissive-light tests."
+    resourcepacks:
+      - new-glowing-ores
+      - subtly-glowing-ores
+      - fresh-animations-emissive
+    shaderpack: complementary-unbound
+
+  connected_glass_bsl:
+    description: "Connected glass/default connected textures plus BSL."
+    resourcepacks:
+      - fusion-connected-glass
+      - mt-ct-d
+    shaderpack: bsl-shaders

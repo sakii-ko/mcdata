@@ -1,0 +1,422 @@
+defaults:
+  main_dir: ".mcdata/launcher"
+  work_dir: ".mcdata/instances"
+  server_dir: ".mcdata/servers"
+  output_dir: "runs"
+  width: 854
+  height: 480
+  username: "mcdata_bot"
+  jvm_args: "-Xms2G -Xmx6G -XX:+UseG1GC"
+  server_memory: "2G"
+  server_port: 25565
+  world_seed: 1
+  gamemode: "creative"
+  capture_ready_delay_sec: 15
+  capture_fps: 24
+  options:
+    gamma: "1.0"
+    fov: "0.0"
+    maxFps: "120"
+    enableVsync: "false"
+  world_profile: "base_scene"
+  world_state:
+    time: "noon"
+    weather: "clear"
+    weather_duration_sec: 999999
+    player:
+      x: 0
+      y: 64
+      z: -14
+      yaw: 0
+      pitch: 18
+    gamerules:
+      command_block_output: false
+      keep_inventory: true
+      send_command_feedback: false
+      show_death_messages: false
+    scene:
+      enabled: true
+      origin: [0, 64, 0]
+
+profiles:
+  vanilla_low:
+    description: "Latest vanilla release, minimum visual settings, no shader."
+    version_strategy: "latest_release"
+    loader: "vanilla"
+    quality: "low"
+    asset_set: "vanilla"
+    width: 854
+    height: 480
+    server_port: 25565
+
+  fabric_low:
+    description: "Fabric + Sodium/Iris-capable baseline with low visual settings."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "low"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "vanilla"
+    width: 854
+    height: 480
+    server_port: 25566
+    world_profile: "render_matrix_base"
+
+  fabric_faithful_bsl:
+    description: "Fabric + Faithful 32x + BSL shaders at medium capture resolution."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "faithful_bsl"
+    width: 1280
+    height: 720
+    server_port: 25567
+    world_profile: "render_matrix_base"
+
+  fabric_complementary_high:
+    description: "Fabric + Complementary Reimagined for high-quality captures."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "complementary_high"
+    width: 1920
+    height: 1080
+    server_port: 25568
+    world_profile: "render_matrix_base"
+
+  matrix_low:
+    description: "3-way matrix baseline: vanilla resources, no shader, identical world/action."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "low"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "vanilla"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_textured:
+    description: "3-way matrix medium: resource pack + medium shader/water."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "faithful_bsl"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_shader_high:
+    description: "3-way matrix high: shader profile for water reflections and emissive lights."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "complementary_high"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_night_complementary:
+    description: "Night-time matrix pass with brighter client gamma and Complementary shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - entity-model-features
+      - entitytexturefeatures
+      - lambdynamiclights
+    asset_set: "complementary_emissive"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    options:
+      gamma: "1.0"
+      brightness: "1.0"
+    world_state:
+      time: "midnight"
+
+  matrix_default_hd_bsl:
+    description: "3-way expansion: Default HD 64x with BSL shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "default_hd_bsl"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_default_hd128_bliss:
+    description: "3-way expansion: Default HD 128x with Bliss shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "default_hd128_bliss"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_dramatic_solas:
+    description: "3-way expansion: Dramatic Skys with Solas shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "dramatic_solas"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_faithful_sildurs:
+    description: "3-way expansion: Faithful 32x with Sildur's Vibrant shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "faithful_sildurs"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_emissive_makeup:
+    description: "3-way expansion: emissive texture pack with MakeUp Ultra Fast shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - lambdynamiclights
+    asset_set: "emissive_makeup"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_patrix_unbound:
+    description: "Expansion: Patrix 32x with Complementary Unbound."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "patrix_unbound"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_better_leaves_solas:
+    description: "Expansion: Better Leaves with Solas shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "better_leaves_solas"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_default3d_miniature:
+    description: "Expansion: 3D Default with Miniature Shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "default3d_miniature"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_simplista_unbound:
+    description: "Expansion: Simplista with Complementary Unbound."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "simplista_unbound"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_stylista_bliss:
+    description: "Expansion: Stylista with Bliss shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "stylista_bliss"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_realiscraft_bsl:
+    description: "Expansion: RealisCraft demo with BSL shader."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "realiscraft_bsl"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_glowing_ores_unbound:
+    description: "Expansion: glowing/emissive resource packs with Complementary Unbound."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - lambdynamiclights
+    asset_set: "glowing_ores_unbound"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_connected_glass_bsl:
+    description: "Expansion: connected glass/default connected textures with BSL."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "medium"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "connected_glass_bsl"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"

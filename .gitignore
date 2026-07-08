@@ -1,0 +1,11 @@
+.venv/
+.cache/
+.mcdata/
+data/
+runs/
+logs/
+*.pyc
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
