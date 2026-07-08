@@ -100,6 +100,26 @@ scripts/pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge
 ```
 
 
+### T1b — 3-way 对齐修复与重采（T1 数据验收未过，最高优先级）
+
+背景：T1 四路采集中 matrix_low（冷启动首个 run）中途偏航入水，其余三路相互对齐；证据与根因分析见 `docs/iterations/ITER-02-review-interim.md`。**以下设计 planner 定死，照此实现。**
+
+1. **capture 前状态重置**（消除 warmup 期漂移）：`launch_profile` 中，warmup 结束后、`_prepare_capture_view` 之前，再调用一次 `apply_join_state(server_proc, profile)` 并 sleep 1.0s，runlog 记 `("join", "re_apply_state")`。这样无论 warmup 期间发生什么，t=0 时玩家位置/朝向/时间/天气都精确一致。
+2. **位置 ground-truth 探针**：`server.py` 新增：
+
+```python
+def start_position_probe(proc, username: str, *, interval_sec: float = 5.0) -> threading.Event
+```
+
+   返回 stop event；线程每 interval 向 server stdin 写 `data get entity <username> Pos`。`launch_profile` 在 capture start 时启动、capture stop 时置位停止；run 结束后新增函数解析 server.log 中 `<username> has the following entity data:` 行，写 `<run_dir>/positions.jsonl`（每行 `{"idx": n, "x":, "y":, "z":}`）。不改 manifest schema。
+3. **qa-compare 位置对齐**：两个 run dir 都有 positions.jsonl 时，按 idx 对齐计算逐点欧氏偏差，报告 max/mean；**max > 2.0 block 判 FAIL**（写进 report md 顶部）。单测用合成 positions 文件覆盖 pass/fail 两侧。
+4. **`--game-version`**：`run` 与 `run-matrix` 各加 `--game-version`（str|None）Option，透传 bootstrap_profile/launch_profile（参数已存在）。此后远端采集一律 CLI，禁止手工 API 直调。
+5. **同步脚本**：新增 `scripts/sync_to_remote.sh <host> <dest_dir>`（R21）：`git rev-parse HEAD > .sync_commit && rsync -az --delete --exclude .git --exclude .venv --exclude .mcdata --exclude runs ./ <host>:<dest>/`（`.sync_commit` 随包同步）。`pipeline._git_manifest` 在 git 不可用时 fallback 读 `<root>/.sync_commit`，manifest `git.commit` 来源标注 `"source": "sync_commit"`。
+6. **冷启动规程**：重采前先跑一个 10s 丢弃 run（`--duration 10`，产物不留），再正式采。写入本任务执行步骤，T3 的 shard 流程同样适用（每卡首个 run 前丢弃跑一次）。
+7. **重采**：修复合入后，用 CLI（`--game-version 26.2`）重采完整 3-way + night 同批次四路；qa-run ×4、两两 qa-compare（含位置对齐结果）；替换 `docs/qa_samples/iter02_4090_3way/` 全部产物；回传 + purge；本地删除两个带空格的 stray 目录。
+
+**验收**：四路位置对齐 max 偏差 ≤2.0 block（positions.jsonl 为证）；视觉抽帧 t=30 四路同机位；其余同 T1 验收标准。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
