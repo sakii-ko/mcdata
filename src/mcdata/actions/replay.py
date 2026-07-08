@@ -4,6 +4,7 @@ import json
 import shutil
 import subprocess
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -22,6 +23,7 @@ def replay_trajectory(
     window_name: str = "Minecraft",
     startup_delay: float = 0,
     start_event: StartEvent | None = None,
+    run_dir: Path | None = None,
 ) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     events = sorted(data.get("events", []), key=lambda e: float(e.get("t", 0)))
@@ -36,15 +38,24 @@ def replay_trajectory(
         _focus_window(window_name)
     else:
         _xtest_focus_window(window_name)
+    replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
     start = time.monotonic()
-    for event in events:
-        target = start + float(event.get("t", 0))
-        if target > time.monotonic():
-            time.sleep(target - time.monotonic())
-        if backend == "xdotool":
-            _send_event_xdotool(event)
-        else:
-            _send_event_xtest(event)
+    try:
+        for event in events:
+            scheduled_t = float(event.get("t", 0))
+            target = start + scheduled_t
+            if target > time.monotonic():
+                time.sleep(target - time.monotonic())
+            actual_t = time.monotonic() - start
+            if backend == "xdotool":
+                _send_event_xdotool(event)
+            else:
+                _send_event_xtest(event)
+            if replay_log is not None:
+                replay_log.write(event=event, scheduled_t=scheduled_t, actual_t=actual_t)
+    finally:
+        if replay_log is not None:
+            replay_log.close()
 
 
 def prepare_capture_view(*, window_name: str = "Minecraft", hide_hud: bool = True, settle_sec: float = 1.0) -> None:
@@ -144,6 +155,8 @@ def _send_event_xtest(event: dict) -> None:
             else:
                 xtest.fake_input(display, X.KeyPress, keycode)
                 xtest.fake_input(display, X.KeyRelease, keycode)
+        else:
+            console.print(f"Warning: could not resolve keycode for {event['key']!r}")
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
             xtest.fake_input(display, X.MotionNotify, x=dx, y=dy)
@@ -193,3 +206,22 @@ def _mouse_steps(event: dict) -> list[tuple[int, int, float]]:
         prev_x = x
         prev_y = y
     return result
+
+
+class _ReplayLog:
+    def __init__(self, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._fh = path.open("a", encoding="utf-8")
+
+    def write(self, *, event: dict, scheduled_t: float, actual_t: float) -> None:
+        record = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "scheduled_t": scheduled_t,
+            "actual_t": actual_t,
+            "event": event,
+        }
+        self._fh.write(json.dumps(record, sort_keys=True) + "\n")
+        self._fh.flush()
+
+    def close(self) -> None:
+        self._fh.close()

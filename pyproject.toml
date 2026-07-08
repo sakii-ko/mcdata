@@ -33,6 +33,9 @@ mcdata = "mcdata.cli:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+mcdata = ["schemas/*.json"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import signal
 import shlex
+import shutil
+import socket
 import subprocess
 import sys
 import threading
 import time
+import hashlib
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,16 +20,61 @@ from typing import Any
 from rich.console import Console
 
 from mcdata.config import load_asset_config, load_profile
+from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
 from mcdata.modrinth import project_versions
 from mcdata.packs import install_asset_set, install_mods
 from mcdata.paths import ProjectPaths, ensure_dir
+from mcdata.qa.probe import probe_video
 from mcdata.render.options import write_iris_config, write_options
 from mcdata.render.server import apply_join_state, start_server, wait_for_player_join
+from mcdata.runlog import RunLogger
 
 console = Console()
 
 REQUIRED_MODS = ["fabric-api", "sodium", "iris"]
+
+
+@dataclass(frozen=True)
+class CaptureSettings:
+    width: int
+    height: int
+    fps: int
+    display: str
+    desktop: bool
+    hide_hud: bool
+    view_settle_sec: float
+    ready_delay_sec: float
+
+    @classmethod
+    def from_env(cls, profile: dict[str, Any]) -> "CaptureSettings":
+        width, height = _parse_capture_size(
+            os.environ.get("MCDATA_CAPTURE_SIZE"),
+            default_width=int(profile.get("width")),
+            default_height=int(profile.get("height")),
+        )
+        return cls(
+            width=width,
+            height=height,
+            fps=_parse_positive_int(
+                os.environ.get("MCDATA_CAPTURE_FPS"),
+                default=int(profile.get("capture_fps", 24)),
+                name="MCDATA_CAPTURE_FPS",
+            ),
+            display=os.environ.get("DISPLAY", ":0"),
+            desktop=_parse_bool(os.environ.get("MCDATA_CAPTURE_DESKTOP"), default=False),
+            hide_hud=_parse_bool(os.environ.get("MCDATA_HIDE_HUD"), default=False),
+            view_settle_sec=_parse_float(
+                os.environ.get("MCDATA_VIEW_SETTLE_SEC"),
+                default=1.0,
+                name="MCDATA_VIEW_SETTLE_SEC",
+            ),
+            ready_delay_sec=_parse_float(
+                os.environ.get("MCDATA_CAPTURE_READY_DELAY"),
+                default=float(profile.get("capture_ready_delay_sec", 5)),
+                name="MCDATA_CAPTURE_READY_DELAY",
+            ),
+        )
 
 
 def resolve_game_version(profile: dict[str, Any]) -> str:
@@ -75,10 +125,10 @@ def portablemc_version(profile: dict[str, Any], game_version: str) -> str:
     raise RuntimeError(f"Unsupported loader: {loader}")
 
 
-def bootstrap_profile(root: Path, profile_name: str) -> dict[str, Any]:
+def bootstrap_profile(root: Path, profile_name: str, *, game_version: str | None = None) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
     profile = load_profile(paths.configs, profile_name)
-    game_version = resolve_game_version(profile)
+    game_version = game_version or resolve_game_version(profile)
     work_dir = ensure_dir(paths.instance_dir(profile_name))
     server_root = ensure_dir((paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve())
     ensure_dir(paths.main_dir)
@@ -149,15 +199,24 @@ def launch_profile(
     with_server: bool,
     replay_actions: bool,
     trajectory_path: Path | None,
+    game_version: str | None = None,
 ) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
     profile = load_profile(paths.configs, profile_name)
-    game_version = resolve_game_version(profile)
+    game_version = game_version or resolve_game_version(profile)
     work_dir = paths.instance_dir(profile_name)
     if not work_dir.exists():
-        bootstrap_profile(root, profile_name)
+        bootstrap_profile(root, profile_name, game_version=game_version)
 
     run_dir = _run_dir(paths.output_dir, profile_name)
+    started_at = datetime.now(timezone.utc).isoformat()
+    capture_settings = CaptureSettings.from_env(profile)
+    run_trajectory_path = _copy_trajectory(run_dir, trajectory_path) if trajectory_path else None
+    trajectory_info = _trajectory_manifest(
+        run_trajectory_path,
+        source_path=trajectory_path,
+        strategy=strategy,
+    )
     metadata = {
         "profile": profile_name,
         "minecraft_version": game_version,
@@ -168,18 +227,14 @@ def launch_profile(
         "capture": capture,
         "with_server": with_server,
         "replay_actions": replay_actions,
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": started_at,
     }
     _write_json(run_dir / "metadata.json", metadata)
 
-    launch_width, launch_height = _capture_size(
-        default_width=int(profile.get("width")),
-        default_height=int(profile.get("height")),
-    )
     cmd = portablemc_base(paths, work_dir) + [
         "start",
         "--resolution",
-        f"{launch_width}x{launch_height}",
+        f"{capture_settings.width}x{capture_settings.height}",
         "--username",
         str(profile.get("username")),
         "--jvm-args",
@@ -197,64 +252,119 @@ def launch_profile(
     game_proc: subprocess.Popen | None = None
     capture_proc: subprocess.Popen | None = None
     replay_thread: threading.Thread | None = None
+    capture_cmd: list[str] | None = None
+    error: str | None = None
     ready_event = threading.Event()
-    try:
-        if with_server and not dry_run:
-            server_proc = start_server(
-                (paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve(),
-                paths.main_dir,
-                game_version=game_version,
+    with RunLogger(run_dir, console=console) as runlog:
+        runlog.log(
+            "launch",
+            "command",
+            cmd=cmd,
+            dry_run=dry_run,
+            game_version=game_version,
+            capture_settings=asdict(capture_settings),
+        )
+        try:
+            if with_server and not dry_run:
+                runlog.log("server", "start")
+                server_proc = start_server(
+                    (paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve(),
+                    paths.main_dir,
+                    game_version=game_version,
+                    profile_name=profile_name,
+                    profile=profile,
+                    run_dir=run_dir,
+                )
+                runlog.log("server", "started", pid=server_proc.pid)
+            if replay_actions and run_trajectory_path and not dry_run:
+                replay_thread = _start_replay_thread(
+                    run_trajectory_path,
+                    start_event=ready_event,
+                    run_dir=run_dir,
+                )
+                runlog.log("replay", "thread_started", trajectory=str(run_trajectory_path))
+            if dry_run:
+                runlog.log("launch", "dry_run_start")
+                subprocess.run(cmd, cwd=paths.root, check=True)
+                runlog.log("launch", "dry_run_complete")
+            else:
+                game_proc = subprocess.Popen(cmd, cwd=paths.root, start_new_session=True)
+                runlog.log("launch", "process_started", pid=game_proc.pid)
+                if with_server and server_proc and (capture or replay_actions):
+                    runlog.log("join", "wait_start", username=str(profile.get("username")))
+                    wait_for_player_join(
+                        run_dir / "server.log",
+                        str(profile.get("username")),
+                        proc=server_proc,
+                        wait_sec=int(profile.get("join_timeout_sec", 180)),
+                    )
+                    runlog.log("join", "player_joined", username=str(profile.get("username")))
+                    apply_join_state(server_proc, profile)
+                    runlog.log("join", "apply_join_state")
+                    if capture_settings.ready_delay_sec > 0:
+                        console.print(
+                            "Player joined; waiting "
+                            f"{capture_settings.ready_delay_sec:.1f}s before capture/actions..."
+                        )
+                        runlog.log("warmup", "start", seconds=capture_settings.ready_delay_sec)
+                        _wait_or_raise_if_exited(game_proc, capture_settings.ready_delay_sec)
+                        runlog.log("warmup", "end")
+                    if capture:
+                        _prepare_capture_view(capture_settings)
+                        runlog.log("capture", "view_prepared")
+                if capture:
+                    capture_proc, capture_cmd = _start_capture(
+                        run_dir,
+                        settings=capture_settings,
+                        duration=duration,
+                    )
+                    runlog.log("capture", "start", cmd=capture_cmd, pid=capture_proc.pid)
+                    ready_event.set()
+                    _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
+                    runlog.log("capture", "stop", returncode=capture_proc.returncode)
+                else:
+                    ready_event.set()
+                    _wait_for_game(game_proc, run_dir / "game.exitcode", duration=duration)
+                    runlog.log("launch", "process_exit", returncode=game_proc.returncode)
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            runlog.log("teardown", "error", error=error)
+            raise
+        finally:
+            ready_event.set()
+            if capture_proc and capture_proc.poll() is None:
+                _terminate_process_tree(capture_proc, timeout=10)
+                runlog.log("teardown", "capture_terminated", returncode=capture_proc.returncode)
+            if game_proc and game_proc.poll() is None:
+                _terminate_process_tree(game_proc, timeout=20)
+                runlog.log("teardown", "game_terminated", returncode=game_proc.returncode)
+            if server_proc and server_proc.poll() is None:
+                _terminate_process_tree(server_proc, timeout=20)
+                runlog.log("teardown", "server_terminated", returncode=server_proc.returncode)
+            if replay_thread:
+                replay_thread.join(timeout=2)
+                runlog.log("replay", "thread_joined", alive=replay_thread.is_alive())
+            manifest = build_run_manifest(
+                run_id=run_dir.name,
                 profile_name=profile_name,
                 profile=profile,
-                run_dir=run_dir,
+                mc_version=game_version,
+                resources=_resource_manifest(work_dir, profile),
+                trajectory=trajectory_info,
+                capture=_capture_manifest(
+                    enabled=capture,
+                    settings=capture_settings,
+                    ffmpeg_cmd=capture_cmd,
+                    run_dir=run_dir,
+                ),
+                env=_env_manifest(display=capture_settings.display),
+                git=_git_manifest(paths.root),
+                started_at=started_at,
+                ended_at=datetime.now(timezone.utc).isoformat(),
+                error=error,
             )
-        if replay_actions and trajectory_path and not dry_run:
-            replay_thread = _start_replay_thread(trajectory_path, start_event=ready_event)
-        if dry_run:
-            subprocess.run(cmd, cwd=paths.root, check=True)
-        else:
-            game_proc = subprocess.Popen(cmd, cwd=paths.root, start_new_session=True)
-            if with_server and server_proc and (capture or replay_actions):
-                wait_for_player_join(
-                    run_dir / "server.log",
-                    str(profile.get("username")),
-                    proc=server_proc,
-                    wait_sec=int(profile.get("join_timeout_sec", 180)),
-                )
-                apply_join_state(server_proc, profile)
-                warmup_sec = _float_env("MCDATA_CAPTURE_READY_DELAY", profile.get("capture_ready_delay_sec", 5))
-                if warmup_sec > 0:
-                    console.print(f"Player joined; waiting {warmup_sec:.1f}s before capture/actions...")
-                    _wait_or_raise_if_exited(game_proc, warmup_sec)
-                if capture:
-                    _prepare_capture_view()
-            if capture:
-                capture_width, capture_height = _capture_size(
-                    default_width=launch_width,
-                    default_height=launch_height,
-                )
-                capture_proc = _start_capture(
-                    run_dir,
-                    width=capture_width,
-                    height=capture_height,
-                    fps=int(_float_env("MCDATA_CAPTURE_FPS", profile.get("capture_fps", 24))),
-                    duration=duration,
-                )
-                ready_event.set()
-                _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
-            else:
-                ready_event.set()
-                _wait_for_game(game_proc, run_dir / "game.exitcode", duration=duration)
-    finally:
-        ready_event.set()
-        if capture_proc and capture_proc.poll() is None:
-            _terminate_process_tree(capture_proc, timeout=10)
-        if game_proc and game_proc.poll() is None:
-            _terminate_process_tree(game_proc, timeout=20)
-        if server_proc and server_proc.poll() is None:
-            _terminate_process_tree(server_proc, timeout=20)
-        if replay_thread:
-            replay_thread.join(timeout=2)
+            write_run_manifest(run_dir, manifest)
+            runlog.log("teardown", "manifest_written", path=str(run_dir / "manifest.json"))
     return metadata
 
 
@@ -287,57 +397,51 @@ def remote_tmux_command(
     return f"tmux new-session -d -s {shlex.quote(session)} {shlex.quote(run)}"
 
 
-def _start_replay_thread(trajectory_path: Path, *, start_event: threading.Event) -> threading.Thread:
+def _start_replay_thread(
+    trajectory_path: Path,
+    *,
+    start_event: threading.Event,
+    run_dir: Path,
+) -> threading.Thread:
     from mcdata.actions.replay import replay_trajectory
 
     thread = threading.Thread(
         target=replay_trajectory,
         args=(trajectory_path,),
-        kwargs={"start_event": start_event},
+        kwargs={"start_event": start_event, "run_dir": run_dir},
         daemon=True,
     )
     thread.start()
     return thread
 
 
-def _prepare_capture_view() -> None:
+def _prepare_capture_view(settings: CaptureSettings) -> None:
     from mcdata.actions.replay import prepare_capture_view
 
-    hide_hud = os.environ.get("MCDATA_HIDE_HUD", "0").lower() not in {"0", "false", "no"}
-    settle_sec = _float_env("MCDATA_VIEW_SETTLE_SEC", 1)
     console.print("Preparing in-game view for capture...")
-    prepare_capture_view(hide_hud=hide_hud, settle_sec=settle_sec)
-
-
-def _capture_size(*, default_width: int, default_height: int) -> tuple[int, int]:
-    raw = os.environ.get("MCDATA_CAPTURE_SIZE")
-    if raw:
-        try:
-            width, height = raw.lower().split("x", 1)
-            return int(width), int(height)
-        except ValueError as exc:
-            raise RuntimeError("MCDATA_CAPTURE_SIZE must look like 1280x720") from exc
-    return default_width, default_height
+    prepare_capture_view(hide_hud=settings.hide_hud, settle_sec=settings.view_settle_sec)
 
 
 def _start_capture(
     run_dir: Path,
     *,
-    width: int,
-    height: int,
-    fps: int,
+    settings: CaptureSettings,
     duration: int | None,
-) -> subprocess.Popen:
-    display = os.environ.get("DISPLAY", ":0")
+) -> tuple[subprocess.Popen, list[str]]:
     capture_file = run_dir / "capture.mp4"
-    capture_input = _capture_input(display, width=width, height=height)
+    capture_input = _capture_input(
+        settings.display,
+        width=settings.width,
+        height=settings.height,
+        desktop=settings.desktop,
+    )
     ffmpeg_cmd = [
         "ffmpeg",
         "-y",
         "-video_size",
-        f"{width}x{height}",
+        f"{settings.width}x{settings.height}",
         "-framerate",
-        str(fps),
+        str(settings.fps),
         "-f",
         "x11grab",
         "-i",
@@ -349,17 +453,20 @@ def _start_capture(
     console.print("Starting capture:")
     console.print(" ".join(shlex.quote(part) for part in ffmpeg_cmd))
     log = (run_dir / "capture.log").open("w", encoding="utf-8")
-    return subprocess.Popen(
+    return (
+        subprocess.Popen(
+            ffmpeg_cmd,
+            cwd=run_dir,
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            text=True,
+        ),
         ffmpeg_cmd,
-        cwd=run_dir,
-        stdout=log,
-        stderr=subprocess.STDOUT,
-        text=True,
     )
 
 
-def _capture_input(display: str, *, width: int, height: int) -> str:
-    if os.environ.get("MCDATA_CAPTURE_DESKTOP", "0").lower() in {"1", "true", "yes"}:
+def _capture_input(display: str, *, width: int, height: int, desktop: bool) -> str:
+    if desktop:
         return display
     geometry = _minecraft_window_geometry()
     if geometry is None:
@@ -449,11 +556,212 @@ def _wait_or_raise_if_exited(game_proc: subprocess.Popen, seconds: float) -> Non
         time.sleep(min(0.25, deadline - time.monotonic()))
 
 
-def _float_env(name: str, default: Any) -> float:
-    raw = os.environ.get(name)
-    if raw is None:
+def _copy_trajectory(run_dir: Path, trajectory_path: Path) -> Path:
+    dest = run_dir / "trajectory.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(trajectory_path, dest)
+    return dest
+
+
+def _trajectory_manifest(
+    trajectory_path: Path | None,
+    *,
+    source_path: Path | None,
+    strategy: str | None,
+) -> dict[str, Any] | None:
+    if trajectory_path is None:
+        return None
+    data = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    return {
+        "strategy": strategy,
+        "path": str(trajectory_path),
+        "source_path": str(source_path) if source_path else None,
+        "sha256": _sha256(trajectory_path),
+        "event_count": len(data.get("events", [])),
+        "duration_sec": data.get("duration_sec"),
+        "type": data.get("type"),
+    }
+
+
+def _capture_manifest(
+    *,
+    enabled: bool,
+    settings: CaptureSettings,
+    ffmpeg_cmd: list[str] | None,
+    run_dir: Path,
+) -> dict[str, Any]:
+    capture_file = run_dir / "capture.mp4"
+    ffprobe: dict[str, Any] | None = None
+    if capture_file.exists():
+        try:
+            ffprobe = probe_video(capture_file)
+        except (FileNotFoundError, subprocess.CalledProcessError, json.JSONDecodeError) as exc:
+            ffprobe = {"error": f"{type(exc).__name__}: {exc}"}
+    return {
+        "enabled": enabled,
+        "settings": asdict(settings),
+        "file": str(capture_file) if capture_file.exists() else None,
+        "ffmpeg_cmd": ffmpeg_cmd,
+        "ffprobe": ffprobe,
+    }
+
+
+def _resource_manifest(work_dir: Path, profile: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "asset_set": str(profile.get("asset_set", "vanilla")),
+        "mods": _file_manifest_list(work_dir / "mods", suffixes={".jar"}),
+        "resourcepacks": _file_manifest_list(work_dir / "resourcepacks", suffixes={".zip"}),
+        "shaderpacks": _file_manifest_list(work_dir / "shaderpacks", suffixes={".zip"}),
+    }
+
+
+def _file_manifest_list(path: Path, *, suffixes: set[str]) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    result: list[dict[str, Any]] = []
+    for item in sorted(path.iterdir()):
+        if not item.is_file() or item.suffix not in suffixes:
+            continue
+        result.append(
+            {
+                "filename": item.name,
+                "path": str(item),
+                "sha256": _sha256(item),
+                "size_bytes": item.stat().st_size,
+            }
+        )
+    return result
+
+
+def _env_manifest(*, display: str) -> dict[str, Any]:
+    return {
+        "hostname": socket.gethostname(),
+        "platform": platform.platform(),
+        "python": sys.version.split()[0],
+        "display": display,
+        "gl_renderer": _gl_renderer(),
+        "gpu": _nvidia_smi(),
+    }
+
+
+def _gl_renderer() -> str | None:
+    if not shutil.which("glxinfo"):
+        return None
+    try:
+        result = subprocess.run(
+            ["glxinfo", "-B"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    for line in result.stdout.splitlines():
+        if "OpenGL renderer string:" in line:
+            return line.split(":", 1)[1].strip()
+    return None
+
+
+def _nvidia_smi() -> list[dict[str, str]]:
+    if not shutil.which("nvidia-smi"):
+        return []
+    try:
+        result = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=index,name,driver_version",
+                "--format=csv,noheader,nounits",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    gpus: list[dict[str, str]] = []
+    for line in result.stdout.splitlines():
+        parts = [part.strip() for part in line.split(",")]
+        if len(parts) >= 3:
+            gpus.append({"index": parts[0], "name": parts[1], "driver_version": parts[2]})
+    return gpus
+
+
+def _git_manifest(root: Path) -> dict[str, Any]:
+    commit = _git_output(root, "rev-parse", "HEAD")
+    status = _git_output(root, "status", "--porcelain")
+    return {
+        "commit": commit,
+        "dirty": bool(status),
+        "status_porcelain": status.splitlines() if status else [],
+    }
+
+
+def _git_output(root: Path, *args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _parse_capture_size(raw: str | None, *, default_width: int, default_height: int) -> tuple[int, int]:
+    if raw is None or raw == "":
+        return default_width, default_height
+    try:
+        width, height = raw.lower().split("x", 1)
+        parsed = int(width), int(height)
+    except ValueError as exc:
+        raise RuntimeError("MCDATA_CAPTURE_SIZE must look like 1280x720") from exc
+    if parsed[0] <= 0 or parsed[1] <= 0:
+        raise RuntimeError("MCDATA_CAPTURE_SIZE dimensions must be positive")
+    return parsed
+
+
+def _parse_positive_int(raw: str | None, *, default: int, name: str) -> int:
+    if raw is None or raw == "":
+        value = default
+    else:
+        try:
+            value = int(raw)
+        except ValueError as exc:
+            raise RuntimeError(f"{name} must be an integer") from exc
+    if value <= 0:
+        raise RuntimeError(f"{name} must be positive")
+    return value
+
+
+def _parse_float(raw: str | None, *, default: float, name: str) -> float:
+    if raw is None or raw == "":
         return float(default)
-    return float(raw)
+    try:
+        return float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a number") from exc
+
+
+def _parse_bool(raw: str | None, *, default: bool) -> bool:
+    if raw is None or raw == "":
+        return default
+    return raw.lower() in {"1", "true", "yes", "on"}
 
 
 def _write_exitcode(path: Path, code: int | None) -> None:

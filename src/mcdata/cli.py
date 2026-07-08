@@ -7,10 +7,15 @@ import typer
 from rich.console import Console
 
 from mcdata.actions import generate_strategy
-from mcdata.config import load_yaml
+from mcdata.config import load_profile, load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
-from mcdata.render.pipeline import bootstrap_profile, launch_profile, remote_tmux_command
+from mcdata.render.pipeline import (
+    bootstrap_profile,
+    launch_profile,
+    remote_tmux_command,
+    resolve_game_version,
+)
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -97,10 +102,15 @@ def run_matrix(
     trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix.json"
     generate_strategy(paths.configs, strategy, trajectory_path)
     console.print(f"Wrote shared trajectory: {trajectory_path}")
+    if not names:
+        raise typer.BadParameter("At least one profile is required")
+    first_profile = load_profile(paths.configs, names[0])
+    game_version = resolve_game_version(first_profile)
+    console.print(f"Resolved matrix Minecraft version once: {game_version}")
     for name in names:
         console.print(f"Matrix profile: {name}")
         if bootstrap:
-            bootstrap_profile(root, name)
+            bootstrap_profile(root, name, game_version=game_version)
         launch_profile(
             root,
             name,
@@ -111,6 +121,7 @@ def run_matrix(
             with_server=with_server,
             replay_actions=replay_actions,
             trajectory_path=trajectory_path,
+            game_version=game_version,
         )
 
 

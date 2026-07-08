@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "profile",
+    "mc_version",
+    "resources",
+    "world",
+    "trajectory",
+    "capture",
+    "env",
+    "git",
+    "started_at",
+    "ended_at"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "profile": {
+      "type": "object",
+      "required": ["name", "asset_set", "server_port", "config"],
+      "properties": {
+        "name": { "type": "string" },
+        "loader": { "type": "string" },
+        "quality": { "type": ["string", "null"] },
+        "asset_set": { "type": "string" },
+        "width": { "type": ["integer", "null"] },
+        "height": { "type": ["integer", "null"] },
+        "server_port": { "type": ["integer", "null"] },
+        "config": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "mc_version": { "type": "string", "minLength": 1 },
+    "resources": {
+      "type": "object",
+      "required": ["asset_set", "mods", "resourcepacks", "shaderpacks"],
+      "properties": {
+        "asset_set": { "type": "string" },
+        "mods": { "type": "array" },
+        "resourcepacks": { "type": "array" },
+        "shaderpacks": { "type": "array" }
+      },
+      "additionalProperties": true
+    },
+    "world": {
+      "type": "object",
+      "required": ["seed", "profile", "state"],
+      "properties": {
+        "seed": {},
+        "profile": { "type": ["string", "null"] },
+        "state": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "trajectory": {
+      "type": ["object", "null"],
+      "required": ["strategy", "path", "sha256", "event_count"],
+      "properties": {
+        "strategy": { "type": ["string", "null"] },
+        "path": { "type": "string" },
+        "source_path": { "type": "string" },
+        "sha256": { "type": "string" },
+        "event_count": { "type": "integer" },
+        "duration_sec": { "type": ["number", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "capture": {
+      "type": "object",
+      "required": ["enabled", "settings", "ffmpeg_cmd", "ffprobe"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "settings": { "type": "object" },
+        "ffmpeg_cmd": { "type": ["array", "null"], "items": { "type": "string" } },
+        "ffprobe": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "env": { "type": "object" },
+    "git": {
+      "type": "object",
+      "required": ["commit", "dirty"],
+      "properties": {
+        "commit": { "type": ["string", "null"] },
+        "dirty": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "started_at": { "type": "string" },
+    "ended_at": { "type": ["string", "null"] },
+    "error": { "type": ["string", "null"] }
+  },
+  "additionalProperties": true
+}
