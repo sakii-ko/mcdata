@@ -5,13 +5,18 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
 from mcdata.render import pipeline
 from mcdata.render.pipeline import _copy_trajectory, _profile_with_overrides, _run_dir
 from mcdata.render.server import (
     ensure_server,
+    expected_scene_fill_count,
     parse_position_log,
     parse_rotation_log,
+    replay_start_mono_from_log,
     server_profile_name,
+    verify_scene_commands,
     wait_for_position_sample,
     write_positions_jsonl,
 )
@@ -100,6 +105,68 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
         {"idx": 0, "t_rel": -1.0, "x": 1.5, "y": 64.0, "yaw": -90.0, "z": -2.25},
         {"idx": 1, "t_rel": 4.5, "x": 2.0, "y": 65.0, "z": -3.0},
     ]
+
+
+def test_position_jsonl_prefers_replay_log_start(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [1.5d, 64.0d, -2.25d]\n",
+        encoding="utf-8",
+    )
+    replay_log = tmp_path / "replay_log.jsonl"
+    replay_log.write_text(json.dumps({"event": "start", "mono": 12.0}) + "\n", encoding="utf-8")
+    out = tmp_path / "positions.jsonl"
+
+    count = write_positions_jsonl(
+        log,
+        out,
+        username="mcdata_bot",
+        sent_at=[13.25],
+        replay_start_mono=10.0,
+        replay_log_path=replay_log,
+    )
+
+    assert count == 1
+    assert replay_start_mono_from_log(replay_log) == 12.0
+    rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    assert rows[0]["t_rel"] == 1.25
+
+
+def test_verify_scene_commands_accepts_matching_receipts(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/INFO]: Successfully filled 31487 blocks\n"
+        "[Server thread/INFO]: Changed the block\n"
+        "[Server thread/INFO]: No blocks were filled\n",
+        encoding="utf-8",
+    )
+
+    assert verify_scene_commands(log, expected_fill_count=3, wait_sec=0.01, poll_sec=0.001) == 3
+
+
+def test_verify_scene_commands_raises_on_overlimit_receipt(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/ERROR]: Too many blocks in the specified area (39701 > 32768)\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="Too many blocks.*server.log"):
+        verify_scene_commands(log, expected_fill_count=1, wait_sec=0.01, poll_sec=0.001)
+
+
+def test_verify_scene_commands_raises_on_missing_receipt(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text("[Server thread/INFO]: Successfully filled 1 block\n", encoding="utf-8")
+
+    with pytest.raises(TimeoutError, match="1/2"):
+        verify_scene_commands(log, expected_fill_count=2, wait_sec=0.01, poll_sec=0.001)
+
+
+def test_expected_scene_fill_count_excludes_forceload() -> None:
+    profile = {"world_state": {"scene": {"enabled": True, "origin": [0, 64, 0]}}}
+
+    assert expected_scene_fill_count(profile) == 24
 
 
 def test_wait_for_position_sample_returns_after_new_sample(tmp_path: Path) -> None:
@@ -232,9 +299,12 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "_start_replay_thread", lambda *args, **kwargs: None)
     monkeypatch.setattr(pipeline, "start_server", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(pipeline, "expected_scene_fill_count", lambda _profile: 2)
+    monkeypatch.setattr(pipeline, "verify_scene_commands", lambda *args, **kwargs: 2)
     monkeypatch.setattr(pipeline, "wait_for_player_join", lambda *args, **kwargs: events.append(("join", None)))
     monkeypatch.setattr(pipeline, "apply_join_state", lambda _proc, _profile: events.append(("apply_join_state", None)))
     monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
+    monkeypatch.setattr(pipeline, "_minecraft_window_geometry", lambda window_name="Minecraft": (12, 34, 320, 180))
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
     monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
     monkeypatch.setattr(
@@ -298,6 +368,16 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         item["stage"] == "position_probe" and item["event"] == "start" and item["interval_sec"] == 1.25
         for item in pipeline_events
     )
+    assert any(
+        item["stage"] == "server" and item["event"] == "scene_verified" and item["receipt_count"] == 2
+        for item in pipeline_events
+    )
+    assert any(
+        item["stage"] == "capture"
+        and item["event"] == "window_geometry"
+        and item["geometry"] == {"x": 12, "y": 34, "width": 320, "height": 180}
+        for item in pipeline_events
+    )
 
 
 def test_capture_debug_flags_skip_reapply_and_replay_gate(tmp_path: Path, monkeypatch) -> None:
@@ -335,9 +415,12 @@ def test_capture_debug_flags_skip_reapply_and_replay_gate(tmp_path: Path, monkey
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "_start_replay_thread", lambda *args, **kwargs: None)
     monkeypatch.setattr(pipeline, "start_server", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(pipeline, "expected_scene_fill_count", lambda _profile: 2)
+    monkeypatch.setattr(pipeline, "verify_scene_commands", lambda *args, **kwargs: 2)
     monkeypatch.setattr(pipeline, "wait_for_player_join", lambda *args, **kwargs: events.append(("join", None)))
     monkeypatch.setattr(pipeline, "apply_join_state", lambda _proc, _profile: events.append(("apply_join_state", None)))
     monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
+    monkeypatch.setattr(pipeline, "_minecraft_window_geometry", lambda window_name="Minecraft": (12, 34, 320, 180))
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
     monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
     monkeypatch.setattr(

@@ -31,10 +31,12 @@ def test_replay_writes_scheduled_and_actual_times(
         json.loads(line)
         for line in (tmp_path / "replay_log.jsonl").read_text(encoding="utf-8").splitlines()
     ]
-    assert len(records) == 1
-    assert records[0]["scheduled_t"] == 0.0
-    assert records[0]["actual_t"] >= 0.0
-    assert records[0]["event"]["key"] == "w"
+    assert len(records) == 2
+    assert records[0]["event"] == "start"
+    assert records[0]["mono"] >= 0.0
+    assert records[1]["scheduled_t"] == 0.0
+    assert records[1]["actual_t"] >= 0.0
+    assert records[1]["event"]["key"] == "w"
 
 
 def test_update_held_tracks_key_lifecycle() -> None:

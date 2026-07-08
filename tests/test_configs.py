@@ -47,6 +47,17 @@ def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
     assert commands.index(glass) < commands.index(lava)
 
 
+def test_scene_air_clear_is_split_under_fill_limit() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    assert "fill -18 64 -18 18 92 18 minecraft:air" not in commands
+    assert "fill -18 64 -18 18 86 18 minecraft:air" in commands
+    assert "fill -18 87 -18 18 92 18 minecraft:air" in commands
+    assert commands.index("fill -18 64 -18 18 86 18 minecraft:air") < commands.index(
+        "fill -18 87 -18 18 92 18 minecraft:air"
+    )
+
+
 def test_qa_package_does_not_import_render_or_actions() -> None:
     for path in (ROOT / "src" / "mcdata" / "qa").glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))

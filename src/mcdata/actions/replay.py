@@ -47,13 +47,15 @@ def replay_trajectory(
         _focus_window(window_name, warned=xdotool_warnings)
     else:
         _xtest_focus_window(window_name)
-    replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
     inherited = _release_inherited_keys(backend, warned=xdotool_warnings)
     if inherited:
         console.print(f"Warning: inherited stuck keys: {inherited}")
-        if replay_log is not None:
-            replay_log.write_control("inherited_stuck_keys", keys=inherited)
+    replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
     start = time.monotonic()
+    if replay_log is not None:
+        replay_log.write_start(start)
+        if inherited:
+            replay_log.write_control("inherited_stuck_keys", keys=inherited)
     held: set[str] = set()
     try:
         for event in events:
@@ -365,7 +367,11 @@ def _mouse_steps(event: dict) -> list[tuple[int, int, float]]:
 class _ReplayLog:
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._fh = path.open("a", encoding="utf-8")
+        self._fh = path.open("w", encoding="utf-8")
+
+    def write_start(self, mono: float) -> None:
+        self._fh.write(json.dumps({"event": "start", "mono": mono}, sort_keys=True) + "\n")
+        self._fh.flush()
 
     def write(self, *, event: dict, scheduled_t: float, actual_t: float) -> None:
         record = {

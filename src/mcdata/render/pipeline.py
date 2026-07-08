@@ -29,9 +29,11 @@ from mcdata.qa.probe import probe_video
 from mcdata.render.options import write_iris_config, write_options
 from mcdata.render.server import (
     apply_join_state,
+    expected_scene_fill_count,
     server_profile_name,
     start_position_probe,
     start_server,
+    verify_scene_commands,
     wait_for_player_join,
     wait_for_position_sample,
     write_positions_jsonl,
@@ -278,6 +280,18 @@ def launch_profile(
                     lane=lane,
                 )
                 runlog.log("server", "started", pid=server_proc.pid)
+                expected_fill_count = expected_scene_fill_count(profile)
+                if expected_fill_count:
+                    receipt_count = verify_scene_commands(
+                        run_dir / "server.log",
+                        expected_fill_count=expected_fill_count,
+                    )
+                    runlog.log(
+                        "server",
+                        "scene_verified",
+                        expected_fill_count=expected_fill_count,
+                        receipt_count=receipt_count,
+                    )
             if replay_actions and run_trajectory_path and not dry_run:
                 replay_thread = _start_replay_thread(
                     run_trajectory_path,
@@ -322,6 +336,14 @@ def launch_profile(
                         _prepare_capture_view(capture_settings)
                         runlog.log("capture", "view_prepared")
                 if capture:
+                    runlog.log(
+                        "capture",
+                        "window_geometry",
+                        geometry=_window_geometry_record(),
+                        requested_width=capture_settings.width,
+                        requested_height=capture_settings.height,
+                        desktop=capture_settings.desktop,
+                    )
                     capture_proc, capture_cmd = _start_capture(
                         run_dir,
                         settings=capture_settings,
@@ -389,6 +411,7 @@ def launch_profile(
                     username=str(profile.get("username")),
                     sent_at=position_probe_sent_at,
                     replay_start_mono=replay_start_mono,
+                    replay_log_path=run_dir / "replay_log.jsonl" if replay_actions else None,
                 )
                 runlog.log("position_probe", "positions_written", count=count)
             manifest = build_run_manifest(
@@ -527,6 +550,14 @@ def _capture_input(display: str, *, width: int, height: int, desktop: bool) -> s
         )
         return display
     return f"{display}+{x},{y}"
+
+
+def _window_geometry_record(window_name: str = "Minecraft") -> dict[str, int] | None:
+    geometry = _minecraft_window_geometry(window_name=window_name)
+    if geometry is None:
+        return None
+    x, y, width, height = geometry
+    return {"x": x, "y": y, "width": width, "height": height}
 
 
 def _minecraft_window_geometry(window_name: str = "Minecraft") -> tuple[int, int, int, int] | None:

@@ -16,6 +16,18 @@ from mcdata.net import download_file, get_json
 
 console = Console()
 
+SCENE_FAILURE_PATTERNS = (
+    "Too many blocks",
+    "Cannot place",
+    "Expected",
+    "Unknown",
+)
+SCENE_RECEIPT_PATTERNS = (
+    "Successfully filled",
+    "Changed the block",
+    "No blocks were filled",
+)
+
 
 def ensure_server(
     server_root: Path,
@@ -192,6 +204,59 @@ def _apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
     _write_commands(proc, commands)
 
 
+def expected_scene_fill_count(profile: dict[str, Any]) -> int:
+    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
+    scene = state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}
+    return _count_receipted_scene_commands(_scene_commands(scene))
+
+
+def verify_scene_commands(
+    log_path: Path,
+    *,
+    expected_fill_count: int,
+    wait_sec: float = 10.0,
+    poll_sec: float = 0.2,
+) -> int:
+    deadline = time.time() + wait_sec
+    last_count = 0
+    while time.time() <= deadline:
+        lines = _read_log_lines(log_path)
+        for line in lines:
+            if _is_scene_failure_line(line):
+                raise RuntimeError(f"Scene command failed: {line.strip()} (see {log_path})")
+        last_count = sum(1 for line in lines if _is_scene_receipt_line(line))
+        if last_count == expected_fill_count:
+            return last_count
+        if last_count > expected_fill_count:
+            raise RuntimeError(
+                f"Scene command receipt count exceeded expected count: "
+                f"saw {last_count}/{expected_fill_count}; see {log_path}"
+            )
+        time.sleep(poll_sec)
+    raise TimeoutError(
+        f"Timed out waiting for scene command receipts: "
+        f"saw {last_count}/{expected_fill_count}; see {log_path}"
+    )
+
+
+def _read_log_lines(log_path: Path) -> list[str]:
+    if not log_path.exists():
+        return []
+    return log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+
+
+def _is_scene_failure_line(line: str) -> bool:
+    return any(pattern in line for pattern in SCENE_FAILURE_PATTERNS)
+
+
+def _is_scene_receipt_line(line: str) -> bool:
+    return any(pattern in line for pattern in SCENE_RECEIPT_PATTERNS)
+
+
+def _count_receipted_scene_commands(commands: list[str]) -> int:
+    return sum(1 for command in commands if command.startswith(("fill ", "setblock ")))
+
+
 def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
     if proc.stdin is None:
         return
@@ -255,19 +320,59 @@ def write_positions_jsonl(
     username: str,
     sent_at: list[float] | None = None,
     replay_start_mono: float | None = None,
+    replay_log_path: Path | None = None,
 ) -> int:
     positions = parse_position_log(log_path, username=username)
     rotations = parse_rotation_log(log_path, username=username)
+    t_rel_baseline = _position_time_baseline(
+        replay_log_path=replay_log_path,
+        fallback_mono=replay_start_mono,
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         for idx, item in enumerate(positions):
             row = {"idx": idx, **item}
             if idx < len(rotations):
                 row["yaw"] = rotations[idx]["yaw"]
-            if sent_at is not None and replay_start_mono is not None and idx < len(sent_at):
-                row["t_rel"] = sent_at[idx] - replay_start_mono
+            if sent_at is not None and t_rel_baseline is not None and idx < len(sent_at):
+                row["t_rel"] = sent_at[idx] - t_rel_baseline
             fh.write(json.dumps(row, sort_keys=True) + "\n")
     return len(positions)
+
+
+def _position_time_baseline(
+    *,
+    replay_log_path: Path | None,
+    fallback_mono: float | None,
+) -> float | None:
+    if replay_log_path is not None:
+        replay_start = replay_start_mono_from_log(replay_log_path)
+        if replay_start is not None:
+            return replay_start
+        if fallback_mono is not None:
+            console.print(
+                f"Warning: replay start not found in {replay_log_path}; "
+                "using capture-ready position baseline."
+            )
+    return fallback_mono
+
+
+def replay_start_mono_from_log(replay_log_path: Path) -> float | None:
+    if not replay_log_path.exists():
+        return None
+    first_line = replay_log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    if not first_line:
+        return None
+    try:
+        first = json.loads(first_line[0])
+    except json.JSONDecodeError:
+        return None
+    if first.get("event") != "start":
+        return None
+    mono = first.get("mono")
+    if not isinstance(mono, int | float):
+        return None
+    return float(mono)
 
 
 def parse_position_log(log_path: Path, *, username: str) -> list[dict[str, float]]:
@@ -366,7 +471,8 @@ def _scene_commands(scene: dict[str, Any]) -> list[str]:
     ox, oy, oz = (int(origin[0]), int(origin[1]), int(origin[2]))
     return [
         f"forceload add {ox - 32} {oz - 32} {ox + 32} {oz + 32}",
-        f"fill {ox - 18} {oy} {oz - 18} {ox + 18} {oy + 28} {oz + 18} minecraft:air",
+        f"fill {ox - 18} {oy} {oz - 18} {ox + 18} {oy + 22} {oz + 18} minecraft:air",
+        f"fill {ox - 18} {oy + 23} {oz - 18} {ox + 18} {oy + 28} {oz + 18} minecraft:air",
         f"fill {ox - 24} {oy - 4} {oz - 24} {ox + 24} {oy - 2} {oz + 24} minecraft:dirt",
         f"fill {ox - 24} {oy - 1} {oz - 24} {ox + 24} {oy - 1} {oz + 24} minecraft:grass_block",
         f"fill {ox - 15} {oy - 1} {oz - 15} {ox + 15} {oy - 1} {oz + 15} minecraft:smooth_stone",
