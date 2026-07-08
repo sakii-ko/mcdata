@@ -164,10 +164,18 @@ def compare_position_alignment(
         (item["max_distance_blocks"] for item in pair_results if item["max_distance_blocks"] is not None),
         default=None,
     )
+    total_count = sum(int(item["count"]) for item in pair_results)
+    total_distance = sum(
+        float(item["mean_distance_blocks"]) * int(item["count"])
+        for item in pair_results
+        if item["mean_distance_blocks"] is not None
+    )
+    overall_mean = total_distance / total_count if total_count else None
     return {
         "threshold_blocks": max_threshold_blocks,
         "passed": overall_max is not None and overall_max <= max_threshold_blocks,
         "max_distance_blocks": overall_max,
+        "mean_distance_blocks": overall_mean,
         "pairs": pair_results,
     }
 
@@ -229,6 +237,7 @@ def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:
             [
                 f"- position_alignment: `{status}`",
                 f"- position_max_distance_blocks: `{max_text}`",
+                f"- position_mean_distance_blocks: `{_format_optional_float(alignment.get('mean_distance_blocks'))}`",
                 f"- position_threshold_blocks: `{alignment.get('threshold_blocks')}`",
                 "",
             ]
@@ -261,6 +270,12 @@ def _read_positions(input_path: Path) -> list[dict[str, float]] | None:
         row = json.loads(line)
         items.append({"x": float(row["x"]), "y": float(row["y"]), "z": float(row["z"])})
     return items
+
+
+def _format_optional_float(value: object) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.3f}"
 
 
 def _position_distance(left: dict[str, float], right: dict[str, float]) -> float:

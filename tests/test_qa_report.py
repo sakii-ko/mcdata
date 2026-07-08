@@ -23,6 +23,8 @@ def test_position_alignment_passes_with_small_offsets(tmp_path: Path) -> None:
     assert alignment is not None
     assert alignment["passed"] is True
     assert alignment["max_distance_blocks"] <= 2.0
+    assert alignment["mean_distance_blocks"] is not None
+    assert alignment["mean_distance_blocks"] <= alignment["max_distance_blocks"]
 
 
 def test_position_alignment_fails_when_max_exceeds_threshold(tmp_path: Path) -> None:
