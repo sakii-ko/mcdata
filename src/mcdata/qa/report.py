@@ -11,6 +11,9 @@ from PIL import Image, ImageDraw
 from mcdata.qa.frames import extract_frames_at, uniform_timestamps
 from mcdata.qa.metrics import black_border_metrics, brightness_percentiles, zero_mean_ncc
 from mcdata.qa.probe import summarize_probe
+from mcdata.qa.route import compare_position_alignment, route_reference_report
+
+_BILINEAR = getattr(getattr(Image, "Resampling", Image), "BILINEAR")
 
 
 def resolve_video(input_path: Path) -> tuple[Path, Path]:
@@ -52,12 +55,16 @@ def write_run_report(
     expected = {"fps": 24.0, "width": probe.get("width"), "height": probe.get("height")}
     if abs(float(probe.get("fps") or 0) - 24.0) > 0.01:
         warnings.append(f"fps is {probe.get('fps')}, expected 24")
+    route_reference = route_reference_report(default_out_dir)
+    if route_reference and not route_reference.get("passed"):
+        warnings.append("route reference check failed")
 
     report = {
         "input": str(input_path),
         "video": str(video),
         "probe": probe,
         "expected": expected,
+        "route_reference": route_reference,
         "frames": frame_metrics,
         "warnings": warnings,
         "outputs": {
@@ -89,7 +96,7 @@ def write_compare_report(
     rows = []
     for index, timestamp in enumerate(timestamps):
         thumbs = [
-            image.convert("L").resize((64, 36), Image.Resampling.BILINEAR)
+            image.convert("L").resize((64, 36), _BILINEAR)
             for image in [frames_at_time[index] for frames_at_time in extracted]
         ]
         pair_scores = []
@@ -107,12 +114,14 @@ def write_compare_report(
     out_dir.mkdir(parents=True, exist_ok=True)
     image_path = out_dir / "qa_compare_contact_sheet.jpg"
     _write_compare_sheet(image_path, extracted, timestamps)
+    position_alignment = compare_position_alignment(inputs)
     report = {
         "inputs": [str(path) for path in inputs],
         "videos": [str(video) for video in videos],
         "probe": probes,
         "timestamps_sec": timestamps,
         "rows": rows,
+        "position_alignment": position_alignment,
         "outputs": {
             "json": str(out_dir / "qa_compare_report.json"),
             "markdown": str(out_dir / "qa_compare_report.md"),
@@ -145,16 +154,44 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
     lines = [
         "# QA Run Report",
         "",
-        f"- video: `{report['video']}`",
-        f"- codec: `{probe.get('codec')}`",
-        f"- size: `{probe.get('width')}x{probe.get('height')}`",
-        f"- fps: `{probe.get('fps')}`",
-        f"- duration: `{probe.get('duration_sec')}`",
-        f"- warnings: `{len(report['warnings'])}`",
-        "",
-        "| t_sec | p5 | p50 | p95 | black_border |",
-        "|---:|---:|---:|---:|---|",
     ]
+    route_reference = report.get("route_reference")
+    if route_reference:
+        status = "PASS" if route_reference.get("passed") else "FAIL"
+        lines.extend(
+            [
+                f"- route_reference: `{status}`",
+                "- route_max_deviation_blocks: "
+                f"`{_format_optional_float(route_reference.get('max_deviation_blocks'))}`",
+                "- route_mean_deviation_blocks: "
+                f"`{_format_optional_float(route_reference.get('mean_deviation_blocks'))}`",
+                f"- route_threshold_blocks: `{route_reference.get('threshold_blocks')}`",
+                "- route_max_yaw_error_degrees: "
+                f"`{_format_optional_float(route_reference.get('max_yaw_error_degrees'))}`",
+                "- route_mean_yaw_error_degrees: "
+                f"`{_format_optional_float(route_reference.get('mean_yaw_error_degrees'))}`",
+                f"- route_yaw_threshold_degrees: `{route_reference.get('yaw_threshold_degrees')}`",
+                f"- route_yaw_sample_count: `{route_reference.get('yaw_sample_count')}`",
+                f"- route_missing_yaw_count: `{route_reference.get('missing_yaw_count')}`",
+                f"- route_skipped_yaw_count: `{route_reference.get('skipped_yaw_count')}`",
+                f"- route_y_range: `{route_reference.get('y_min')}..{route_reference.get('y_max')}`",
+                f"- route_y_out_of_range_count: `{route_reference.get('y_out_of_range_count')}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            f"- video: `{report['video']}`",
+            f"- codec: `{probe.get('codec')}`",
+            f"- size: `{probe.get('width')}x{probe.get('height')}`",
+            f"- fps: `{probe.get('fps')}`",
+            f"- duration: `{probe.get('duration_sec')}`",
+            f"- warnings: `{len(report['warnings'])}`",
+            "",
+            "| t_sec | p5 | p50 | p95 | black_border |",
+            "|---:|---:|---:|---:|---|",
+        ]
+    )
     for item in report["frames"]:
         b = item["brightness"]
         lines.append(
@@ -171,11 +208,29 @@ def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:
     lines = [
         "# QA Compare Report",
         "",
-        *[f"- input: `{item}`" for item in report["inputs"]],
-        "",
-        "| t_sec | pair | ncc |",
-        "|---:|---|---:|",
     ]
+    alignment = report.get("position_alignment")
+    if alignment:
+        status = "PASS" if alignment.get("passed") else "FAIL"
+        max_distance = alignment.get("max_distance_blocks")
+        max_text = "n/a" if max_distance is None else f"{float(max_distance):.3f}"
+        lines.extend(
+            [
+                f"- position_alignment: `{status}`",
+                f"- position_max_distance_blocks: `{max_text}`",
+                f"- position_mean_distance_blocks: `{_format_optional_float(alignment.get('mean_distance_blocks'))}`",
+                f"- position_threshold_blocks: `{alignment.get('threshold_blocks')}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            *[f"- input: `{item}`" for item in report["inputs"]],
+            "",
+            "| t_sec | pair | ncc |",
+            "|---:|---|---:|",
+        ]
+    )
     for row in report["rows"]:
         for pair in row["pairs"]:
             lines.append(
@@ -185,6 +240,12 @@ def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _format_optional_float(value: object) -> str:
+    if value is None:
+        return "n/a"
+    return f"{float(value):.3f}"
+
+
 def _write_contact_sheet(path: Path, images: list[Image.Image], timestamps: list[float]) -> None:
     thumb_w, thumb_h = 320, 180
     cols = 3
@@ -192,7 +253,7 @@ def _write_contact_sheet(path: Path, images: list[Image.Image], timestamps: list
     sheet = Image.new("RGB", (cols * thumb_w, rows * (thumb_h + 20)), "white")
     draw = ImageDraw.Draw(sheet)
     for idx, image in enumerate(images):
-        thumb = image.resize((thumb_w, thumb_h), Image.Resampling.BILINEAR)
+        thumb = image.resize((thumb_w, thumb_h), _BILINEAR)
         x = (idx % cols) * thumb_w
         y = (idx // cols) * (thumb_h + 20)
         sheet.paste(thumb, (x, y))
@@ -213,7 +274,7 @@ def _write_compare_sheet(
     draw = ImageDraw.Draw(sheet)
     for row, timestamp in enumerate(timestamps):
         for col, frames in enumerate(extracted):
-            thumb = frames[row].resize((thumb_w, thumb_h), Image.Resampling.BILINEAR)
+            thumb = frames[row].resize((thumb_w, thumb_h), _BILINEAR)
             x = col * thumb_w
             y = row * (thumb_h + label_h)
             sheet.paste(thumb, (x, y))

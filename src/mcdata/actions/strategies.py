@@ -112,6 +112,7 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     min_x, max_x, min_z, max_z = (int(bounds[0]), int(bounds[1]), int(bounds[2]), int(bounds[3]))
     turn_px_per_degree = float(spec.get("turn_px_per_degree", 6.0))
     seconds_per_block = float(spec.get("seconds_per_block", 0.32))
+    walk_startup_comp_sec = float(spec.get("walk_startup_comp_sec", 0.0))
     look_pitch_px = int(spec.get("look_pitch_px", 0))
     initial_pause_sec = float(spec.get("initial_pause_sec", 1.0))
     scan_pause_sec = float(spec.get("scan_pause_sec", 0.25))
@@ -149,7 +150,7 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
                 )
                 t += 0.35 + scan_pause_sec
         heading = desired
-        t = _hold_key(events, t, "w", distance * seconds_per_block)
+        t = _hold_key(events, t, "w", distance * seconds_per_block + walk_startup_comp_sec)
         route_index += distance
         t = _apply_waypoint_actions(
             events,

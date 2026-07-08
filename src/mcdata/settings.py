@@ -47,6 +47,11 @@ class CaptureSettings:
         )
 
 
+def apply_display_override(display: str) -> None:
+    """Process-global DISPLAY override; call before any X client is created."""
+    os.environ["DISPLAY"] = display
+
+
 def _parse_capture_size(raw: str | None, *, default_width: int, default_height: int) -> tuple[int, int]:
     if raw is None or raw == "":
         return default_width, default_height
@@ -85,4 +90,9 @@ def _parse_float(raw: str | None, *, default: float, name: str) -> float:
 def _parse_bool(raw: str | None, *, default: bool) -> bool:
     if raw is None or raw == "":
         return default
-    return raw.lower() in {"1", "true", "yes", "on"}
+    value = raw.lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise RuntimeError(f"boolean environment override must be one of true/false/1/0, got {raw!r}")

@@ -1,5 +1,5 @@
 {
-  "duration_sec": 52.09,
+  "duration_sec": 40.439,
   "events": [
     {
       "duration": 0.4,
@@ -15,237 +15,237 @@
     {
       "action": "up",
       "key": "w",
-      "t": 2.24
+      "t": 2.064
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 2.24
+      "t": 2.064
     },
     {
       "action": "down",
       "key": "w",
-      "t": 2.79
+      "t": 2.614
     },
     {
       "action": "up",
       "key": "w",
-      "t": 6.63
+      "t": 5.395
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 6.63
+      "t": 5.395
     },
     {
       "action": "down",
       "key": "w",
-      "t": 7.18
+      "t": 5.945
     },
     {
       "action": "up",
       "key": "w",
-      "t": 10.06
+      "t": 8.03
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 10.06
+      "t": 8.03
     },
     {
       "action": "down",
       "key": "w",
-      "t": 10.61
+      "t": 8.58
     },
     {
       "action": "up",
       "key": "w",
-      "t": 13.17
+      "t": 10.434
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 13.17
+      "t": 10.434
     },
     {
       "action": "down",
       "key": "w",
-      "t": 13.72
+      "t": 10.984
     },
     {
       "action": "up",
       "key": "w",
-      "t": 17.88
+      "t": 13.996
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 17.88
+      "t": 13.996
     },
     {
       "action": "down",
       "key": "w",
-      "t": 18.43
+      "t": 14.546
     },
     {
       "action": "up",
       "key": "w",
-      "t": 20.99
+      "t": 16.4
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 20.99
+      "t": 16.4
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 21.54
+      "t": 16.95
     },
     {
       "action": "down",
       "key": "w",
-      "t": 22.09
+      "t": 17.5
     },
     {
       "action": "up",
       "key": "w",
-      "t": 24.97
+      "t": 19.586
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 24.97
+      "t": 19.586
     },
     {
       "action": "down",
       "key": "w",
-      "t": 25.52
+      "t": 20.136
     },
     {
       "action": "up",
       "key": "w",
-      "t": 26.16
+      "t": 20.6
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 26.16
+      "t": 20.6
     },
     {
       "action": "down",
       "key": "w",
-      "t": 26.71
+      "t": 21.15
     },
     {
       "action": "up",
       "key": "w",
-      "t": 31.51
+      "t": 24.625
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 31.51
+      "t": 24.625
     },
     {
       "action": "down",
       "key": "w",
-      "t": 32.06
+      "t": 25.175
     },
     {
       "action": "up",
       "key": "w",
-      "t": 33.34
+      "t": 26.103
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 33.34
+      "t": 26.103
     },
     {
       "action": "down",
       "key": "w",
-      "t": 33.89
+      "t": 26.653
     },
     {
       "action": "up",
       "key": "w",
-      "t": 36.45
+      "t": 28.507
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 36.45
+      "t": 28.507
     },
     {
       "action": "down",
       "key": "w",
-      "t": 37.0
+      "t": 29.057
     },
     {
       "action": "up",
       "key": "w",
-      "t": 40.52
+      "t": 31.605
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 40.52
+      "t": 31.605
     },
     {
       "action": "down",
       "key": "w",
-      "t": 41.07
+      "t": 32.155
     },
     {
       "action": "up",
       "key": "w",
-      "t": 43.63
+      "t": 34.009
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 43.63
+      "t": 34.009
     },
     {
       "action": "down",
       "key": "w",
-      "t": 44.18
+      "t": 34.559
     },
     {
       "action": "up",
       "key": "w",
-      "t": 47.7
+      "t": 37.108
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 47.7
+      "t": 37.108
     },
     {
       "action": "down",
       "key": "w",
-      "t": 48.25
+      "t": 37.658
     },
     {
       "action": "up",
       "key": "w",
-      "t": 52.09
+      "t": 40.439
     }
   ],
   "route": [

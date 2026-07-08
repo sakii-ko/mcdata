@@ -1,5 +1,5 @@
 {
-  "duration_sec": 48.08,
+  "duration_sec": 43.32,
   "events": [
     {
       "duration": 0.4,
@@ -9,7 +9,7 @@
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
       "t": 1.6
     },
@@ -21,305 +21,305 @@
     {
       "action": "up",
       "key": "w",
-      "t": 5.03
+      "t": 4.236
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 5.03
+      "t": 4.236
     },
     {
       "action": "down",
       "key": "w",
-      "t": 5.58
+      "t": 4.786
     },
     {
       "action": "up",
       "key": "w",
-      "t": 7.18
+      "t": 5.945
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 7.18
+      "t": 5.945
     },
     {
       "action": "down",
       "key": "w",
-      "t": 7.73
+      "t": 6.495
     },
     {
       "action": "up",
       "key": "w",
-      "t": 8.05
+      "t": 6.727
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 8.05
+      "t": 6.727
     },
     {
       "action": "down",
       "key": "w",
-      "t": 8.6
+      "t": 7.277
     },
     {
       "action": "up",
       "key": "w",
-      "t": 8.92
+      "t": 7.51
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 8.92
+      "t": 7.51
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 10.92
+      "t": 9.51
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 11.47
+      "t": 10.06
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 12.02
+      "t": 10.61
     },
     {
       "action": "down",
       "key": "w",
-      "t": 12.57
+      "t": 11.16
     },
     {
       "action": "up",
       "key": "w",
-      "t": 13.53
+      "t": 11.855
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 13.53
+      "t": 11.855
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 15.53
+      "t": 13.855
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 16.08
+      "t": 14.405
     },
     {
       "action": "down",
       "key": "w",
-      "t": 16.63
+      "t": 14.955
     },
     {
       "action": "up",
       "key": "w",
-      "t": 17.59
+      "t": 15.651
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 17.59
+      "t": 15.651
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 19.59
+      "t": 17.651
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 20.14
+      "t": 18.201
     },
     {
       "action": "down",
       "key": "w",
-      "t": 20.69
+      "t": 18.751
     },
     {
       "action": "up",
       "key": "w",
-      "t": 21.65
+      "t": 19.447
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 21.65
+      "t": 19.447
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 23.65
+      "t": 21.447
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 24.2
+      "t": 21.997
     },
     {
       "action": "down",
       "key": "w",
-      "t": 24.75
+      "t": 22.547
     },
     {
       "action": "up",
       "key": "w",
-      "t": 25.71
+      "t": 23.243
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 25.71
+      "t": 23.243
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 27.71
+      "t": 25.243
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 28.26
+      "t": 25.793
     },
     {
       "action": "down",
       "key": "w",
-      "t": 28.81
+      "t": 26.343
     },
     {
       "action": "up",
       "key": "w",
-      "t": 29.77
+      "t": 27.039
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 29.77
+      "t": 27.039
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 31.77
+      "t": 29.039
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 32.32
+      "t": 29.589
     },
     {
       "action": "down",
       "key": "w",
-      "t": 32.87
+      "t": 30.139
     },
     {
       "action": "up",
       "key": "w",
-      "t": 33.83
+      "t": 30.834
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 33.83
+      "t": 30.834
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 35.83
+      "t": 32.834
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 36.38
+      "t": 33.384
     },
     {
       "action": "down",
       "key": "w",
-      "t": 36.93
+      "t": 33.934
     },
     {
       "action": "up",
       "key": "w",
-      "t": 37.89
+      "t": 34.63
     },
     {
       "duration": 2.0,
       "pause": true,
-      "t": 37.89
+      "t": 34.63
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "t": 39.89
+      "t": 36.63
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "t": 40.44
+      "t": 37.18
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 40.99
+      "t": 37.73
     },
     {
       "duration": 0.35,
-      "mouse_dx": -540,
+      "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 41.54
+      "t": 38.28
     },
     {
       "action": "down",
       "key": "w",
-      "t": 42.09
+      "t": 38.83
     },
     {
       "action": "up",
       "key": "w",
-      "t": 45.61
+      "t": 41.379
     },
     {
       "duration": 0.35,
-      "mouse_dx": 540,
+      "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 45.61
+      "t": 41.379
     },
     {
       "action": "down",
       "key": "w",
-      "t": 46.16
+      "t": 41.929
     },
     {
       "action": "up",
       "key": "w",
-      "t": 48.08
+      "t": 43.32
     }
   ],
   "route": [

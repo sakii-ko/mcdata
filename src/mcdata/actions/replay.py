@@ -11,10 +11,15 @@ from typing import Protocol
 from rich.console import Console
 
 console = Console()
+MOVEMENT_KEYS = ("w", "a", "s", "d", "space", "left_shift")
 
 
 class StartEvent(Protocol):
     def wait(self, timeout: float | None = None) -> bool: ...
+
+
+class StopEvent(Protocol):
+    def is_set(self) -> bool: ...
 
 
 def replay_trajectory(
@@ -23,60 +28,118 @@ def replay_trajectory(
     window_name: str = "Minecraft",
     startup_delay: float = 0,
     start_event: StartEvent | None = None,
+    stop_event: StopEvent | None = None,
     run_dir: Path | None = None,
 ) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     events = sorted(data.get("events", []), key=lambda e: float(e.get("t", 0)))
     if start_event is not None:
         console.print(f"Waiting for capture-ready signal before replaying {len(events)} events...")
-        start_event.wait()
+        if not _wait_for_start(start_event, stop_event):
+            return
     if startup_delay > 0:
         console.print(f"Waiting {startup_delay:.1f}s before replaying {len(events)} events...")
-        time.sleep(startup_delay)
+        if not _sleep_interruptible(startup_delay, stop_event):
+            return
     backend = _backend()
+    xdotool_warnings: set[tuple[str, ...]] = set()
     if backend == "xdotool":
-        _focus_window(window_name)
+        _focus_window(window_name, warned=xdotool_warnings)
     else:
         _xtest_focus_window(window_name)
+    inherited = _release_inherited_keys(backend, warned=xdotool_warnings)
+    if inherited:
+        console.print(f"Warning: inherited stuck keys: {inherited}")
     replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
     start = time.monotonic()
+    if replay_log is not None:
+        replay_log.write_start(start)
+        if inherited:
+            replay_log.write_control("inherited_stuck_keys", keys=inherited)
+    held: set[str] = set()
     try:
         for event in events:
+            if _stop_requested(stop_event):
+                break
             scheduled_t = float(event.get("t", 0))
             target = start + scheduled_t
-            if target > time.monotonic():
-                time.sleep(target - time.monotonic())
+            if target > time.monotonic() and not _sleep_interruptible(
+                target - time.monotonic(),
+                stop_event,
+            ):
+                break
             actual_t = time.monotonic() - start
             if backend == "xdotool":
-                _send_event_xdotool(event)
+                _send_event_xdotool(event, warned=xdotool_warnings, stop_event=stop_event)
             else:
-                _send_event_xtest(event)
+                _send_event_xtest(event, stop_event=stop_event)
+            _update_held(held, event)
             if replay_log is not None:
                 replay_log.write(event=event, scheduled_t=scheduled_t, actual_t=actual_t)
     finally:
+        released = sorted(held)
+        if released:
+            _release_keys(released, backend, warned=xdotool_warnings)
+            console.print(f"Released held replay keys: {released}")
+            if replay_log is not None:
+                replay_log.write_control("released_keys", keys=released)
         if replay_log is not None:
             replay_log.close()
 
 
 def prepare_capture_view(*, window_name: str = "Minecraft", hide_hud: bool = True, settle_sec: float = 1.0) -> None:
     backend = _backend()
+    xdotool_warnings: set[tuple[str, ...]] = set()
     if backend == "xdotool":
-        _focus_window(window_name)
+        _focus_window(window_name, warned=xdotool_warnings)
     else:
         _xtest_focus_window(window_name)
     time.sleep(0.2)
     if hide_hud:
         event = {"key": "f1", "action": "tap"}
         if backend == "xdotool":
-            _send_event_xdotool(event)
+            _send_event_xdotool(event, warned=xdotool_warnings)
         else:
             _send_event_xtest(event)
     if settle_sec > 0:
         time.sleep(settle_sec)
 
 
-def _focus_window(window_name: str) -> None:
-    subprocess.run(["xdotool", "search", "--name", window_name, "windowactivate"], check=False)
+def _wait_for_start(start_event: StartEvent, stop_event: StopEvent | None) -> bool:
+    while not _stop_requested(stop_event):
+        if start_event.wait(0.25):
+            return True
+    return False
+
+
+def _sleep_interruptible(seconds: float, stop_event: StopEvent | None) -> bool:
+    end = time.monotonic() + max(0.0, seconds)
+    while True:
+        if _stop_requested(stop_event):
+            return False
+        remaining = end - time.monotonic()
+        if remaining <= 0:
+            return True
+        time.sleep(min(0.25, remaining))
+
+
+def _stop_requested(stop_event: StopEvent | None) -> bool:
+    return bool(stop_event is not None and stop_event.is_set())
+
+
+def _update_held(held: set[str], event: dict) -> None:
+    if "key" not in event:
+        return
+    key = str(event["key"])
+    action = str(event.get("action", "tap"))
+    if action == "down":
+        held.add(key)
+    elif action in {"up", "tap"}:
+        held.discard(key)
+
+
+def _focus_window(window_name: str, *, warned: set[tuple[str, ...]] | None = None) -> None:
+    _run_xdotool(["search", "--name", window_name, "windowactivate"], warned=warned)
 
 
 def _backend() -> str:
@@ -91,21 +154,43 @@ def _backend() -> str:
         raise RuntimeError("action replay requires xdotool or python-xlib with XTEST") from exc
 
 
-def _send_event_xdotool(event: dict) -> None:
+def _send_event_xdotool(
+    event: dict,
+    *,
+    warned: set[tuple[str, ...]] | None = None,
+    stop_event: StopEvent | None = None,
+) -> None:
     if "key" in event:
         key = str(event["key"])
         action = event.get("action", "tap")
         if action == "down":
-            subprocess.run(["xdotool", "keydown", key], check=False)
+            _run_xdotool(["keydown", key], warned=warned)
         elif action == "up":
-            subprocess.run(["xdotool", "keyup", key], check=False)
+            _run_xdotool(["keyup", key], warned=warned)
         else:
-            subprocess.run(["xdotool", "key", key], check=False)
+            _run_xdotool(["key", key], warned=warned)
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
-            subprocess.run(["xdotool", "mousemove_relative", "--", str(dx), str(dy)], check=False)
-            if delay > 0:
-                time.sleep(delay)
+            if _stop_requested(stop_event):
+                break
+            _run_xdotool(["mousemove_relative", "--", str(dx), str(dy)], warned=warned)
+            if delay > 0 and not _sleep_interruptible(delay, stop_event):
+                break
+
+
+def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None) -> None:
+    cmd = ["xdotool", *args]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode == 0:
+        return
+    key = tuple(cmd[:2])
+    if warned is not None and key in warned:
+        return
+    if warned is not None:
+        warned.add(key)
+    detail = (result.stderr or result.stdout).strip()
+    suffix = f": {detail}" if detail else ""
+    console.print(f"Warning: xdotool command failed ({' '.join(cmd)}), rc={result.returncode}{suffix}")
 
 
 def _xtest_focus_window(window_name: str) -> None:
@@ -138,7 +223,7 @@ def _walk_windows(window):
         yield from _walk_windows(child)
 
 
-def _send_event_xtest(event: dict) -> None:
+def _send_event_xtest(event: dict, *, stop_event: StopEvent | None = None) -> None:
     from Xlib import X
     from Xlib.display import Display
     from Xlib.ext import xtest
@@ -156,14 +241,85 @@ def _send_event_xtest(event: dict) -> None:
                 xtest.fake_input(display, X.KeyPress, keycode)
                 xtest.fake_input(display, X.KeyRelease, keycode)
         else:
-            console.print(f"Warning: could not resolve keycode for {event['key']!r}")
+                console.print(f"Warning: could not resolve keycode for {event['key']!r}")
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
+            if _stop_requested(stop_event):
+                break
             xtest.fake_input(display, X.MotionNotify, x=dx, y=dy)
             display.sync()
-            if delay > 0:
-                time.sleep(delay)
+            if delay > 0 and not _sleep_interruptible(delay, stop_event):
+                break
     display.sync()
+
+
+def _release_inherited_keys(
+    backend: str,
+    *,
+    warned: set[tuple[str, ...]] | None = None,
+) -> list[str]:
+    if backend == "xdotool":
+        for key in MOVEMENT_KEYS:
+            _release_key_xdotool(key, warned=warned)
+        return []
+    return _release_pressed_keys_xtest(MOVEMENT_KEYS)
+
+
+def _release_keys(
+    keys: list[str],
+    backend: str,
+    *,
+    warned: set[tuple[str, ...]] | None = None,
+) -> None:
+    try:
+        if backend == "xdotool":
+            for key in keys:
+                _release_key_xdotool(key, warned=warned)
+        else:
+            _release_keys_xtest(keys)
+    except Exception as exc:
+        console.print(f"Warning: failed to release held replay keys {keys}: {exc}")
+
+
+def _release_key_xdotool(key: str, *, warned: set[tuple[str, ...]] | None = None) -> None:
+    _run_xdotool(["keyup", key], warned=warned)
+
+
+def _release_pressed_keys_xtest(keys: tuple[str, ...]) -> list[str]:
+    from Xlib import X
+    from Xlib.display import Display
+    from Xlib.ext import xtest
+
+    display = Display()
+    keymap = display.query_keymap()
+    released: list[str] = []
+    for key in keys:
+        keycode = _keycode(display, key)
+        if keycode and _keymap_has_key(keymap, keycode):
+            xtest.fake_input(display, X.KeyRelease, keycode)
+            released.append(key)
+    display.sync()
+    return released
+
+
+def _release_keys_xtest(keys: list[str]) -> None:
+    from Xlib import X
+    from Xlib.display import Display
+    from Xlib.ext import xtest
+
+    display = Display()
+    for key in keys:
+        keycode = _keycode(display, key)
+        if keycode:
+            xtest.fake_input(display, X.KeyRelease, keycode)
+    display.sync()
+
+
+def _keymap_has_key(keymap, keycode: int) -> bool:
+    byte = keymap[keycode // 8]
+    if not isinstance(byte, int):
+        byte = ord(byte)
+    return bool(byte & (1 << (keycode % 8)))
 
 
 def _keycode(display, key: str) -> int | None:
@@ -211,7 +367,11 @@ def _mouse_steps(event: dict) -> list[tuple[int, int, float]]:
 class _ReplayLog:
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._fh = path.open("a", encoding="utf-8")
+        self._fh = path.open("w", encoding="utf-8")
+
+    def write_start(self, mono: float) -> None:
+        self._fh.write(json.dumps({"event": "start", "mono": mono}, sort_keys=True) + "\n")
+        self._fh.flush()
 
     def write(self, *, event: dict, scheduled_t: float, actual_t: float) -> None:
         record = {
@@ -219,6 +379,14 @@ class _ReplayLog:
             "scheduled_t": scheduled_t,
             "actual_t": actual_t,
             "event": event,
+        }
+        self._fh.write(json.dumps(record, sort_keys=True) + "\n")
+        self._fh.flush()
+
+    def write_control(self, name: str, *, keys: list[str]) -> None:
+        record = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "event": {"replay_control": name, "keys": keys},
         }
         self._fh.write(json.dumps(record, sort_keys=True) + "\n")
         self._fh.flush()

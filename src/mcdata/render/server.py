@@ -10,6 +10,7 @@ from rich.console import Console
 
 from mcdata.mojang import version_manifest
 from mcdata.net import download_file, get_json
+from mcdata.render.scene import apply_world_state
 
 console = Console()
 
@@ -21,8 +22,9 @@ def ensure_server(
     game_version: str,
     profile_name: str,
     profile: dict[str, Any],
+    lane: str | None = None,
 ) -> dict[str, Any]:
-    server_profile = str(profile.get("world_profile") or profile_name)
+    server_profile = server_profile_name(profile, profile_name=profile_name, lane=lane)
     server_dir = server_root / server_profile
     cache_dir = server_root / "cache"
     server_dir.mkdir(parents=True, exist_ok=True)
@@ -40,7 +42,7 @@ def ensure_server(
             jar.write_bytes(cached_jar.read_bytes())
 
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
-    _write_server_properties(server_dir / "server.properties", profile)
+    _write_server_properties(server_dir / "server.properties", profile, level_name=server_profile)
     java = _java_path(launcher_dir)
     return {"server_dir": server_dir, "jar": jar, "java": java}
 
@@ -53,6 +55,7 @@ def start_server(
     profile_name: str,
     profile: dict[str, Any],
     run_dir: Path,
+    lane: str | None = None,
     wait_sec: int = 45,
 ) -> subprocess.Popen:
     info = ensure_server(
@@ -61,6 +64,7 @@ def start_server(
         game_version=game_version,
         profile_name=profile_name,
         profile=profile,
+        lane=lane,
     )
     log_path = run_dir / "server.log"
     memory = str(profile.get("server_memory", "2G"))
@@ -84,8 +88,40 @@ def start_server(
         start_new_session=True,
     )
     _wait_for_server_log(log_path, proc, wait_sec=wait_sec)
-    _apply_world_state(proc, profile)
+    apply_world_state(proc, profile)
     return proc
+
+
+def server_profile_name(
+    profile: dict[str, Any],
+    *,
+    profile_name: str,
+    lane: str | None = None,
+) -> str:
+    name = str(profile.get("world_profile") or profile_name)
+    if lane:
+        return f"{name}__{lane}"
+    return name
+
+
+def wait_for_player_join(
+    log_path: Path,
+    player: str,
+    *,
+    proc: subprocess.Popen | None = None,
+    wait_sec: int = 120,
+) -> None:
+    deadline = time.time() + wait_sec
+    needle = f"{player} joined the game"
+    while time.time() < deadline:
+        if proc is not None and proc.poll() is not None:
+            raise RuntimeError(f"Minecraft server exited before {player} joined; see {log_path}")
+        if log_path.exists():
+            text = log_path.read_text(encoding="utf-8", errors="replace")
+            if needle in text:
+                return
+        time.sleep(0.5)
+    raise TimeoutError(f"Timed out waiting for {player} to join; see {log_path}")
 
 
 def _server_download_url(game_version: str) -> str:
@@ -105,14 +141,14 @@ def _server_download_url(game_version: str) -> str:
     return str(server["url"])
 
 
-def _write_server_properties(path: Path, profile: dict[str, Any]) -> None:
+def _write_server_properties(path: Path, profile: dict[str, Any], *, level_name: str | None = None) -> None:
     props = {
         "allow-flight": "true",
         "difficulty": "peaceful",
         "enable-command-block": "true",
         "gamemode": str(profile.get("gamemode", "creative")),
         "generate-structures": "true",
-        "level-name": str(profile.get("world_profile", "world")),
+        "level-name": level_name or str(profile.get("world_profile", "world")),
         "level-seed": str(profile.get("world_seed", 1)),
         "max-players": "4",
         "motd": "mcdata",
@@ -145,124 +181,3 @@ def _wait_for_server_log(log_path: Path, proc: subprocess.Popen, *, wait_sec: in
                 return
         time.sleep(1)
     raise TimeoutError(f"Timed out waiting for Minecraft server; see {log_path}")
-
-
-def wait_for_player_join(log_path: Path, player: str, *, proc: subprocess.Popen | None = None, wait_sec: int = 120) -> None:
-    deadline = time.time() + wait_sec
-    needle = f"{player} joined the game"
-    while time.time() < deadline:
-        if proc is not None and proc.poll() is not None:
-            raise RuntimeError(f"Minecraft server exited before {player} joined; see {log_path}")
-        if log_path.exists():
-            text = log_path.read_text(encoding="utf-8", errors="replace")
-            if needle in text:
-                return
-        time.sleep(0.5)
-    raise TimeoutError(f"Timed out waiting for {player} to join; see {log_path}")
-
-
-def _apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
-    if proc.stdin is None:
-        return
-    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
-    gamerules = dict(state.get("gamerules", {}) or {})
-    commands = [
-        *_gamerule_commands(gamerules),
-        *_time_weather_commands(state),
-        *_scene_commands(state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}),
-    ]
-    _write_commands(proc, commands)
-
-
-def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
-    if proc.stdin is None:
-        return
-    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
-    commands = [*_time_weather_commands(state)]
-    player = state.get("player", {}) if isinstance(state.get("player"), dict) else {}
-    if player:
-        commands.append(_tp_command("@a", player))
-    _write_commands(proc, commands)
-
-
-def _write_commands(proc: subprocess.Popen, commands: list[str]) -> None:
-    if proc.stdin is None:
-        return
-    try:
-        for command in commands:
-            proc.stdin.write(command + "\n")
-        proc.stdin.flush()
-    except OSError:
-        return
-
-
-def _gamerule_commands(gamerules: dict[str, Any]) -> list[str]:
-    commands: list[str] = []
-    for key, value in sorted(gamerules.items()):
-        commands.append(f"gamerule {key} {_bool_or_value(value)}")
-    return commands
-
-
-def _time_weather_commands(state: dict[str, Any]) -> list[str]:
-    commands: list[str] = []
-    time_value = state.get("time")
-    if time_value is not None:
-        commands.append(f"time set {time_value}")
-    weather = state.get("weather")
-    if weather:
-        commands.append(f"weather {weather} {int(state.get('weather_duration_sec', 999999))}")
-    return commands
-
-
-def _tp_command(target: str, player: dict[str, Any]) -> str:
-    return (
-        f"tp {target} "
-        f"{_num(player.get('x', 0))} {_num(player.get('y', 67))} {_num(player.get('z', -12))} "
-        f"{_num(player.get('yaw', 0))} {_num(player.get('pitch', 15))}"
-    )
-
-
-def _scene_commands(scene: dict[str, Any]) -> list[str]:
-    if not scene.get("enabled", True):
-        return []
-    origin = scene.get("origin", [0, 64, 0])
-    ox, oy, oz = (int(origin[0]), int(origin[1]), int(origin[2]))
-    return [
-        f"forceload add {ox - 32} {oz - 32} {ox + 32} {oz + 32}",
-        f"fill {ox - 18} {oy} {oz - 18} {ox + 18} {oy + 28} {oz + 18} minecraft:air",
-        f"fill {ox - 24} {oy - 4} {oz - 24} {ox + 24} {oy - 2} {oz + 24} minecraft:dirt",
-        f"fill {ox - 24} {oy - 1} {oz - 24} {ox + 24} {oy - 1} {oz + 24} minecraft:grass_block",
-        f"fill {ox - 15} {oy - 1} {oz - 15} {ox + 15} {oy - 1} {oz + 15} minecraft:smooth_stone",
-        f"fill {ox - 14} {oy} {oz - 2} {ox - 5} {oy} {oz + 7} minecraft:water",
-        f"fill {ox - 14} {oy - 1} {oz - 2} {ox - 5} {oy - 1} {oz + 7} minecraft:blue_concrete",
-        f"fill {ox + 5} {oy} {oz - 2} {ox + 14} {oy} {oz + 7} minecraft:glass",
-        f"fill {ox + 5} {oy - 1} {oz - 2} {ox + 14} {oy - 1} {oz + 7} minecraft:white_concrete",
-        f"fill {ox - 2} {oy} {oz + 9} {ox + 2} {oy + 3} {oz + 9} minecraft:oak_leaves",
-        f"fill {ox - 4} {oy} {oz + 14} {ox + 4} {oy + 4} {oz + 14} minecraft:white_concrete",
-        f"setblock {ox - 10} {oy} {oz - 10} minecraft:torch",
-        f"setblock {ox - 7} {oy} {oz - 10} minecraft:lantern",
-        f"setblock {ox - 4} {oy} {oz - 10} minecraft:redstone_torch",
-        f"setblock {ox - 1} {oy} {oz - 10} minecraft:redstone_lamp[lit=true]",
-        f"setblock {ox + 2} {oy} {oz - 10} minecraft:lava",
-        f"setblock {ox + 5} {oy} {oz - 10} minecraft:sea_lantern",
-        f"setblock {ox + 8} {oy} {oz - 10} minecraft:glowstone",
-        f"setblock {ox + 11} {oy} {oz - 10} minecraft:beacon",
-        f"setblock {ox - 14} {oy} {oz + 12} minecraft:oak_log",
-        f"setblock {ox - 14} {oy + 1} {oz + 12} minecraft:oak_leaves",
-        f"setblock {ox + 14} {oy} {oz + 12} minecraft:polished_deepslate",
-        f"setblock {ox + 14} {oy + 1} {oz + 12} minecraft:glass",
-    ]
-
-
-def _bool_or_value(value: Any) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
-
-
-def _num(value: Any) -> str:
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        return f"{value:.3f}".rstrip("0").rstrip(".")
-    return str(value)

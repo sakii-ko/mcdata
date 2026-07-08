@@ -1,0 +1,54 @@
+{
+  "duration_sec": 24,
+  "events": [
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 2.5
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 5.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 7.5
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 10.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 12.5
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 15.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 17.5
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 20.0
+    }
+  ],
+  "type": "scripted"
+}

@@ -51,7 +51,7 @@
 |---|---|---|
 | `mcdata.actions`（strategies/viz） | config, paths | render、qa（策略不知道渲染的存在） |
 | `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
-| `mcdata.render` | config, paths, packs, net, mojang, modrinth, manifest, runlog, settings, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装） | actions 的策略实现（只消费 trajectory JSON 文件） |
+| `mcdata.render` | config, paths, packs, net, mojang, modrinth, manifest, runlog, settings, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | paths（settings 另可 config） | render、actions、qa（被依赖方，不反向依赖） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
@@ -72,12 +72,15 @@
   "route": [{"x": 0, "z": -14}], // 可选：规划路线（供可视化/QA 用）
   "events": [                    // 唯一被 replay 消费的字段
     {"t": 1.0, "key": "w", "action": "down"},
-    {"t": 1.5, "mouse_dx": 540, "mouse_dy": 0, "duration": 0.35}
+    {"t": 1.5, "mouse_dx": 540, "mouse_dy": 0, "duration": 0.35},
+    {"t": 2.2, "pause": true, "duration": 2.0}
   ]
 }
 ```
 
-约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。
+事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。
+
+约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过，仅记录 replay_log 时间戳；这是 trajectory 契约的前向兼容规则。
 
 ### run dir（render → qa / 数据集）
 
@@ -91,7 +94,7 @@
 
 ### manifest.json（每个 run 的完整可复现描述）
 
-必含字段：`schema_version`、`run_id`、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
+必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane` 字段；schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
 
 ## 测试策略分层
 

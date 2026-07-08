@@ -3,6 +3,7 @@ import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS
 from mcdata.config import load_yaml
+from mcdata.render.scene import _scene_commands
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,6 +34,36 @@ def test_action_strategy_types_are_registered() -> None:
 
     for name, spec in strategies.items():
         assert spec.get("type") in STRATEGY_BUILDERS, name
+
+
+def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    glass = "fill 1 64 -11 3 64 -9 minecraft:glass"
+    lava = "setblock 2 64 -10 minecraft:lava"
+
+    assert glass in commands
+    assert lava in commands
+    assert commands.index(glass) < commands.index(lava)
+
+
+def test_scene_air_clear_is_split_under_fill_limit() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    assert "fill -18 64 -18 18 92 18 minecraft:air" not in commands
+    assert "fill -18 64 -18 18 86 18 minecraft:air" in commands
+    assert "fill -18 87 -18 18 92 18 minecraft:air" in commands
+    assert commands.index("fill -18 64 -18 18 86 18 minecraft:air") < commands.index(
+        "fill -18 87 -18 18 92 18 minecraft:air"
+    )
+
+
+def test_scene_pool_is_below_walk_surface() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    assert "fill -14 64 -2 -5 64 7 minecraft:water" not in commands
+    assert "fill -14 63 -2 -5 63 7 minecraft:water" in commands
+    assert "fill -14 62 -2 -5 62 7 minecraft:blue_concrete" in commands
 
 
 def test_qa_package_does_not_import_render_or_actions() -> None:

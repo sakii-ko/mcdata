@@ -1,0 +1,88 @@
+{
+  "duration_sec": 32,
+  "events": [
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 2.0
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 4.0
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 5.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 7.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 7.55
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 9.6
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 11.1
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 13.1
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 13.65
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 15.7
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 17.7
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 19.7
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 20.25
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 22.3
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 24.8
+    }
+  ],
+  "type": "scripted"
+}

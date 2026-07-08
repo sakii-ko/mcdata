@@ -8,19 +8,31 @@ from rich.console import Console
 
 from mcdata.actions import generate_strategy
 from mcdata.actions.viz import load_trajectory, render_trajectory_map
-from mcdata.config import load_profile, load_yaml
+from mcdata.config import load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
+    matrix_trajectory_path,
     remote_tmux_command,
-    resolve_game_version,
+    run_matrix_profiles,
 )
+from mcdata.settings import apply_display_override
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
+
+
+def _hidden_positive_float(value: object, default: float, option_name: str) -> float:
+    try:
+        result = float(value)
+    except (TypeError, ValueError):
+        result = default
+    if result <= 0:
+        raise typer.BadParameter(f"{option_name} must be greater than 0")
+    return result
 
 
 @app.command()
@@ -33,9 +45,10 @@ def doctor() -> None:
 def bootstrap(
     profile: str = typer.Option("fabric_low", "--profile", "-p"),
     root: Path = typer.Option(Path("."), "--root"),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Create/update a Minecraft instance for a profile."""
-    bootstrap_profile(root.resolve(), profile)
+    bootstrap_profile(root.resolve(), profile, game_version=game_version)
 
 
 @app.command()
@@ -48,8 +61,20 @@ def run(
     duration: Optional[int] = typer.Option(None, "--duration"),
     with_server: bool = typer.Option(False, "--with-server"),
     replay_actions: bool = typer.Option(False, "--replay-actions"),
+    display: Optional[str] = typer.Option(None, "--display"),
+    server_port: Optional[int] = typer.Option(None, "--server-port"),
+    lane: Optional[str] = typer.Option(None, "--lane"),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
+    probe_interval: float = typer.Option(5.0, "--probe-interval", hidden=True),
+    debug_no_reapply: bool = typer.Option(False, "--debug-no-reapply", hidden=True),
+    debug_no_replay_gate: bool = typer.Option(False, "--debug-no-replay-gate", hidden=True),
 ) -> None:
     """Launch Minecraft for a profile."""
+    debug_no_reapply = debug_no_reapply if isinstance(debug_no_reapply, bool) else False
+    debug_no_replay_gate = debug_no_replay_gate if isinstance(debug_no_replay_gate, bool) else False
+    probe_interval = _hidden_positive_float(probe_interval, 5.0, "--probe-interval")
+    if display:
+        apply_display_override(display)
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
     trajectory_path: Path | None = None
@@ -68,6 +93,12 @@ def run(
         with_server=with_server,
         replay_actions=replay_actions,
         trajectory_path=trajectory_path,
+        game_version=game_version,
+        server_port=server_port,
+        lane=lane,
+        probe_interval=probe_interval,
+        debug_no_reapply=debug_no_reapply,
+        debug_no_replay_gate=debug_no_replay_gate,
     )
 
 
@@ -115,35 +146,39 @@ def run_matrix(
     with_server: bool = typer.Option(True, "--with-server/--no-server"),
     replay_actions: bool = typer.Option(True, "--replay-actions/--no-replay-actions"),
     bootstrap: bool = typer.Option(True, "--bootstrap/--no-bootstrap"),
+    display: Optional[str] = typer.Option(None, "--display"),
+    server_port: Optional[int] = typer.Option(None, "--server-port"),
+    lane: Optional[str] = typer.Option(None, "--lane"),
+    probe_interval: float = typer.Option(5.0, "--probe-interval", hidden=True),
+    game_version: Optional[str] = typer.Option(None, "--game-version"),
 ) -> None:
     """Run the same trajectory/world through multiple render-quality profiles."""
+    probe_interval = _hidden_positive_float(probe_interval, 5.0, "--probe-interval")
+    if display:
+        apply_display_override(display)
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
     names = [item.strip() for item in profiles.split(",") if item.strip()]
-    trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix.json"
-    generate_strategy(paths.configs, strategy, trajectory_path)
-    console.print(f"Wrote shared trajectory: {trajectory_path}")
     if not names:
         raise typer.BadParameter("At least one profile is required")
-    first_profile = load_profile(paths.configs, names[0])
-    game_version = resolve_game_version(first_profile)
-    console.print(f"Resolved matrix Minecraft version once: {game_version}")
-    for name in names:
-        console.print(f"Matrix profile: {name}")
-        if bootstrap:
-            bootstrap_profile(root, name, game_version=game_version)
-        launch_profile(
-            root,
-            name,
-            dry_run=False,
-            capture=capture,
-            strategy=strategy,
-            duration=duration,
-            with_server=with_server,
-            replay_actions=replay_actions,
-            trajectory_path=trajectory_path,
-            game_version=game_version,
-        )
+    trajectory_path = matrix_trajectory_path(paths, strategy=strategy, lane=lane)
+    generate_strategy(paths.configs, strategy, trajectory_path)
+    console.print(f"Wrote shared trajectory: {trajectory_path}")
+    run_matrix_profiles(
+        root,
+        names,
+        strategy=strategy,
+        duration=duration,
+        capture=capture,
+        with_server=with_server,
+        replay_actions=replay_actions,
+        bootstrap=bootstrap,
+        trajectory_path=trajectory_path,
+        game_version=game_version,
+        server_port=server_port,
+        lane=lane,
+        probe_interval=probe_interval,
+    )
 
 
 @app.command("qa-run")
