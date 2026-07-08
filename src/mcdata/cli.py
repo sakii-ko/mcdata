@@ -10,6 +10,7 @@ from mcdata.actions import generate_strategy
 from mcdata.config import load_profile, load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
+from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
@@ -123,6 +124,36 @@ def run_matrix(
             trajectory_path=trajectory_path,
             game_version=game_version,
         )
+
+
+@app.command("qa-run")
+def qa_run(
+    input_path: Path = typer.Argument(...),
+    frames: int = typer.Option(12, "--frames"),
+    out_dir: Optional[Path] = typer.Option(None, "--out-dir"),
+    border_mean_threshold: float = typer.Option(6.0, "--border-mean-threshold"),
+    border_var_threshold: float = typer.Option(8.0, "--border-var-threshold"),
+) -> None:
+    """Generate offline QA report for a run dir or video file."""
+    report = write_run_report(
+        input_path,
+        frames=frames,
+        out_dir=out_dir,
+        border_mean_threshold=border_mean_threshold,
+        border_var_threshold=border_var_threshold,
+    )
+    console.print(f"Wrote QA report: {report['outputs']['markdown']}")
+
+
+@app.command("qa-compare")
+def qa_compare(
+    inputs: list[Path] = typer.Argument(...),
+    frames: int = typer.Option(12, "--frames"),
+    out_dir: Path = typer.Option(Path("qa_compare"), "--out-dir"),
+) -> None:
+    """Compare aligned frames across two or more run dirs/videos."""
+    report = write_compare_report(inputs, frames=frames, out_dir=out_dir)
+    console.print(f"Wrote QA compare report: {report['outputs']['markdown']}")
 
 
 @app.command("remote-command")

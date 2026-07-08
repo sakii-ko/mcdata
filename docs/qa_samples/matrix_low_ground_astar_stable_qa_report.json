@@ -1,0 +1,552 @@
+{
+  "expected": {
+    "fps": 24.0,
+    "height": 720,
+    "width": 1280
+  },
+  "frames": [
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 70.91535949707031,
+            "var": 1745.599365234375
+          },
+          "left": {
+            "mean": 96.47720336914062,
+            "var": 338.6408386230469
+          },
+          "right": {
+            "mean": 67.9752197265625,
+            "var": 342.4913635253906
+          },
+          "top": {
+            "mean": 90.71623229980469,
+            "var": 143.1566162109375
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 43.99040222167969,
+        "p50": 106.32719421386719,
+        "p95": 149.172607421875
+      },
+      "timestamp_sec": 1.846
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 71.82588958740234,
+            "var": 1613.5325927734375
+          },
+          "left": {
+            "mean": 84.79920196533203,
+            "var": 428.2398376464844
+          },
+          "right": {
+            "mean": 93.53913879394531,
+            "var": 492.0718688964844
+          },
+          "top": {
+            "mean": 119.08308410644531,
+            "var": 390.91497802734375
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 54.39839553833008,
+        "p50": 129.50379943847656,
+        "p95": 178.6531982421875
+      },
+      "timestamp_sec": 3.692
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 78.81623840332031,
+            "var": 1675.0413818359375
+          },
+          "left": {
+            "mean": 93.55340576171875,
+            "var": 426.7408447265625
+          },
+          "right": {
+            "mean": 103.39286041259766,
+            "var": 406.6925354003906
+          },
+          "top": {
+            "mean": 124.93412780761719,
+            "var": 342.3666076660156
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 58.48899841308594,
+        "p50": 134.0,
+        "p95": 185.0102081298828
+      },
+      "timestamp_sec": 5.538
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 73.03356170654297,
+            "var": 1665.9818115234375
+          },
+          "left": {
+            "mean": 86.57447814941406,
+            "var": 768.6025390625
+          },
+          "right": {
+            "mean": 105.32046508789062,
+            "var": 401.6996154785156
+          },
+          "top": {
+            "mean": 133.5696258544922,
+            "var": 263.07049560546875
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 48.11399841308594,
+        "p50": 113.12660217285156,
+        "p95": 176.21881103515625
+      },
+      "timestamp_sec": 7.385
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 77.82293701171875,
+            "var": 1801.7763671875
+          },
+          "left": {
+            "mean": 92.04254913330078,
+            "var": 914.67431640625
+          },
+          "right": {
+            "mean": 104.94468688964844,
+            "var": 2364.8349609375
+          },
+          "top": {
+            "mean": 118.70088195800781,
+            "var": 987.8837890625
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 43.931800842285156,
+        "p50": 117.65260314941406,
+        "p95": 196.78060913085938
+      },
+      "timestamp_sec": 9.231
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 96.31490325927734,
+            "var": 2192.34521484375
+          },
+          "left": {
+            "mean": 111.04325103759766,
+            "var": 1500.920654296875
+          },
+          "right": {
+            "mean": 107.44800567626953,
+            "var": 667.0751953125
+          },
+          "top": {
+            "mean": 126.64628601074219,
+            "var": 898.984375
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 41.25959777832031,
+        "p50": 138.13360595703125,
+        "p95": 191.3090057373047
+      },
+      "timestamp_sec": 11.077
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 87.0535659790039,
+            "var": 1821.211181640625
+          },
+          "left": {
+            "mean": 100.19053649902344,
+            "var": 1474.691162109375
+          },
+          "right": {
+            "mean": 106.1670913696289,
+            "var": 1230.911865234375
+          },
+          "top": {
+            "mean": 107.327392578125,
+            "var": 1919.8453369140625
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 32.2161979675293,
+        "p50": 137.0,
+        "p95": 189.73141479492188
+      },
+      "timestamp_sec": 12.923
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 91.00312042236328,
+            "var": 2042.8988037109375
+          },
+          "left": {
+            "mean": 120.29008483886719,
+            "var": 646.0228271484375
+          },
+          "right": {
+            "mean": 92.87071228027344,
+            "var": 1941.97119140625
+          },
+          "top": {
+            "mean": 105.2885513305664,
+            "var": 744.39453125
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 33.85799789428711,
+        "p50": 147.5026092529297,
+        "p95": 192.9405975341797
+      },
+      "timestamp_sec": 14.769
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 88.83931732177734,
+            "var": 1978.9599609375
+          },
+          "left": {
+            "mean": 116.91413116455078,
+            "var": 624.6412963867188
+          },
+          "right": {
+            "mean": 90.41714477539062,
+            "var": 1859.6798095703125
+          },
+          "top": {
+            "mean": 102.13621520996094,
+            "var": 723.7550659179688
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 33.68479919433594,
+        "p50": 145.92420196533203,
+        "p95": 193.014404296875
+      },
+      "timestamp_sec": 16.615
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 80.83177185058594,
+            "var": 1684.978515625
+          },
+          "left": {
+            "mean": 98.78125,
+            "var": 443.5703125
+          },
+          "right": {
+            "mean": 118.06806945800781,
+            "var": 537.75146484375
+          },
+          "top": {
+            "mean": 128.2454833984375,
+            "var": 315.8755798339844
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 63.20060348510742,
+        "p50": 138.8303985595703,
+        "p95": 197.77659606933594
+      },
+      "timestamp_sec": 18.462
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 72.01972961425781,
+            "var": 1693.5728759765625
+          },
+          "left": {
+            "mean": 91.4898452758789,
+            "var": 817.765625
+          },
+          "right": {
+            "mean": 91.12621307373047,
+            "var": 830.0462646484375
+          },
+          "top": {
+            "mean": 138.62393188476562,
+            "var": 228.1427764892578
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 50.15039825439453,
+        "p50": 99.72359466552734,
+        "p95": 183.6531982421875
+      },
+      "timestamp_sec": 20.308
+    },
+    {
+      "border": {
+        "band_px": 8,
+        "edges": {
+          "bottom": {
+            "mean": 78.72708129882812,
+            "var": 1639.659912109375
+          },
+          "left": {
+            "mean": 101.97268676757812,
+            "var": 1280.7037353515625
+          },
+          "right": {
+            "mean": 100.9281234741211,
+            "var": 1097.11376953125
+          },
+          "top": {
+            "mean": 157.43524169921875,
+            "var": 104.89408111572266
+          }
+        },
+        "flagged_edges": {
+          "bottom": false,
+          "left": false,
+          "right": false,
+          "top": false
+        },
+        "has_black_border": false,
+        "mean_threshold": 6.0,
+        "var_threshold": 8.0
+      },
+      "brightness": {
+        "p5": 49.85539855957033,
+        "p50": 99.22339630126953,
+        "p95": 184.6531982421875
+      },
+      "timestamp_sec": 22.154
+    }
+  ],
+  "input": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812",
+  "outputs": {
+    "contact_sheet": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812/contact_sheet.jpg",
+    "json": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812/qa_report.json",
+    "markdown": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812/qa_report.md"
+  },
+  "probe": {
+    "codec": "h264",
+    "duration_sec": 24.0,
+    "fps": 24.0,
+    "height": 720,
+    "raw": {
+      "format": {
+        "bit_rate": "2414558",
+        "duration": "24.000000",
+        "filename": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812/capture.mp4",
+        "format_long_name": "QuickTime / MOV",
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "nb_programs": 0,
+        "nb_streams": 1,
+        "probe_score": 100,
+        "size": "7243675",
+        "start_time": "0.000000",
+        "tags": {
+          "compatible_brands": "isomiso2avc1mp41",
+          "encoder": "Lavf58.76.100",
+          "major_brand": "isom",
+          "minor_version": "512"
+        }
+      },
+      "streams": [
+        {
+          "avg_frame_rate": "24/1",
+          "bit_rate": "2411979",
+          "bits_per_raw_sample": "8",
+          "chroma_location": "left",
+          "closed_captions": 0,
+          "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+          "codec_name": "h264",
+          "codec_tag": "0x31637661",
+          "codec_tag_string": "avc1",
+          "codec_type": "video",
+          "coded_height": 720,
+          "coded_width": 1280,
+          "disposition": {
+            "attached_pic": 0,
+            "clean_effects": 0,
+            "comment": 0,
+            "default": 1,
+            "dub": 0,
+            "forced": 0,
+            "hearing_impaired": 0,
+            "karaoke": 0,
+            "lyrics": 0,
+            "original": 0,
+            "timed_thumbnails": 0,
+            "visual_impaired": 0
+          },
+          "duration": "24.000000",
+          "duration_ts": 294912,
+          "has_b_frames": 2,
+          "height": 720,
+          "index": 0,
+          "is_avc": "true",
+          "level": 31,
+          "nal_length_size": "4",
+          "nb_frames": "576",
+          "pix_fmt": "yuv420p",
+          "profile": "High",
+          "r_frame_rate": "24/1",
+          "refs": 1,
+          "start_pts": 0,
+          "start_time": "0.000000",
+          "tags": {
+            "handler_name": "VideoHandler",
+            "language": "und",
+            "vendor_id": "[0][0][0][0]"
+          },
+          "time_base": "1/12288",
+          "width": 1280
+        }
+      ]
+    },
+    "width": 1280
+  },
+  "video": "runs/screen_recordings/matrix_low_ground_astar_stable_24fps_20260707T170812/capture.mp4",
+  "warnings": []
+}

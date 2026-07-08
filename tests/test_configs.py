@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS
 from mcdata.config import load_yaml
@@ -32,3 +33,17 @@ def test_action_strategy_types_are_registered() -> None:
 
     for name, spec in strategies.items():
         assert spec.get("type") in STRATEGY_BUILDERS, name
+
+
+def test_qa_package_does_not_import_render_or_actions() -> None:
+    for path in (ROOT / "src" / "mcdata" / "qa").glob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                names = [node.module]
+            else:
+                continue
+            assert not any(name.startswith("mcdata.render") for name in names), path
+            assert not any(name.startswith("mcdata.actions") for name in names), path
