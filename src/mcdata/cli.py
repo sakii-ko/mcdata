@@ -7,10 +7,17 @@ import typer
 from rich.console import Console
 
 from mcdata.actions import generate_strategy
-from mcdata.config import load_yaml
+from mcdata.actions.viz import load_trajectory, render_trajectory_map
+from mcdata.config import load_profile, load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
-from mcdata.render.pipeline import bootstrap_profile, launch_profile, remote_tmux_command
+from mcdata.qa.report import write_compare_report, write_run_report
+from mcdata.render.pipeline import (
+    bootstrap_profile,
+    launch_profile,
+    remote_tmux_command,
+    resolve_game_version,
+)
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -75,6 +82,25 @@ def make_trajectory(
     console.print(f"Wrote {len(trajectory.get('events', []))} events to {out}")
 
 
+@app.command("viz-trajectory")
+def viz_trajectory(
+    traj: Path = typer.Argument(...),
+    out: Path = typer.Option(..., "--out"),
+    spec_strategy: Optional[str] = typer.Option(None, "--spec-strategy"),
+    root: Path = typer.Option(Path("."), "--root"),
+) -> None:
+    """Render a top-down trajectory map."""
+    spec = None
+    if spec_strategy:
+        strategies = load_yaml(root.resolve() / "configs" / "actions.yml").get("strategies", {})
+        if spec_strategy not in strategies:
+            known = ", ".join(sorted(strategies))
+            raise typer.BadParameter(f"Unknown strategy '{spec_strategy}'. Known strategies: {known}")
+        spec = dict(strategies[spec_strategy])
+    render_trajectory_map(load_trajectory(traj), spec=spec, out=out)
+    console.print(f"Wrote trajectory map: {out}")
+
+
 @app.command("run-matrix")
 def run_matrix(
     profiles: str = typer.Option(
@@ -97,10 +123,15 @@ def run_matrix(
     trajectory_path = paths.output_dir / "trajectories" / f"{strategy}_matrix.json"
     generate_strategy(paths.configs, strategy, trajectory_path)
     console.print(f"Wrote shared trajectory: {trajectory_path}")
+    if not names:
+        raise typer.BadParameter("At least one profile is required")
+    first_profile = load_profile(paths.configs, names[0])
+    game_version = resolve_game_version(first_profile)
+    console.print(f"Resolved matrix Minecraft version once: {game_version}")
     for name in names:
         console.print(f"Matrix profile: {name}")
         if bootstrap:
-            bootstrap_profile(root, name)
+            bootstrap_profile(root, name, game_version=game_version)
         launch_profile(
             root,
             name,
@@ -111,7 +142,38 @@ def run_matrix(
             with_server=with_server,
             replay_actions=replay_actions,
             trajectory_path=trajectory_path,
+            game_version=game_version,
         )
+
+
+@app.command("qa-run")
+def qa_run(
+    input_path: Path = typer.Argument(...),
+    frames: int = typer.Option(12, "--frames"),
+    out_dir: Optional[Path] = typer.Option(None, "--out-dir"),
+    border_mean_threshold: float = typer.Option(6.0, "--border-mean-threshold"),
+    border_var_threshold: float = typer.Option(8.0, "--border-var-threshold"),
+) -> None:
+    """Generate offline QA report for a run dir or video file."""
+    report = write_run_report(
+        input_path,
+        frames=frames,
+        out_dir=out_dir,
+        border_mean_threshold=border_mean_threshold,
+        border_var_threshold=border_var_threshold,
+    )
+    console.print(f"Wrote QA report: {report['outputs']['markdown']}")
+
+
+@app.command("qa-compare")
+def qa_compare(
+    inputs: list[Path] = typer.Argument(...),
+    frames: int = typer.Option(12, "--frames"),
+    out_dir: Path = typer.Option(Path("qa_compare"), "--out-dir"),
+) -> None:
+    """Compare aligned frames across two or more run dirs/videos."""
+    report = write_compare_report(inputs, frames=frames, out_dir=out_dir)
+    console.print(f"Wrote QA compare report: {report['outputs']['markdown']}")
 
 
 @app.command("remote-command")

@@ -54,6 +54,135 @@ strategies:
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
 
+  water_edge_loop:
+    type: "astar_walk"
+    start: [0, -14]
+    goals:
+      - [-4, -3]
+      - [-4, 8]
+      - [-15, 8]
+      - [-15, -3]
+      - [-4, -3]
+      - [0, -14]
+    bounds: [-16, 16, -14, 14]
+    blocked_rects:
+      - [-14, -2, -5, 7]
+      - [5, -2, 14, 7]
+    blocked:
+      - [-10, -10]
+      - [-7, -10]
+      - [-4, -10]
+      - [-1, -10]
+      - [2, -10]
+      - [5, -10]
+      - [8, -10]
+      - [11, -10]
+    waypoint_actions:
+      - at: [-4, -3]
+        pause_sec: 2.0
+        look_dy_px: 40
+      - at: [-4, 8]
+        pause_sec: 2.0
+        look_dy_px: 40
+    turn_px_per_degree: 6.0
+    seconds_per_block: 0.32
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  glass_edge_loop:
+    type: "astar_walk"
+    start: [0, -14]
+    goals:
+      - [4, -3]
+      - [4, 8]
+      - [15, 8]
+      - [15, -3]
+      - [4, -3]
+      - [0, -14]
+    bounds: [-16, 16, -14, 14]
+    blocked_rects:
+      - [-14, -2, -5, 7]
+      - [5, -2, 14, 7]
+    blocked:
+      - [-10, -10]
+      - [-7, -10]
+      - [-4, -10]
+      - [-1, -10]
+      - [2, -10]
+      - [5, -10]
+      - [8, -10]
+      - [11, -10]
+    waypoint_actions:
+      - at: [4, -3]
+        pause_sec: 2.0
+        look_dy_px: 35
+      - at: [4, 8]
+        pause_sec: 2.0
+        look_dy_px: 35
+    turn_px_per_degree: 6.0
+    seconds_per_block: 0.32
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  light_closeup_tour:
+    type: "astar_walk"
+    start: [0, -14]
+    goals:
+      - [-10, -8]
+      - [-7, -8]
+      - [-4, -8]
+      - [-1, -8]
+      - [2, -8]
+      - [5, -8]
+      - [8, -8]
+      - [11, -8]
+      - [0, -14]
+    bounds: [-14, 14, -14, 14]
+    blocked_rects:
+      - [-14, -2, -5, 7]
+      - [5, -2, 14, 7]
+    blocked:
+      - [-10, -10]
+      - [-7, -10]
+      - [-4, -10]
+      - [-1, -10]
+      - [2, -10]
+      - [5, -10]
+      - [8, -10]
+      - [11, -10]
+    waypoint_actions:
+      - at: [-10, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [-7, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [-4, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [-1, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [2, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [5, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [8, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+      - at: [11, -8]
+        pause_sec: 2.0
+        look_dy_px: 20
+    turn_px_per_degree: 6.0
+    seconds_per_block: 0.32
+    look_pitch_px: 20
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
   walk_grid:
     type: "grid_patrol"
     loops: 5

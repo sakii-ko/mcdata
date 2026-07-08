@@ -1,0 +1,190 @@
+{
+  "capture": {
+    "enabled": false,
+    "ffmpeg_cmd": null,
+    "ffprobe": null,
+    "file": null,
+    "settings": {
+      "desktop": false,
+      "display": ":0",
+      "fps": 24,
+      "height": 720,
+      "hide_hud": false,
+      "ready_delay_sec": 15.0,
+      "view_settle_sec": 1.0,
+      "width": 1280
+    }
+  },
+  "ended_at": "2026-07-08T05:33:16.652747+00:00",
+  "env": {
+    "display": ":0",
+    "gl_renderer": null,
+    "gpu": [
+      {
+        "driver_version": "580.126.20",
+        "index": "0",
+        "name": "NVIDIA H100 80GB HBM3"
+      }
+    ],
+    "hostname": "cci-30cce54c-c3a5-465d-a010-e227823c8ac0-0",
+    "platform": "Linux-5.15.0-126-generic-x86_64-with-glibc2.35",
+    "python": "3.13.13"
+  },
+  "error": null,
+  "git": {
+    "commit": "51fd9752974e669519e8383cf67e69a890da056a",
+    "dirty": false,
+    "status_porcelain": []
+  },
+  "mc_version": "26.2",
+  "profile": {
+    "asset_set": "vanilla",
+    "config": {
+      "asset_set": "vanilla",
+      "capture_fps": 24,
+      "capture_ready_delay_sec": 15,
+      "description": "3-way matrix baseline: vanilla resources, no shader, identical world/action.",
+      "gamemode": "creative",
+      "height": 720,
+      "jvm_args": "-Xms2G -Xmx6G -XX:+UseG1GC",
+      "loader": "fabric",
+      "main_dir": ".mcdata/launcher",
+      "mods": [
+        "fabric-api",
+        "sodium",
+        "iris",
+        "modmenu",
+        "advancementdisable",
+        "no-chat-reports"
+      ],
+      "options": {
+        "enableVsync": "false",
+        "fov": "0.0",
+        "gamma": "1.0",
+        "maxFps": "120"
+      },
+      "output_dir": "runs",
+      "quality": "low",
+      "server_dir": ".mcdata/servers",
+      "server_memory": "2G",
+      "server_port": 25570,
+      "username": "mcdata_bot",
+      "version_strategy": "latest_modded",
+      "width": 1280,
+      "work_dir": ".mcdata/instances",
+      "world_profile": "render_matrix_base",
+      "world_seed": 1,
+      "world_state": {
+        "gamerules": {
+          "command_block_output": false,
+          "keep_inventory": true,
+          "send_command_feedback": false,
+          "show_death_messages": false
+        },
+        "player": {
+          "pitch": 18,
+          "x": 0,
+          "y": 64,
+          "yaw": 0,
+          "z": -14
+        },
+        "scene": {
+          "enabled": true,
+          "origin": [
+            0,
+            64,
+            0
+          ]
+        },
+        "time": "noon",
+        "weather": "clear",
+        "weather_duration_sec": 999999
+      }
+    },
+    "height": 720,
+    "loader": "fabric",
+    "name": "matrix_low",
+    "quality": "low",
+    "server_port": 25570,
+    "width": 1280
+  },
+  "resources": {
+    "asset_set": "vanilla",
+    "mods": [
+      {
+        "filename": "advancementdisable-fabric-1.1.0+26.1.2.jar",
+        "path": "/root/nas/bigdata1/cjw/projs/mcdata/.mcdata/instances/matrix_low/mods/advancementdisable-fabric-1.1.0+26.1.2.jar",
+        "sha256": "b249eb3abda6c0f6af43d945d2aa373a2f17c70acbbc8fa9fd0c1d2c75fcbfe8",
+        "size_bytes": 437175
+      },
+      {
+        "filename": "fabric-api-0.154.2+26.2.jar",
+        "path": "/root/nas/bigdata1/cjw/projs/mcdata/.mcdata/instances/matrix_low/mods/fabric-api-0.154.2+26.2.jar",
+        "sha256": "05e6c3cc98bc534aef7f1f0483c0bbfd1454bd1cf37751871f8ff1a66e9d7446",
+        "size_bytes": 2523877
+      },
+      {
+        "filename": "iris-fabric-1.11.1+mc26.2.jar",
+        "path": "/root/nas/bigdata1/cjw/projs/mcdata/.mcdata/instances/matrix_low/mods/iris-fabric-1.11.1+mc26.2.jar",
+        "sha256": "2307d0ae6d39197b00c974d353c65ce521adc9ab6e3913c28cbf8cb2b694fc86",
+        "size_bytes": 2812824
+      },
+      {
+        "filename": "modmenu-20.0.0-beta.4.jar",
+        "path": "/root/nas/bigdata1/cjw/projs/mcdata/.mcdata/instances/matrix_low/mods/modmenu-20.0.0-beta.4.jar",
+        "sha256": "8e370529288f3d744051604347f32d00c8ea95f2a9efe453c29fe2c4de4bd45b",
+        "size_bytes": 613011
+      },
+      {
+        "filename": "sodium-fabric-0.9.1-beta.4+mc26.2.jar",
+        "path": "/root/nas/bigdata1/cjw/projs/mcdata/.mcdata/instances/matrix_low/mods/sodium-fabric-0.9.1-beta.4+mc26.2.jar",
+        "sha256": "8fa1462613b038f2bf510157a424f52feb71242d88018576bee09838d61466af",
+        "size_bytes": 1834386
+      }
+    ],
+    "resourcepacks": [],
+    "shaderpacks": []
+  },
+  "run_id": "20260708T053312Z_matrix_low",
+  "schema_version": 1,
+  "started_at": "2026-07-08T05:33:12.601019+00:00",
+  "trajectory": {
+    "duration_sec": 52.09,
+    "event_count": 46,
+    "path": "/root/nas/bigdata1/cjw/projs/mcdata/runs/20260708T053312Z_matrix_low/trajectory.json",
+    "sha256": "ad4930a8406093a04cfc03f23a747e2fb141cc2c2a6adf6da6621ebc4f5a2f3a",
+    "source_path": "/root/nas/bigdata1/cjw/projs/mcdata/runs/trajectories/ground_astar_loop.json",
+    "strategy": "ground_astar_loop",
+    "type": "astar_walk"
+  },
+  "world": {
+    "profile": "render_matrix_base",
+    "seed": 1,
+    "state": {
+      "gamerules": {
+        "command_block_output": false,
+        "keep_inventory": true,
+        "send_command_feedback": false,
+        "show_death_messages": false
+      },
+      "player": {
+        "pitch": 18,
+        "x": 0,
+        "y": 64,
+        "yaw": 0,
+        "z": -14
+      },
+      "scene": {
+        "enabled": true,
+        "origin": [
+          0,
+          64,
+          0
+        ]
+      },
+      "time": "noon",
+      "weather": "clear",
+      "weather_duration_sec": 999999
+    }
+  }
+}

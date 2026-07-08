@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from mcdata.config import load_yaml
+
+StrategyBuilder = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 
 def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
@@ -14,27 +16,35 @@ def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
     if name not in strategies:
         known = ", ".join(sorted(strategies))
         raise RuntimeError(f"Unknown strategy '{name}'. Known strategies: {known}")
-    spec = dict(strategies[name])
-    kind = spec.get("type")
-    if kind == "scripted":
-        trajectory = _scripted(spec)
-    elif kind == "astar_walk":
-        trajectory = _astar_walk(spec)
-    elif kind == "scene_probe":
-        trajectory = _scene_probe(spec)
-    elif kind == "look_scan":
-        trajectory = _look_scan(spec)
-    elif kind == "grid_patrol":
-        trajectory = _grid_patrol(spec)
-    elif kind == "random":
-        trajectory = _random(spec)
-    elif kind == "external":
-        trajectory = {"name": name, "type": "external", "spec": spec, "events": []}
-    else:
-        raise RuntimeError(f"Unsupported strategy type for {name}: {kind}")
+    trajectory = build_trajectory(name, dict(strategies[name]))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(trajectory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return trajectory
+
+
+def build_trajectory(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    spec = dict(spec)
+    kind = spec.get("type")
+    builder = STRATEGY_BUILDERS.get(str(kind))
+    if builder is None:
+        raise RuntimeError(f"Unsupported strategy type for {name}: {kind}")
+    trajectory = builder(name, spec)
+    if "events" not in trajectory:
+        return trajectory
+    result = dict(trajectory)
+    result["events"] = sorted(result.get("events", []), key=lambda event: float(event.get("t", 0)))
+    return result
+
+
+def _from_spec(builder: Callable[[dict[str, Any]], dict[str, Any]]) -> StrategyBuilder:
+    def wrapped(_name: str, spec: dict[str, Any]) -> dict[str, Any]:
+        return builder(spec)
+
+    return wrapped
+
+
+def _external(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    return {"name": name, "type": "external", "spec": spec, "events": []}
 
 
 def _scripted(spec: dict[str, Any]) -> dict[str, Any]:
@@ -105,12 +115,15 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     look_pitch_px = int(spec.get("look_pitch_px", 0))
     initial_pause_sec = float(spec.get("initial_pause_sec", 1.0))
     scan_pause_sec = float(spec.get("scan_pause_sec", 0.25))
+    waypoint_actions = _waypoint_actions(spec)
 
     route = [start]
     cursor = start
+    goal_indices: dict[tuple[int, int], list[int]] = {}
     for goal in goals:
         segment = _astar(cursor, goal, bounds=(min_x, max_x, min_z, max_z), blocked=blocked)
         route.extend(segment[1:])
+        goal_indices.setdefault(goal, []).append(len(route) - 1)
         cursor = goal
 
     events: list[dict[str, Any]] = []
@@ -120,7 +133,9 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
         events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": look_pitch_px, "duration": 0.4})
         t += 0.4 + scan_pause_sec
 
-    for desired, distance in _route_segments(route):
+    route_index = 0
+    waypoint_stop_indices = _waypoint_stop_indices(goal_indices, waypoint_actions)
+    for desired, distance in _route_segments_with_waypoints(route, waypoint_stop_indices):
         turn = _shortest_turn(heading, desired)
         if abs(turn) > 0.001:
             for turn_step in _turn_steps(turn):
@@ -135,6 +150,16 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
                 t += 0.35 + scan_pause_sec
         heading = desired
         t = _hold_key(events, t, "w", distance * seconds_per_block)
+        route_index += distance
+        t = _apply_waypoint_actions(
+            events,
+            t,
+            route[route_index],
+            route_index=route_index,
+            goal_indices=goal_indices,
+            waypoint_actions=waypoint_actions,
+            scan_pause_sec=scan_pause_sec,
+        )
 
     return {
         "type": "astar_walk",
@@ -229,6 +254,51 @@ def _hold_key(events: list[dict[str, Any]], t: float, key: str, duration: float)
     return t + duration
 
 
+def _waypoint_actions(spec: dict[str, Any]) -> dict[tuple[int, int], list[dict[str, Any]]]:
+    result: dict[tuple[int, int], list[dict[str, Any]]] = {}
+    for item in spec.get("waypoint_actions", []) or []:
+        at = _point(item.get("at"))
+        result.setdefault(at, []).append(dict(item))
+    return result
+
+
+def _apply_waypoint_actions(
+    events: list[dict[str, Any]],
+    t: float,
+    point: tuple[int, int],
+    *,
+    route_index: int,
+    goal_indices: dict[tuple[int, int], list[int]],
+    waypoint_actions: dict[tuple[int, int], list[dict[str, Any]]],
+    scan_pause_sec: float,
+) -> float:
+    if route_index not in goal_indices.get(point, []):
+        return t
+    for action in waypoint_actions.get(point, []):
+        pause_sec = float(action.get("pause_sec", 0))
+        if pause_sec > 0:
+            events.append({"t": round(t, 3), "duration": round(pause_sec, 3), "pause": True})
+            t += pause_sec
+        look_dy_px = int(action.get("look_dy_px", 0))
+        if look_dy_px:
+            events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": look_dy_px, "duration": 0.35})
+            t += 0.35 + scan_pause_sec
+            events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": -look_dy_px, "duration": 0.35})
+            t += 0.35 + scan_pause_sec
+    return t
+
+
+def _waypoint_stop_indices(
+    goal_indices: dict[tuple[int, int], list[int]],
+    waypoint_actions: dict[tuple[int, int], list[dict[str, Any]]],
+) -> set[int]:
+    return {
+        route_index
+        for point in waypoint_actions
+        for route_index in goal_indices.get(point, [])
+    }
+
+
 def _point(value: Any) -> tuple[int, int]:
     return (int(value[0]), int(value[1]))
 
@@ -291,10 +361,17 @@ def _heading_degrees(current: tuple[int, int], nxt: tuple[int, int]) -> int:
 
 
 def _route_segments(route: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    return _route_segments_with_waypoints(route, set())
+
+
+def _route_segments_with_waypoints(
+    route: list[tuple[int, int]],
+    stop_indices: set[int],
+) -> list[tuple[int, int]]:
     segments: list[tuple[int, int]] = []
     current_heading: int | None = None
     distance = 0
-    for current, nxt in zip(route, route[1:]):
+    for idx, (current, nxt) in enumerate(zip(route, route[1:]), 1):
         heading = _heading_degrees(current, nxt)
         if current_heading is None:
             current_heading = heading
@@ -305,6 +382,10 @@ def _route_segments(route: list[tuple[int, int]]) -> list[tuple[int, int]]:
             segments.append((current_heading, distance))
             current_heading = heading
             distance = 1
+        if idx in stop_indices:
+            segments.append((current_heading, distance))
+            current_heading = None
+            distance = 0
     if current_heading is not None:
         segments.append((current_heading, distance))
     return segments
@@ -319,3 +400,14 @@ def _turn_steps(turn: float) -> list[float]:
 
 def _shortest_turn(current: float, desired: float) -> float:
     return (desired - current + 180) % 360 - 180
+
+
+STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
+    "scripted": _from_spec(_scripted),
+    "astar_walk": _from_spec(_astar_walk),
+    "scene_probe": _from_spec(_scene_probe),
+    "look_scan": _from_spec(_look_scan),
+    "grid_patrol": _from_spec(_grid_patrol),
+    "random": _from_spec(_random),
+    "external": _external,
+}

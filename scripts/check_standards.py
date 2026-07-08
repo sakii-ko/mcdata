@@ -22,9 +22,7 @@ SCRIPTS = ROOT / "scripts"
 # --- R2: os.environ/os.getenv only at designated boundaries -----------------
 ENV_ALLOWED_FILES = {"paths.py", "doctor.py", "settings.py"}
 # shrink-only ratchet: file -> deadline note
-ENV_TEMP_BASELINE = {
-    "render/pipeline.py": "ITER-01/T2: env reads move to settings.py, then remove this entry",
-}
+ENV_TEMP_BASELINE = {}
 ENV_PATTERN = re.compile(r"os\.(environ|getenv)")
 
 # --- R15: absolute-path literals; doctor.py diagnoses the machine, so
