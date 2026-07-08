@@ -112,3 +112,7 @@
 - commit 前缀：`[plan]` 计划、`[arch]` 架构、`[impl]` 功能、`[test]` 测试、`[qa]` QA 工具/报告、`[fix]` 修复、`[docs]` 文档。一个任务多个小 commit，禁止大杂烩 squash。
 - 分支：coder 在 `iter/NN-<slug>` 分支上工作，完成后**不自行 merge**，由 planner review 后 `merge --no-ff` 进 main 并打 `iter-NN-done` tag。
 - 禁止 force push，禁止移动已有 tag。
+- **远端仓库（2026-07-08 起）**：`origin = github-mcdata:sakii-ko/mcdata.git`（`github-mcdata` 是 `~/.ssh/config` 里的别名，走 `/home/chijw/.ssh/id_github`；不要把 URL 改回 `git@github.com:` 形式，默认 key 无权限）。推送纪律：
+  - coder：iteration 分支上每完成一个任务 commit 后 `git push`（分支已设 upstream）。
+  - planner：每次 merge / 打 tag 后推 `main` 和 `--tags`。
+  - 两者都禁止 push 任何大文件（视频/jar/pack），R17 照常适用。
