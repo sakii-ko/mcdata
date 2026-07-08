@@ -14,6 +14,7 @@ Branch: `iter/02-gpu-collection`
 - T1b aligned QA samples: `a22042375c66558e6f536f60e65c7031b9cd7b6d` `[data] replace ITER-02 QA samples with aligned T1b batch`
 - T1c Step 0 diagnosis: `744a1b33b2f68331cd1c57bd2cf7e12416a2bfb8` `[docs] record T1c step 0 timeline diagnosis`
 - T1c route-reference gate: `2c7872f5f3ce6efc591be7676b29a7e3d289a345` `[qa] add T1c route reference gate`
+- T1c debug isolation flags: `a22a9b80ef0f1c3fe5c5f17b678308dc085c28cd` `[fix] add T1c debug isolation flags`
 
 ## Validation Commands
 
@@ -168,6 +169,29 @@ All checks passed!
 ```
 
 Deviation from PLAN wording: the planner text named `src/mcdata/actions/simulate.py`, but repository architecture and R12 explicitly forbid `mcdata.qa` importing `mcdata.actions`; the route simulator lives in `src/mcdata/qa/route.py` instead. It still consumes only the trajectory JSON contract and is covered by pure unit tests.
+
+## T1c Step 2
+
+Implemented hidden isolation flags in `a22a9b80ef0f1c3fe5c5f17b678308dc085c28cd`:
+
+- `mcdata run --debug-no-reapply` skips the capture-time second `apply_join_state` and logs `join/re_apply_state_skipped`.
+- `mcdata run --debug-no-replay-gate` keeps the position probe running but skips the first-sample wait before replay release and logs `position_probe/first_sample_skipped`.
+- Both flags are written to `metadata.json` for experiment provenance.
+- CLI direct-call tests cover hidden flag propagation; pipeline tests cover the skipped re-apply and skipped replay-gate events.
+
+Validation:
+
+```text
+bash scripts/dev_check.sh
+WARN  R19: render/pipeline.py has 835 lines (>600) -- justify in report
+WARN  R19: render/pipeline.py:169 function launch_profile spans 242 lines (>80)
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+............................................................             [100%]
+60 passed in 7.81s
+```
+
+The R19 warnings remain from the intentionally deferred `render/pipeline.py` split; no checker rule was changed.
 
 ## Artifacts
 
