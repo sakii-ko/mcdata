@@ -12,5 +12,6 @@ fi
 
 cd "$ROOT_DIR"
 "$PYTHON" -m compileall -q src
+"$PYTHON" scripts/check_standards.py
 "$PYTHON" -m ruff check src tests
 "$PYTHON" -m pytest -q

@@ -1,6 +1,6 @@
 import pytest
 
-from mcdata.render.pipeline import CaptureSettings
+from mcdata.settings import CaptureSettings
 
 
 def test_capture_settings_uses_profile_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
