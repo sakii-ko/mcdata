@@ -218,6 +218,23 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：障碍映射全表 + 新 viz 目检 + 验证 run 结果 + 重采产物；dev_check 全绿。
 
+### T1g — 场景构建静默失败（P8）+ t_rel 基准偏移（P9）+ 终局重采
+
+背景（planner 从 t1fl40snasA 数据+录像+server.log 定位，证据链见该 run 目录）：
+- **P8**：`_scene_commands` 的空域清理 `fill ... air` 体积 39,701 格 > vanilla 上限 32,768，**自 ITER-01 起每次静默失败**（server.log 铁证 "Too many blocks..."）。平台上方天然植被从未清除，seed=1 原生树木立在路线上（两次失败 run 均精确卡死在 x≈7, z≈9–10 的树干处）。此前未撞上只因旧路线从未被正确执行。
+- **P9**：positions 的 t_rel 基准记录于 ready_event，而 replay 线程在卫生释放+窗口聚焦（~0.3s）之后才开始计时——移动中样本恒定落后 ~1.3 格（0.3s×4.317），驻留时刻偏差仅 0.12 格，是测量偏移不是物理问题。
+- 另外该 run 画面有黑边（窗口小于 1280×720 或捕获几何异常），一并查。
+
+**修复规格（planner 定死）**：
+
+1. **P8 fill 拆分**：空域清理拆成两条：`fill ox-18 oy oz-18 ox+18 oy+22 oz+18 air`（37×23×37=31,487）与 `fill ox-18 oy+23 oz-18 ox+18 oy+28 oz+18 air`（37×6×37=8,214）。
+2. **P8 系统性防护——场景构建回执校验**：`server.py` 新增 `verify_scene_commands(log_path, *, expected_fill_count)`：场景命令下发后轮询 server.log（≤10s），出现 `Too many blocks`、`Cannot place`、`Expected`、`Unknown` 等失败样式即 raise（消息含违规行与日志路径）；成功需数到与场景命令数量一致的回执行（`Successfully filled`/`Changed the block`/`No blocks were filled` 均计）。`launch_profile` 在 server start 后调用。单测用合成日志覆盖成功/超限/缺回执三侧。
+3. **P9 基准修正**：`replay_trajectory` 在卫生释放+聚焦完成、进入事件循环前，向 replay_log.jsonl 写首行 `{"event":"start","mono": <time.monotonic()>}`；`write_positions_jsonl` 改为从 replay_log 首行读取该基准计算 t_rel（读不到时回退 ready_event 基准并 warning）。
+4. **黑边排查**：capture start 时把 `xwininfo` 实测窗口几何写进 runlog；对本次验证 run 跑 qa-run 确认 border 检查是否命中，结果写 report（若窗口尺寸异常，先记录现象与数据，方案听 planner）。
+5. golden 无需变更（P8/P9 不动轨迹生成）。**验证 + 终局重采**同 T1f 步骤 5/6（l40s-only：2×60s 双门 PASS → 四路重采改在 l40s 执行 → 替换 QA samples → 归档 CephFS + 回传 local NAS）。停止条件照旧。
+
+**验收**：场景回执校验单测 + 新验证 run 的 server.log 无失败样式 + 双门 PASS + 重采产物；dev_check 全绿。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
