@@ -15,6 +15,7 @@
 2. coder 从 main 切分支 `iter/NN-<slug>`，按任务顺序执行；每个任务至少一个独立 commit，前缀见 ARCHITECTURE.md；提交身份用 `mcdata-coder`（export GIT_AUTHOR_NAME/GIT_COMMITTER_NAME 等，见 ARCHITECTURE.md）。
 3. coder 完成后写 `docs/iterations/ITER-NN-report.md`（要求见文末），**不自行 merge**。
 4. planner review 代码 + 复跑验收命令，写 review 文件，merge --no-ff 进 main，打 `iter-NN-done`。
+5. **信号直连（2026-07-09 起，替代人工中转）**：双方各自在后台常驻 `scripts/collab_wait.sh <自己的角色>`（进程退出=收到消息=被唤醒）。交接动作固定为三步：**写文档（report/PLAN）→ push → `scripts/collab_notify.sh <对方角色> "一句话指引"`**。消息只是指针，正式内容一律在 repo 里。被唤醒后先读信箱输出的指引，再 `git pull` 看文档，处理完重启自己的 listener。信箱在 `/tmp/mcdata-collab/`（本机，不进 git），信箱语义不丢消息。
 
 ## 项目北极星目标（不变部分，摘自 PROGRESS.md）
 
