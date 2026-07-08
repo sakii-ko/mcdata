@@ -12,6 +12,8 @@ Branch: `iter/02-gpu-collection`
 - T1b first-sample gate: `e76782bbc03f28f23d3dfd1af38d8f6e3ea1ae05` `[fix] wait for first position probe sample`
 - T1b compare mean reporting: `3fa0850b3f76792686e4fdfa86c1f6fafd980bf5` `[fix] report mean position alignment`
 - T1b aligned QA samples: `a22042375c66558e6f536f60e65c7031b9cd7b6d` `[data] replace ITER-02 QA samples with aligned T1b batch`
+- T1c Step 0 diagnosis: `744a1b33b2f68331cd1c57bd2cf7e12416a2bfb8` `[docs] record T1c step 0 timeline diagnosis`
+- T1c route-reference gate: `2c7872f5f3ce6efc591be7676b29a7e3d289a345` `[qa] add T1c route reference gate`
 
 ## Validation Commands
 
@@ -142,6 +144,30 @@ Step 0 difference list:
 5. Trajectory content, launcher command, capture settings, warmup duration, and replay event count are unchanged between the two textured runs.
 
 Step 0 conclusion: the zero-cost diagnosis narrows pre-replay/pre-second-turn behavioral differences to the T1b mechanisms called out by planner: capture-time `re_apply_state`, position probe command traffic, and the first-sample replay gate. The logs do not show a replay input delivery regression; the next step is to add the route-reference gate and run the A/B/C/D isolation matrix.
+
+## T1c Step 1
+
+Implemented route-reference QA gate in `2c7872f5f3ce6efc591be7676b29a7e3d289a345`:
+
+- `positions.jsonl` now includes `t_rel` when probe send times and replay release time are available.
+- `pipeline.jsonl` now logs `replay/released` at the ready-event release point.
+- `qa-run` now emits `route_reference` in JSON/markdown when a run dir has both `positions.jsonl` and `trajectory.json`.
+- Route-reference gate compares every `t_rel >= 0` sample against the trajectory-derived ideal `(x,z)` and enforces max deviation `<=3.0` plus `y` in `63.0..66.0`.
+- Sanity check against the known off-route T1b textured positions, with approximate 5s `t_rel`, fails as expected: max deviation about `35.58` blocks and 8 y-out-of-range samples.
+
+Validation:
+
+```text
+bash scripts/dev_check.sh
+WARN  R19: render/pipeline.py has 825 lines (>600) -- justify in report
+WARN  R19: render/pipeline.py:169 function launch_profile spans 232 lines (>80)
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+..........................................................               [100%]
+58 passed in 2.27s
+```
+
+Deviation from PLAN wording: the planner text named `src/mcdata/actions/simulate.py`, but repository architecture and R12 explicitly forbid `mcdata.qa` importing `mcdata.actions`; the route simulator lives in `src/mcdata/qa/route.py` instead. It still consumes only the trajectory JSON contract and is covered by pure unit tests.
 
 ## Artifacts
 
