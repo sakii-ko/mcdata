@@ -7,6 +7,19 @@ from mcdata.config import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Mirrored from render.server._scene_commands at origin [0, 64, 0].
+# Keep this list in sync with y=64/65 scene cells until ITER-03 scene.yml
+# makes server scene generation and A* blocking share one source.
+SCENE_OCCUPIED_XZ = (
+    {(x, z) for x in range(-14, -4) for z in range(-2, 8)}
+    | {(x, z) for x in range(5, 15) for z in range(-2, 8)}
+    | {(x, 9) for x in range(-2, 3)}
+    | {(x, 14) for x in range(-4, 5)}
+    | {(-10, -10), (-7, -10), (-4, -10), (-1, -10), (5, -10), (8, -10), (11, -10)}
+    | {(x, z) for x in range(1, 4) for z in range(-11, -8)}
+    | {(-14, 12), (14, 12)}
+)
+
 
 def _configured_strategy_specs() -> Iterator[tuple[str, dict[str, Any]]]:
     strategies = load_yaml(ROOT / "configs" / "actions.yml").get("strategies", {})
@@ -55,6 +68,25 @@ def test_astar_loop_routes_stay_inside_walkable_area() -> None:
             continue
         trajectory = build_trajectory(name, spec)
         _assert_route_stays_inside_walkable_area(trajectory, spec)
+
+
+def test_astar_blocking_covers_scene_occupied_cells() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") != "astar_walk":
+            continue
+        covered = _covered_cells(spec)
+        assert not (SCENE_OCCUPIED_XZ - covered), name
+
+
+def test_astar_routes_avoid_scene_occupied_cells() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") != "astar_walk":
+            continue
+        trajectory = build_trajectory(name, spec)
+        route = {(point["x"], point["z"]) for point in trajectory["route"]}
+        assert not (route & SCENE_OCCUPIED_XZ), name
 
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:
@@ -111,12 +143,22 @@ def _assert_route_stays_inside_walkable_area(
     spec: dict[str, Any],
 ) -> None:
     min_x, max_x, min_z, max_z = spec["bounds"]
-    blocked_rects = list(spec.get("blocked_rects") or [])
+    covered = _covered_cells(spec)
 
     for point in trajectory["route"]:
         x = point["x"]
         z = point["z"]
         assert min_x <= x <= max_x
         assert min_z <= z <= max_z
-        for rect_min_x, rect_min_z, rect_max_x, rect_max_z in blocked_rects:
-            assert not (rect_min_x <= x <= rect_max_x and rect_min_z <= z <= rect_max_z)
+        assert (x, z) not in covered
+
+
+def _covered_cells(spec: dict[str, Any]) -> set[tuple[int, int]]:
+    covered = {tuple(cell) for cell in spec.get("blocked") or []}
+    for rect_min_x, rect_min_z, rect_max_x, rect_max_z in spec.get("blocked_rects") or []:
+        covered.update(
+            (x, z)
+            for x in range(rect_min_x, rect_max_x + 1)
+            for z in range(rect_min_z, rect_max_z + 1)
+        )
+    return covered
