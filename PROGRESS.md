@@ -4,7 +4,7 @@
 
 > **协作入口（2026-07-08 起）**：当前的执行计划在根目录 `PLAN.md`（planner 维护，coder 按其执行）；架构分层、依赖规则、数据契约与 git 约定在 `docs/ARCHITECTURE.md`；代码规范在 `docs/CODE_STANDARDS.md`。本文档保留为长期交接背景，iteration 级别的进展看 `docs/iterations/`。
 >
-> **状态快照（2026-07-08）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。当前 iteration 为 ITER-02（真 GPU 3-way 验证 → 多卡并行化 → 8 卡全矩阵），见 PLAN.md。
+> **状态快照（2026-07-08）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。ITER-02 已完成（tag `iter-02-done`，2026-07-09）：P3–P10 八层根因根治，四路对齐 0.216–0.475 格，多实例并行化与架构清账就绪。当前 iteration 为 ITER-03（程序化漫游 + scene.yml 单一来源 + 矩阵扩容 18→25），8 卡容器到位即优先执行 ITER-02 T3 全矩阵。见 PLAN.md。
 
 ## 任务目标
 
