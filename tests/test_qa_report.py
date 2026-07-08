@@ -41,12 +41,12 @@ def test_position_alignment_fails_when_max_exceeds_threshold(tmp_path: Path) -> 
 def test_route_reference_passes_when_positions_follow_ideal_track() -> None:
     positions = [
         {"idx": 0, "t_rel": -0.1, "x": 0.0, "y": 64.0, "z": 0.0},
-        {"idx": 1, "t_rel": 0.0, "x": 0.0, "y": 64.0, "z": 0.0},
-        {"idx": 2, "t_rel": 1.0, "x": 1.0, "y": 64.0, "z": 0.0},
+        {"idx": 1, "t_rel": 0.0, "x": 0.0, "y": 64.0, "yaw": -90.0, "z": 0.0},
+        {"idx": 2, "t_rel": 1.0, "x": 1.0, "y": 64.0, "yaw": -90.0, "z": 0.0},
     ]
     ideal = [
-        {"t": 0.0, "x": 0.0, "z": 0.0},
-        {"t": 1.0, "x": 1.0, "z": 0.0},
+        {"t": 0.0, "x": 0.0, "yaw": -90.0, "z": 0.0},
+        {"t": 1.0, "x": 1.0, "yaw": -90.0, "z": 0.0},
     ]
 
     result = report.check_route_reference(positions, ideal, max_dev=0.25)
@@ -54,6 +54,8 @@ def test_route_reference_passes_when_positions_follow_ideal_track() -> None:
     assert result["passed"] is True
     assert result["count"] == 2
     assert result["max_deviation_blocks"] == 0.0
+    assert result["max_yaw_error_degrees"] == 0.0
+    assert result["yaw_sample_count"] == 2
 
 
 def test_route_reference_fails_on_large_xz_deviation() -> None:
@@ -70,13 +72,33 @@ def test_route_reference_fails_on_large_xz_deviation() -> None:
 
 
 def test_route_reference_fails_on_y_out_of_range() -> None:
-    positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 41.0, "z": 0.0}]
-    ideal = [{"t": 0.0, "x": 0.0, "z": 0.0}]
+    positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 41.0, "yaw": 0.0, "z": 0.0}]
+    ideal = [{"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0}]
 
     result = report.check_route_reference(positions, ideal)
 
     assert result["passed"] is False
     assert result["y_out_of_range_count"] == 1
+
+
+def test_route_reference_fails_when_yaw_sample_is_missing() -> None:
+    positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 64.0, "z": 0.0}]
+    ideal = [{"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0}]
+
+    result = report.check_route_reference(positions, ideal)
+
+    assert result["passed"] is False
+    assert result["missing_yaw_count"] == 1
+
+
+def test_route_reference_fails_on_large_circular_yaw_error() -> None:
+    positions = [{"idx": 0, "t_rel": 0.0, "x": 0.0, "y": 64.0, "yaw": -170.0, "z": 0.0}]
+    ideal = [{"t": 0.0, "x": 0.0, "yaw": 170.0, "z": 0.0}]
+
+    result = report.check_route_reference(positions, ideal, max_yaw_dev_deg=10.0)
+
+    assert result["passed"] is False
+    assert result["max_yaw_error_degrees"] == 20.0
 
 
 def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
@@ -89,6 +111,11 @@ def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
             "max_deviation_blocks": 4.0,
             "mean_deviation_blocks": 2.0,
             "threshold_blocks": 3.0,
+            "max_yaw_error_degrees": 12.0,
+            "mean_yaw_error_degrees": 8.0,
+            "yaw_threshold_degrees": 10.0,
+            "yaw_sample_count": 2,
+            "missing_yaw_count": 1,
             "y_min": 63.0,
             "y_max": 66.0,
             "y_out_of_range_count": 1,
@@ -108,6 +135,9 @@ def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "- route_reference: `FAIL`" in text
     assert "- route_max_deviation_blocks: `4.000`" in text
+    assert "- route_max_yaw_error_degrees: `12.000`" in text
+    assert "- route_yaw_sample_count: `2`" in text
+    assert "- route_missing_yaw_count: `1`" in text
     assert "- route_y_out_of_range_count: `1`" in text
 
 

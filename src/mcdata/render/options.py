@@ -49,6 +49,7 @@ QUIET_CAPTURE_OPTIONS: dict[str, str] = {
     "advancedItemTooltips": "false",
     "chatVisibility": "2",
     "joinedFirstServer": "true",
+    "mouseSensitivity": "0.5",
     "notificationDisplayTime": "1.0",
     "pauseOnLostFocus": "false",
     "rawMouseInput": "true",

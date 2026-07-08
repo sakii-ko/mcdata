@@ -23,15 +23,27 @@ def test_simulate_track_moves_along_route_during_forward_spans() -> None:
     track = simulate_track(trajectory)
 
     assert track == [
-        {"t": 0.0, "x": 0.0, "z": 0.0},
-        {"t": 1.0, "x": 0.0, "z": 0.0},
-        {"t": 3.0, "x": 0.0, "z": 2.0},
-        {"t": 4.5, "x": 0.0, "z": 2.0},
-        {"t": 6.5, "x": 2.0, "z": 2.0},
+        {"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0},
+        {"t": 1.0, "x": 0.0, "yaw": 0.0, "z": 0.0},
+        {"t": 3.0, "x": 0.0, "yaw": 0.0, "z": 2.0},
+        {"t": 3.5, "x": 0.0, "yaw": 0.0, "z": 2.0},
+        {"t": 4.0, "x": 0.0, "yaw": -90.0, "z": 2.0},
+        {"t": 4.5, "x": 0.0, "yaw": -90.0, "z": 2.0},
+        {"t": 6.5, "x": 2.0, "yaw": -90.0, "z": 2.0},
     ]
-    assert interpolate_track(track, 2.0) == {"t": 2.0, "x": 0.0, "z": 1.0}
-    assert interpolate_track(track, 4.0) == {"t": 4.0, "x": 0.0, "z": 2.0}
-    assert interpolate_track(track, 5.5) == {"t": 5.5, "x": 1.0, "z": 2.0}
+    assert interpolate_track(track, 2.0) == {"t": 2.0, "x": 0.0, "yaw": 0.0, "z": 1.0}
+    assert interpolate_track(track, 3.75) == {"t": 3.75, "x": 0.0, "yaw": -45.0, "z": 2.0}
+    assert interpolate_track(track, 4.25) == {"t": 4.25, "x": 0.0, "yaw": -90.0, "z": 2.0}
+    assert interpolate_track(track, 5.5) == {"t": 5.5, "x": 1.0, "yaw": -90.0, "z": 2.0}
+
+
+def test_interpolate_track_uses_circular_yaw_delta() -> None:
+    track = [
+        {"t": 0.0, "x": 0.0, "z": 0.0, "yaw": 170.0},
+        {"t": 1.0, "x": 0.0, "z": 0.0, "yaw": -170.0},
+    ]
+
+    assert interpolate_track(track, 0.5) == {"t": 0.5, "x": 0.0, "z": 0.0, "yaw": 180.0}
 
 
 def test_simulate_track_requires_route_spans_to_match_forward_spans() -> None:

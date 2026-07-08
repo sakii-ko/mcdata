@@ -216,7 +216,13 @@ def start_position_probe(
         while not stop_event.is_set():
             if sent_at is not None:
                 sent_at.append(time.monotonic())
-            _write_commands(proc, [f"data get entity {username} Pos"])
+            _write_commands(
+                proc,
+                [
+                    f"data get entity {username} Pos",
+                    f"data get entity {username} Rotation",
+                ],
+            )
             stop_event.wait(interval_sec)
 
     threading.Thread(target=run, daemon=True).start()
@@ -251,10 +257,13 @@ def write_positions_jsonl(
     replay_start_mono: float | None = None,
 ) -> int:
     positions = parse_position_log(log_path, username=username)
+    rotations = parse_rotation_log(log_path, username=username)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", encoding="utf-8") as fh:
         for idx, item in enumerate(positions):
             row = {"idx": idx, **item}
+            if idx < len(rotations):
+                row["yaw"] = rotations[idx]["yaw"]
             if sent_at is not None and replay_start_mono is not None and idx < len(sent_at):
                 row["t_rel"] = sent_at[idx] - replay_start_mono
             fh.write(json.dumps(row, sort_keys=True) + "\n")
@@ -277,6 +286,22 @@ def parse_position_log(log_path: Path, *, username: str) -> list[dict[str, float
     return positions
 
 
+def parse_rotation_log(log_path: Path, *, username: str) -> list[dict[str, float]]:
+    if not log_path.exists():
+        return []
+    needle = f"{username} has the following entity data:"
+    rotations: list[dict[str, float]] = []
+    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if needle not in line:
+            continue
+        raw = line.split(needle, 1)[1]
+        values = _parse_rotation_values(raw)
+        if values is not None:
+            yaw, _pitch = values
+            rotations.append({"yaw": yaw})
+    return rotations
+
+
 def _parse_position_values(raw: str) -> tuple[float, float, float] | None:
     values = [
         float(match.group(1))
@@ -285,6 +310,16 @@ def _parse_position_values(raw: str) -> tuple[float, float, float] | None:
     if len(values) < 3:
         return None
     return values[0], values[1], values[2]
+
+
+def _parse_rotation_values(raw: str) -> tuple[float, float] | None:
+    values = [
+        float(match.group(1))
+        for match in re.finditer(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[dDfF]?", raw)
+    ]
+    if len(values) != 2:
+        return None
+    return values[0], values[1]
 
 
 def _write_commands(proc: subprocess.Popen, commands: list[str]) -> None:

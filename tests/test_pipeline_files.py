@@ -10,6 +10,7 @@ from mcdata.render.pipeline import _copy_trajectory, _profile_with_overrides, _r
 from mcdata.render.server import (
     ensure_server,
     parse_position_log,
+    parse_rotation_log,
     server_profile_name,
     wait_for_position_sample,
     write_positions_jsonl,
@@ -74,6 +75,7 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
     log = tmp_path / "server.log"
     log.write_text(
         "[Server thread/INFO]: mcdata_bot has the following entity data: [1.5d, 64.0d, -2.25d]\n"
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [-90.0f, 15.0f]\n"
         "[Server thread/INFO]: mcdata_bot has the following entity data: [2.0d, 65.0d, -3.0d]\n",
         encoding="utf-8",
     )
@@ -92,9 +94,10 @@ def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:
         {"x": 1.5, "y": 64.0, "z": -2.25},
         {"x": 2.0, "y": 65.0, "z": -3.0},
     ]
+    assert parse_rotation_log(log, username="mcdata_bot") == [{"yaw": -90.0}]
     rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
     assert rows == [
-        {"idx": 0, "t_rel": -1.0, "x": 1.5, "y": 64.0, "z": -2.25},
+        {"idx": 0, "t_rel": -1.0, "x": 1.5, "y": 64.0, "yaw": -90.0, "z": -2.25},
         {"idx": 1, "t_rel": 4.5, "x": 2.0, "y": 65.0, "z": -3.0},
     ]
 

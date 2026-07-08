@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 from mcdata.qa.frames import extract_frames_at, uniform_timestamps
 from mcdata.qa.metrics import black_border_metrics, brightness_percentiles, zero_mean_ncc
 from mcdata.qa.probe import summarize_probe
-from mcdata.qa.route import distance_xz, interpolate_track, simulate_track
+from mcdata.qa.route import distance_xz, interpolate_track, simulate_track, yaw_error_deg
 
 _BILINEAR = getattr(getattr(Image, "Resampling", Image), "BILINEAR")
 
@@ -103,10 +103,13 @@ def check_route_reference(
     ideal_track: list[dict[str, float]],
     *,
     max_dev: float = 3.0,
+    max_yaw_dev_deg: float = 10.0,
     min_y: float = 63.0,
     max_y: float = 66.0,
 ) -> dict[str, Any]:
     samples = []
+    yaw_errors: list[float] = []
+    missing_yaw_count = 0
     for position in positions:
         t_rel = position.get("t_rel")
         if t_rel is None or t_rel < 0:
@@ -114,37 +117,59 @@ def check_route_reference(
         ideal = interpolate_track(ideal_track, t_rel)
         deviation = distance_xz(position, ideal)
         y = float(position["y"])
-        samples.append(
-            {
-                "idx": position.get("idx"),
-                "t_rel": t_rel,
-                "x": position["x"],
-                "y": y,
-                "z": position["z"],
-                "ideal_x": ideal["x"],
-                "ideal_z": ideal["z"],
-                "deviation_blocks": deviation,
-                "y_in_range": min_y <= y <= max_y,
-            }
-        )
+        sample = {
+            "idx": position.get("idx"),
+            "t_rel": t_rel,
+            "x": position["x"],
+            "y": y,
+            "z": position["z"],
+            "ideal_x": ideal["x"],
+            "ideal_z": ideal["z"],
+            "deviation_blocks": deviation,
+            "y_in_range": min_y <= y <= max_y,
+        }
+        if "yaw" in ideal:
+            if "yaw" in position:
+                yaw_error = yaw_error_deg(position["yaw"], ideal["yaw"])
+                yaw_errors.append(yaw_error)
+                sample.update(
+                    {
+                        "yaw": position["yaw"],
+                        "ideal_yaw": ideal["yaw"],
+                        "yaw_error_deg": yaw_error,
+                    }
+                )
+            else:
+                missing_yaw_count += 1
+                sample["ideal_yaw"] = ideal["yaw"]
+        samples.append(sample)
     deviations = [sample["deviation_blocks"] for sample in samples]
     y_values = [sample["y"] for sample in samples]
     y_out_of_range = sum(1 for sample in samples if not sample["y_in_range"])
     max_deviation = max(deviations) if deviations else None
     mean_deviation = sum(deviations) / len(deviations) if deviations else None
+    max_yaw_error = max(yaw_errors) if yaw_errors else None
+    mean_yaw_error = sum(yaw_errors) / len(yaw_errors) if yaw_errors else None
     return {
         "threshold_blocks": max_dev,
+        "yaw_threshold_degrees": max_yaw_dev_deg,
         "y_min": min_y,
         "y_max": max_y,
         "count": len(samples),
         "max_deviation_blocks": max_deviation,
         "mean_deviation_blocks": mean_deviation,
+        "max_yaw_error_degrees": max_yaw_error,
+        "mean_yaw_error_degrees": mean_yaw_error,
+        "yaw_sample_count": len(yaw_errors),
+        "missing_yaw_count": missing_yaw_count,
         "observed_y_min": min(y_values) if y_values else None,
         "observed_y_max": max(y_values) if y_values else None,
         "y_out_of_range_count": y_out_of_range,
         "passed": (
             max_deviation is not None
             and max_deviation <= max_dev
+            and missing_yaw_count == 0
+            and (max_yaw_error is None or max_yaw_error <= max_yaw_dev_deg)
             and y_out_of_range == 0
         ),
         "samples": samples,
@@ -289,6 +314,13 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 "- route_mean_deviation_blocks: "
                 f"`{_format_optional_float(route_reference.get('mean_deviation_blocks'))}`",
                 f"- route_threshold_blocks: `{route_reference.get('threshold_blocks')}`",
+                "- route_max_yaw_error_degrees: "
+                f"`{_format_optional_float(route_reference.get('max_yaw_error_degrees'))}`",
+                "- route_mean_yaw_error_degrees: "
+                f"`{_format_optional_float(route_reference.get('mean_yaw_error_degrees'))}`",
+                f"- route_yaw_threshold_degrees: `{route_reference.get('yaw_threshold_degrees')}`",
+                f"- route_yaw_sample_count: `{route_reference.get('yaw_sample_count')}`",
+                f"- route_missing_yaw_count: `{route_reference.get('missing_yaw_count')}`",
                 f"- route_y_range: `{route_reference.get('y_min')}..{route_reference.get('y_max')}`",
                 f"- route_y_out_of_range_count: `{route_reference.get('y_out_of_range_count')}`",
                 "",
@@ -369,6 +401,8 @@ def _read_positions(input_path: Path) -> list[dict[str, float]] | None:
             item["idx"] = int(row["idx"])
         if "t_rel" in row:
             item["t_rel"] = float(row["t_rel"])
+        if "yaw" in row:
+            item["yaw"] = float(row["yaw"])
         items.append(item)
     return items
 
