@@ -518,7 +518,9 @@ def _wait_or_raise_if_exited(game_proc: subprocess.Popen, seconds: float) -> Non
 def _copy_trajectory(run_dir: Path, trajectory_path: Path) -> Path:
     dest = run_dir / "trajectory.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(trajectory_path, dest)
+    tmp = dest.with_name(f"{dest.name}.tmp")
+    shutil.copy2(trajectory_path, tmp)
+    os.replace(tmp, dest)
     return dest
 
 

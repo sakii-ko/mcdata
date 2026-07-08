@@ -63,3 +63,4 @@ def test_write_run_manifest_round_trips_json(tmp_path: Path) -> None:
 
     assert path == tmp_path / "manifest.json"
     assert json.loads(path.read_text(encoding="utf-8")) == manifest
+    assert not (tmp_path / "manifest.json.tmp").exists()

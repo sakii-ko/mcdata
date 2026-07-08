@@ -72,12 +72,15 @@
   "route": [{"x": 0, "z": -14}], // 可选：规划路线（供可视化/QA 用）
   "events": [                    // 唯一被 replay 消费的字段
     {"t": 1.0, "key": "w", "action": "down"},
-    {"t": 1.5, "mouse_dx": 540, "mouse_dy": 0, "duration": 0.35}
+    {"t": 1.5, "mouse_dx": 540, "mouse_dy": 0, "duration": 0.35},
+    {"t": 2.2, "pause": true, "duration": 2.0}
   ]
 }
 ```
 
-约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。
+事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。
+
+约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过，仅记录 replay_log 时间戳；这是 trajectory 契约的前向兼容规则。
 
 ### run dir（render → qa / 数据集）
 

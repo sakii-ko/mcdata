@@ -34,8 +34,9 @@ def replay_trajectory(
         console.print(f"Waiting {startup_delay:.1f}s before replaying {len(events)} events...")
         time.sleep(startup_delay)
     backend = _backend()
+    xdotool_warnings: set[tuple[str, ...]] = set()
     if backend == "xdotool":
-        _focus_window(window_name)
+        _focus_window(window_name, warned=xdotool_warnings)
     else:
         _xtest_focus_window(window_name)
     replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
@@ -48,7 +49,7 @@ def replay_trajectory(
                 time.sleep(target - time.monotonic())
             actual_t = time.monotonic() - start
             if backend == "xdotool":
-                _send_event_xdotool(event)
+                _send_event_xdotool(event, warned=xdotool_warnings)
             else:
                 _send_event_xtest(event)
             if replay_log is not None:
@@ -60,23 +61,24 @@ def replay_trajectory(
 
 def prepare_capture_view(*, window_name: str = "Minecraft", hide_hud: bool = True, settle_sec: float = 1.0) -> None:
     backend = _backend()
+    xdotool_warnings: set[tuple[str, ...]] = set()
     if backend == "xdotool":
-        _focus_window(window_name)
+        _focus_window(window_name, warned=xdotool_warnings)
     else:
         _xtest_focus_window(window_name)
     time.sleep(0.2)
     if hide_hud:
         event = {"key": "f1", "action": "tap"}
         if backend == "xdotool":
-            _send_event_xdotool(event)
+            _send_event_xdotool(event, warned=xdotool_warnings)
         else:
             _send_event_xtest(event)
     if settle_sec > 0:
         time.sleep(settle_sec)
 
 
-def _focus_window(window_name: str) -> None:
-    subprocess.run(["xdotool", "search", "--name", window_name, "windowactivate"], check=False)
+def _focus_window(window_name: str, *, warned: set[tuple[str, ...]] | None = None) -> None:
+    _run_xdotool(["search", "--name", window_name, "windowactivate"], warned=warned)
 
 
 def _backend() -> str:
@@ -91,21 +93,36 @@ def _backend() -> str:
         raise RuntimeError("action replay requires xdotool or python-xlib with XTEST") from exc
 
 
-def _send_event_xdotool(event: dict) -> None:
+def _send_event_xdotool(event: dict, *, warned: set[tuple[str, ...]] | None = None) -> None:
     if "key" in event:
         key = str(event["key"])
         action = event.get("action", "tap")
         if action == "down":
-            subprocess.run(["xdotool", "keydown", key], check=False)
+            _run_xdotool(["keydown", key], warned=warned)
         elif action == "up":
-            subprocess.run(["xdotool", "keyup", key], check=False)
+            _run_xdotool(["keyup", key], warned=warned)
         else:
-            subprocess.run(["xdotool", "key", key], check=False)
+            _run_xdotool(["key", key], warned=warned)
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
-            subprocess.run(["xdotool", "mousemove_relative", "--", str(dx), str(dy)], check=False)
+            _run_xdotool(["mousemove_relative", "--", str(dx), str(dy)], warned=warned)
             if delay > 0:
                 time.sleep(delay)
+
+
+def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None) -> None:
+    cmd = ["xdotool", *args]
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    if result.returncode == 0:
+        return
+    key = tuple(cmd[:2])
+    if warned is not None and key in warned:
+        return
+    if warned is not None:
+        warned.add(key)
+    detail = (result.stderr or result.stdout).strip()
+    suffix = f": {detail}" if detail else ""
+    console.print(f"Warning: xdotool command failed ({' '.join(cmd)}), rc={result.returncode}{suffix}")
 
 
 def _xtest_focus_window(window_name: str) -> None:

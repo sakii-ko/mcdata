@@ -61,3 +61,10 @@ def test_capture_settings_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("MCDATA_CAPTURE_FPS", "0")
     with pytest.raises(RuntimeError, match="MCDATA_CAPTURE_FPS"):
         CaptureSettings.from_env({"width": 854, "height": 480})
+
+
+def test_capture_settings_rejects_invalid_boolean(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCDATA_CAPTURE_DESKTOP", "maybe")
+
+    with pytest.raises(RuntimeError, match="boolean environment override"):
+        CaptureSettings.from_env({"width": 854, "height": 480})
