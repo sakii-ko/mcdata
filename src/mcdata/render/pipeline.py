@@ -12,7 +12,7 @@ import sys
 import threading
 import time
 import hashlib
-from dataclasses import asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -44,6 +44,64 @@ from mcdata.settings import CaptureSettings
 console = Console()
 
 REQUIRED_MODS = ["fabric-api", "sodium", "iris"]
+
+
+@dataclass(frozen=True)
+class RunOptions:
+    dry_run: bool
+    capture: bool
+    strategy: str | None
+    duration: int | None
+    with_server: bool
+    replay_actions: bool
+    trajectory_path: Path | None
+    game_version: str | None
+    server_port: int | None
+    lane: str | None
+    probe_interval: float
+    debug_no_reapply: bool
+    debug_no_replay_gate: bool
+
+
+@dataclass(frozen=True)
+class RunPlan:
+    paths: ProjectPaths
+    profile_name: str
+    profile: dict[str, Any]
+    game_version: str
+    work_dir: Path
+    run_dir: Path
+    started_at: str
+    capture_settings: CaptureSettings
+    run_trajectory_path: Path | None
+    trajectory_info: dict[str, Any] | None
+    metadata: dict[str, Any]
+    cmd: list[str]
+    dry_run: bool
+    capture: bool
+    duration: int | None
+    with_server: bool
+    replay_actions: bool
+    lane: str | None
+    probe_interval: float
+    debug_no_reapply: bool
+    debug_no_replay_gate: bool
+
+
+@dataclass
+class RunState:
+    server_proc: subprocess.Popen | None = None
+    game_proc: subprocess.Popen | None = None
+    capture_proc: subprocess.Popen | None = None
+    replay_thread: threading.Thread | None = None
+    replay_stop: threading.Event = field(default_factory=threading.Event)
+    ready_event: threading.Event = field(default_factory=threading.Event)
+    position_probe_stop: threading.Event | None = None
+    position_probe_baseline: int = 0
+    position_probe_sent_at: list[float] = field(default_factory=list)
+    replay_start_mono: float | None = None
+    capture_cmd: list[str] | None = None
+    error: str | None = None
 
 
 def resolve_game_version(profile: dict[str, Any]) -> str:
@@ -186,32 +244,165 @@ def launch_profile(
     debug_no_reapply: bool = False,
     debug_no_replay_gate: bool = False,
 ) -> dict[str, Any]:
+    options = RunOptions(
+        dry_run=dry_run,
+        capture=capture,
+        strategy=strategy,
+        duration=duration,
+        with_server=with_server,
+        replay_actions=replay_actions,
+        trajectory_path=trajectory_path,
+        game_version=game_version,
+        server_port=server_port,
+        lane=lane,
+        probe_interval=probe_interval,
+        debug_no_reapply=debug_no_reapply,
+        debug_no_replay_gate=debug_no_replay_gate,
+    )
+    plan = _plan_run(
+        root,
+        profile_name,
+        options=options,
+    )
+    console.print("Launch command:")
+    console.print(" ".join(shlex.quote(part) for part in plan.cmd))
+    state = RunState()
+    with RunLogger(plan.run_dir, console=console) as runlog:
+        runlog.log(
+            "launch",
+            "command",
+            cmd=plan.cmd,
+            dry_run=plan.dry_run,
+            game_version=plan.game_version,
+            capture_settings=asdict(plan.capture_settings),
+        )
+        try:
+            _server_phase(plan, state, runlog)
+            _replay_phase(plan, state, runlog)
+            _client_phase(plan, state, runlog)
+        except Exception as exc:
+            state.error = f"{type(exc).__name__}: {exc}"
+            runlog.log("teardown", "error", error=state.error)
+            raise
+        finally:
+            _teardown_phase(plan, state, runlog)
+    return plan.metadata
+
+
+def _plan_run(
+    root: Path,
+    profile_name: str,
+    *,
+    options: RunOptions,
+) -> RunPlan:
     paths = ProjectPaths.from_root(root)
     profile = _profile_with_overrides(
         load_profile(paths.configs, profile_name),
-        server_port=server_port,
+        server_port=options.server_port,
     )
-    game_version = game_version or resolve_game_version(profile)
+    game_version = options.game_version or resolve_game_version(profile)
     work_dir = paths.instance_dir(profile_name)
-    if not work_dir.exists():
-        bootstrap_profile(
-            root,
-            profile_name,
-            game_version=game_version,
-            server_port=server_port,
-            lane=lane,
-        )
+    _bootstrap_missing_work_dir(root, profile_name, game_version, work_dir, options)
 
-    run_dir = _run_dir(paths.output_dir, profile_name, lane=lane)
+    run_dir = _run_dir(paths.output_dir, profile_name, lane=options.lane)
     started_at = datetime.now(timezone.utc).isoformat()
     capture_settings = CaptureSettings.from_env(profile)
-    run_trajectory_path = _copy_trajectory(run_dir, trajectory_path) if trajectory_path else None
+    run_trajectory_path = (
+        _copy_trajectory(run_dir, options.trajectory_path) if options.trajectory_path else None
+    )
     trajectory_info = _trajectory_manifest(
         run_trajectory_path,
-        source_path=trajectory_path,
-        strategy=strategy,
+        source_path=options.trajectory_path,
+        strategy=options.strategy,
     )
-    metadata = {
+    metadata = _run_metadata(
+        profile_name=profile_name,
+        game_version=game_version,
+        work_dir=work_dir,
+        run_dir=run_dir,
+        strategy=options.strategy,
+        duration=options.duration,
+        capture=options.capture,
+        with_server=options.with_server,
+        replay_actions=options.replay_actions,
+        lane=options.lane,
+        probe_interval=options.probe_interval,
+        debug_no_reapply=options.debug_no_reapply,
+        debug_no_replay_gate=options.debug_no_replay_gate,
+        started_at=started_at,
+    )
+    _write_json(run_dir / "metadata.json", metadata)
+
+    cmd = _launch_command(
+        paths,
+        work_dir,
+        profile=profile,
+        game_version=game_version,
+        capture_settings=capture_settings,
+        dry_run=options.dry_run,
+        with_server=options.with_server,
+    )
+    return _make_run_plan(
+        paths=paths,
+        profile_name=profile_name,
+        profile=profile,
+        game_version=game_version,
+        work_dir=work_dir,
+        run_dir=run_dir,
+        started_at=started_at,
+        capture_settings=capture_settings,
+        run_trajectory_path=run_trajectory_path,
+        trajectory_info=trajectory_info,
+        metadata=metadata,
+        cmd=cmd,
+        dry_run=options.dry_run,
+        capture=options.capture,
+        duration=options.duration,
+        with_server=options.with_server,
+        replay_actions=options.replay_actions,
+        lane=options.lane,
+        probe_interval=options.probe_interval,
+        debug_no_reapply=options.debug_no_reapply,
+        debug_no_replay_gate=options.debug_no_replay_gate,
+    )
+
+
+def _bootstrap_missing_work_dir(
+    root: Path,
+    profile_name: str,
+    game_version: str,
+    work_dir: Path,
+    options: RunOptions,
+) -> None:
+    if work_dir.exists():
+        return
+    bootstrap_profile(
+        root,
+        profile_name,
+        game_version=game_version,
+        server_port=options.server_port,
+        lane=options.lane,
+    )
+
+
+def _run_metadata(
+    *,
+    profile_name: str,
+    game_version: str,
+    work_dir: Path,
+    run_dir: Path,
+    strategy: str | None,
+    duration: int | None,
+    capture: bool,
+    with_server: bool,
+    replay_actions: bool,
+    lane: str | None,
+    probe_interval: float,
+    debug_no_reapply: bool,
+    debug_no_replay_gate: bool,
+    started_at: str,
+) -> dict[str, Any]:
+    return {
         "profile": profile_name,
         "minecraft_version": game_version,
         "work_dir": str(work_dir),
@@ -227,8 +418,67 @@ def launch_profile(
         "debug_no_replay_gate": debug_no_replay_gate,
         "started_at": started_at,
     }
-    _write_json(run_dir / "metadata.json", metadata)
 
+
+def _make_run_plan(
+    *,
+    paths: ProjectPaths,
+    profile_name: str,
+    profile: dict[str, Any],
+    game_version: str,
+    work_dir: Path,
+    run_dir: Path,
+    started_at: str,
+    capture_settings: CaptureSettings,
+    run_trajectory_path: Path | None,
+    trajectory_info: dict[str, Any] | None,
+    metadata: dict[str, Any],
+    cmd: list[str],
+    dry_run: bool,
+    capture: bool,
+    duration: int | None,
+    with_server: bool,
+    replay_actions: bool,
+    lane: str | None,
+    probe_interval: float,
+    debug_no_reapply: bool,
+    debug_no_replay_gate: bool,
+) -> RunPlan:
+    return RunPlan(
+        paths=paths,
+        profile_name=profile_name,
+        profile=profile,
+        game_version=game_version,
+        work_dir=work_dir,
+        run_dir=run_dir,
+        started_at=started_at,
+        capture_settings=capture_settings,
+        run_trajectory_path=run_trajectory_path,
+        trajectory_info=trajectory_info,
+        metadata=metadata,
+        cmd=cmd,
+        dry_run=dry_run,
+        capture=capture,
+        duration=duration,
+        with_server=with_server,
+        replay_actions=replay_actions,
+        lane=lane,
+        probe_interval=probe_interval,
+        debug_no_reapply=debug_no_reapply,
+        debug_no_replay_gate=debug_no_replay_gate,
+    )
+
+
+def _launch_command(
+    paths: ProjectPaths,
+    work_dir: Path,
+    *,
+    profile: dict[str, Any],
+    game_version: str,
+    capture_settings: CaptureSettings,
+    dry_run: bool,
+    with_server: bool,
+) -> list[str]:
     cmd = portablemc_base(paths, work_dir) + [
         "start",
         "--resolution",
@@ -243,204 +493,262 @@ def launch_profile(
     if with_server:
         cmd += ["--server", "127.0.0.1", "--server-port", str(profile.get("server_port", 25565))]
     cmd.append(portablemc_version(profile, game_version))
+    return cmd
 
-    console.print("Launch command:")
-    console.print(" ".join(shlex.quote(part) for part in cmd))
-    server_proc: subprocess.Popen | None = None
-    game_proc: subprocess.Popen | None = None
-    capture_proc: subprocess.Popen | None = None
-    replay_thread: threading.Thread | None = None
-    replay_stop = threading.Event()
-    position_probe_stop: threading.Event | None = None
-    capture_cmd: list[str] | None = None
-    error: str | None = None
-    ready_event = threading.Event()
-    position_probe_baseline = 0
-    position_probe_sent_at: list[float] = []
-    replay_start_mono: float | None = None
-    with RunLogger(run_dir, console=console) as runlog:
-        runlog.log(
-            "launch",
-            "command",
-            cmd=cmd,
-            dry_run=dry_run,
-            game_version=game_version,
-            capture_settings=asdict(capture_settings),
+
+def _server_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if not plan.with_server or plan.dry_run:
+        return
+    runlog.log("server", "start")
+    state.server_proc = start_server(
+        (plan.paths.root / str(plan.profile.get("server_dir", ".mcdata/servers"))).resolve(),
+        plan.paths.main_dir,
+        game_version=plan.game_version,
+        profile_name=plan.profile_name,
+        profile=plan.profile,
+        run_dir=plan.run_dir,
+        lane=plan.lane,
+    )
+    runlog.log("server", "started", pid=state.server_proc.pid)
+    expected_fill_count = expected_scene_fill_count(plan.profile)
+    if expected_fill_count:
+        receipt_count = verify_scene_commands(
+            plan.run_dir / "server.log",
+            expected_fill_count=expected_fill_count,
         )
-        try:
-            if with_server and not dry_run:
-                runlog.log("server", "start")
-                server_proc = start_server(
-                    (paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve(),
-                    paths.main_dir,
-                    game_version=game_version,
-                    profile_name=profile_name,
-                    profile=profile,
-                    run_dir=run_dir,
-                    lane=lane,
-                )
-                runlog.log("server", "started", pid=server_proc.pid)
-                expected_fill_count = expected_scene_fill_count(profile)
-                if expected_fill_count:
-                    receipt_count = verify_scene_commands(
-                        run_dir / "server.log",
-                        expected_fill_count=expected_fill_count,
-                    )
-                    runlog.log(
-                        "server",
-                        "scene_verified",
-                        expected_fill_count=expected_fill_count,
-                        receipt_count=receipt_count,
-                    )
-            if replay_actions and run_trajectory_path and not dry_run:
-                replay_thread = _start_replay_thread(
-                    run_trajectory_path,
-                    start_event=ready_event,
-                    stop_event=replay_stop,
-                    run_dir=run_dir,
-                )
-                runlog.log("replay", "thread_started", trajectory=str(run_trajectory_path))
-            if dry_run:
-                runlog.log("launch", "dry_run_start")
-                subprocess.run(cmd, cwd=paths.root, check=True)
-                runlog.log("launch", "dry_run_complete")
-            else:
-                game_proc = subprocess.Popen(cmd, cwd=paths.root, start_new_session=True)
-                runlog.log("launch", "process_started", pid=game_proc.pid)
-                if with_server and server_proc and (capture or replay_actions):
-                    runlog.log("join", "wait_start", username=str(profile.get("username")))
-                    wait_for_player_join(
-                        run_dir / "server.log",
-                        str(profile.get("username")),
-                        proc=server_proc,
-                        wait_sec=int(profile.get("join_timeout_sec", 180)),
-                    )
-                    runlog.log("join", "player_joined", username=str(profile.get("username")))
-                    apply_join_state(server_proc, profile)
-                    runlog.log("join", "apply_join_state")
-                    if capture_settings.ready_delay_sec > 0:
-                        console.print(
-                            "Player joined; waiting "
-                            f"{capture_settings.ready_delay_sec:.1f}s before capture/actions..."
-                        )
-                        runlog.log("warmup", "start", seconds=capture_settings.ready_delay_sec)
-                        _wait_or_raise_if_exited(game_proc, capture_settings.ready_delay_sec)
-                        runlog.log("warmup", "end")
-                    if capture:
-                        if debug_no_reapply:
-                            runlog.log("join", "re_apply_state_skipped", debug=True)
-                        else:
-                            apply_join_state(server_proc, profile)
-                            runlog.log("join", "re_apply_state")
-                            _wait_or_raise_if_exited(game_proc, 1.0)
-                        _prepare_capture_view(capture_settings)
-                        runlog.log("capture", "view_prepared")
-                if capture:
-                    geometry_record = _window_geometry_record(
-                        requested_width=capture_settings.width,
-                        requested_height=capture_settings.height,
-                    )
-                    runlog.log(
-                        "capture",
-                        "window_geometry",
-                        **geometry_record,
-                        requested_width=capture_settings.width,
-                        requested_height=capture_settings.height,
-                        desktop=capture_settings.desktop,
-                    )
-                    capture_proc, capture_cmd = _start_capture(
-                        run_dir,
-                        settings=capture_settings,
-                        duration=duration,
-                    )
-                    runlog.log("capture", "start", cmd=capture_cmd, pid=capture_proc.pid)
-                    if with_server and server_proc:
-                        position_probe_stop = start_position_probe(
-                            server_proc,
-                            str(profile.get("username")),
-                            interval_sec=probe_interval,
-                            sent_at=position_probe_sent_at,
-                        )
-                        runlog.log("position_probe", "start", interval_sec=probe_interval)
-                        if debug_no_replay_gate:
-                            runlog.log("position_probe", "first_sample_skipped", debug=True)
-                        else:
-                            count = wait_for_position_sample(
-                                run_dir / "server.log",
-                                str(profile.get("username")),
-                                proc=server_proc,
-                                after_count=position_probe_baseline,
-                                wait_sec=10.0,
-                            )
-                            runlog.log("position_probe", "first_sample", count=count)
-                    replay_start_mono = time.monotonic()
-                    ready_event.set()
-                    runlog.log("replay", "released")
-                    _wait_for_capture(game_proc, capture_proc, run_dir / "game.exitcode")
-                    runlog.log("capture", "stop", returncode=capture_proc.returncode)
-                    if position_probe_stop:
-                        position_probe_stop.set()
-                        runlog.log("position_probe", "stop")
-                else:
-                    replay_start_mono = time.monotonic()
-                    ready_event.set()
-                    runlog.log("replay", "released")
-                    _wait_for_game(game_proc, run_dir / "game.exitcode", duration=duration)
-                    runlog.log("launch", "process_exit", returncode=game_proc.returncode)
-        except Exception as exc:
-            error = f"{type(exc).__name__}: {exc}"
-            runlog.log("teardown", "error", error=error)
-            raise
-        finally:
-            replay_stop.set()
-            ready_event.set()
-            if position_probe_stop:
-                position_probe_stop.set()
-            if replay_thread:
-                replay_thread.join(timeout=5)
-                runlog.log("replay", "thread_joined", alive=replay_thread.is_alive())
-            if capture_proc and capture_proc.poll() is None:
-                _terminate_process_tree(capture_proc, timeout=10)
-                runlog.log("teardown", "capture_terminated", returncode=capture_proc.returncode)
-            if game_proc and game_proc.poll() is None:
-                _terminate_process_tree(game_proc, timeout=20)
-                runlog.log("teardown", "game_terminated", returncode=game_proc.returncode)
-            if server_proc and server_proc.poll() is None:
-                _terminate_process_tree(server_proc, timeout=20)
-                runlog.log("teardown", "server_terminated", returncode=server_proc.returncode)
-            if server_proc:
-                count = write_positions_jsonl(
-                    run_dir / "server.log",
-                    run_dir / "positions.jsonl",
-                    username=str(profile.get("username")),
-                    sent_at=position_probe_sent_at,
-                    replay_start_mono=replay_start_mono,
-                    replay_log_path=run_dir / "replay_log.jsonl" if replay_actions else None,
-                )
-                runlog.log("position_probe", "positions_written", count=count)
-            manifest = build_run_manifest(
-                run_id=run_dir.name,
-                profile_name=profile_name,
-                profile=profile,
-                mc_version=game_version,
-                resources=_resource_manifest(work_dir, profile),
-                trajectory=trajectory_info,
-                capture=_capture_manifest(
-                    enabled=capture,
-                    settings=capture_settings,
-                    ffmpeg_cmd=capture_cmd,
-                    run_dir=run_dir,
-                ),
-                env=_env_manifest(display=capture_settings.display),
-                git=_git_manifest(paths.root),
-                started_at=started_at,
-                ended_at=datetime.now(timezone.utc).isoformat(),
-                error=error,
-                lane=lane,
-            )
-            write_run_manifest(run_dir, manifest)
-            runlog.log("teardown", "manifest_written", path=str(run_dir / "manifest.json"))
-    return metadata
+        runlog.log(
+            "server",
+            "scene_verified",
+            expected_fill_count=expected_fill_count,
+            receipt_count=receipt_count,
+        )
+
+
+def _replay_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if not plan.replay_actions or not plan.run_trajectory_path or plan.dry_run:
+        return
+    state.replay_thread = _start_replay_thread(
+        plan.run_trajectory_path,
+        start_event=state.ready_event,
+        stop_event=state.replay_stop,
+        run_dir=plan.run_dir,
+    )
+    runlog.log("replay", "thread_started", trajectory=str(plan.run_trajectory_path))
+
+
+def _client_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if plan.dry_run:
+        runlog.log("launch", "dry_run_start")
+        subprocess.run(plan.cmd, cwd=plan.paths.root, check=True)
+        runlog.log("launch", "dry_run_complete")
+        return
+    state.game_proc = subprocess.Popen(plan.cmd, cwd=plan.paths.root, start_new_session=True)
+    runlog.log("launch", "process_started", pid=state.game_proc.pid)
+    _join_phase(plan, state, runlog)
+    if plan.capture:
+        _capture_phase(plan, state, runlog)
+    else:
+        _release_replay(state, runlog)
+        _wait_for_game(state.game_proc, plan.run_dir / "game.exitcode", duration=plan.duration)
+        runlog.log("launch", "process_exit", returncode=state.game_proc.returncode)
+
+
+def _join_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if not (plan.with_server and state.server_proc and (plan.capture or plan.replay_actions)):
+        return
+    if state.game_proc is None:
+        raise RuntimeError("Minecraft client process was not started")
+    username = str(plan.profile.get("username"))
+    runlog.log("join", "wait_start", username=username)
+    wait_for_player_join(
+        plan.run_dir / "server.log",
+        username,
+        proc=state.server_proc,
+        wait_sec=int(plan.profile.get("join_timeout_sec", 180)),
+    )
+    runlog.log("join", "player_joined", username=username)
+    apply_join_state(state.server_proc, plan.profile)
+    runlog.log("join", "apply_join_state")
+    _warmup_after_join(plan, state, runlog)
+    if plan.capture:
+        _prepare_joined_capture(plan, state, runlog)
+
+
+def _warmup_after_join(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if plan.capture_settings.ready_delay_sec <= 0:
+        return
+    if state.game_proc is None:
+        raise RuntimeError("Minecraft client process was not started")
+    console.print(
+        "Player joined; waiting "
+        f"{plan.capture_settings.ready_delay_sec:.1f}s before capture/actions..."
+    )
+    runlog.log("warmup", "start", seconds=plan.capture_settings.ready_delay_sec)
+    _wait_or_raise_if_exited(state.game_proc, plan.capture_settings.ready_delay_sec)
+    runlog.log("warmup", "end")
+
+
+def _prepare_joined_capture(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if state.server_proc is None or state.game_proc is None:
+        raise RuntimeError("Capture prep requires server and client processes")
+    if plan.debug_no_reapply:
+        runlog.log("join", "re_apply_state_skipped", debug=True)
+    else:
+        apply_join_state(state.server_proc, plan.profile)
+        runlog.log("join", "re_apply_state")
+        _wait_or_raise_if_exited(state.game_proc, 1.0)
+    _prepare_capture_view(plan.capture_settings)
+    runlog.log("capture", "view_prepared")
+
+
+def _capture_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if state.game_proc is None:
+        raise RuntimeError("Capture requires a Minecraft client process")
+    _log_window_geometry(plan, runlog)
+    state.capture_proc, state.capture_cmd = _start_capture(
+        plan.run_dir,
+        settings=plan.capture_settings,
+        duration=plan.duration,
+    )
+    runlog.log("capture", "start", cmd=state.capture_cmd, pid=state.capture_proc.pid)
+    if plan.with_server and state.server_proc:
+        _start_position_probe_phase(plan, state, runlog)
+    _release_replay(state, runlog)
+    _wait_for_capture(state.game_proc, state.capture_proc, plan.run_dir / "game.exitcode")
+    runlog.log("capture", "stop", returncode=state.capture_proc.returncode)
+    if state.position_probe_stop:
+        state.position_probe_stop.set()
+        runlog.log("position_probe", "stop")
+
+
+def _log_window_geometry(plan: RunPlan, runlog: RunLogger) -> None:
+    geometry_record = _window_geometry_record(
+        requested_width=plan.capture_settings.width,
+        requested_height=plan.capture_settings.height,
+    )
+    runlog.log(
+        "capture",
+        "window_geometry",
+        **geometry_record,
+        requested_width=plan.capture_settings.width,
+        requested_height=plan.capture_settings.height,
+        desktop=plan.capture_settings.desktop,
+    )
+
+
+def _start_position_probe_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if state.server_proc is None:
+        return
+    username = str(plan.profile.get("username"))
+    state.position_probe_stop = start_position_probe(
+        state.server_proc,
+        username,
+        interval_sec=plan.probe_interval,
+        sent_at=state.position_probe_sent_at,
+    )
+    runlog.log("position_probe", "start", interval_sec=plan.probe_interval)
+    if plan.debug_no_replay_gate:
+        runlog.log("position_probe", "first_sample_skipped", debug=True)
+        return
+    count = wait_for_position_sample(
+        plan.run_dir / "server.log",
+        username,
+        proc=state.server_proc,
+        after_count=state.position_probe_baseline,
+        wait_sec=10.0,
+    )
+    runlog.log("position_probe", "first_sample", count=count)
+
+
+def _release_replay(state: RunState, runlog: RunLogger) -> None:
+    state.replay_start_mono = time.monotonic()
+    state.ready_event.set()
+    runlog.log("replay", "released")
+
+
+def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    state.replay_stop.set()
+    state.ready_event.set()
+    if state.position_probe_stop:
+        state.position_probe_stop.set()
+    if state.replay_thread:
+        state.replay_thread.join(timeout=5)
+        runlog.log("replay", "thread_joined", alive=state.replay_thread.is_alive())
+    _terminate_running_processes(state, runlog)
+    _write_position_log(plan, state, runlog)
+    _write_run_manifest_for_plan(plan, state, runlog)
+
+
+def _terminate_running_processes(state: RunState, runlog: RunLogger) -> None:
+    _terminate_if_running(
+        state.capture_proc,
+        timeout=10,
+        runlog=runlog,
+        event="capture_terminated",
+    )
+    _terminate_if_running(
+        state.game_proc,
+        timeout=20,
+        runlog=runlog,
+        event="game_terminated",
+    )
+    _terminate_if_running(
+        state.server_proc,
+        timeout=20,
+        runlog=runlog,
+        event="server_terminated",
+    )
+
+
+def _terminate_if_running(
+    proc: subprocess.Popen | None,
+    *,
+    timeout: int,
+    runlog: RunLogger,
+    event: str,
+) -> None:
+    if proc and proc.poll() is None:
+        _terminate_process_tree(proc, timeout=timeout)
+        runlog.log("teardown", event, returncode=proc.returncode)
+
+
+def _write_position_log(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    if not state.server_proc:
+        return
+    count = write_positions_jsonl(
+        plan.run_dir / "server.log",
+        plan.run_dir / "positions.jsonl",
+        username=str(plan.profile.get("username")),
+        sent_at=state.position_probe_sent_at,
+        replay_start_mono=state.replay_start_mono,
+        replay_log_path=plan.run_dir / "replay_log.jsonl" if plan.replay_actions else None,
+    )
+    runlog.log("position_probe", "positions_written", count=count)
+
+
+def _write_run_manifest_for_plan(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    manifest = build_run_manifest(
+        run_id=plan.run_dir.name,
+        profile_name=plan.profile_name,
+        profile=plan.profile,
+        mc_version=plan.game_version,
+        resources=_resource_manifest(plan.work_dir, plan.profile),
+        trajectory=plan.trajectory_info,
+        capture=_capture_manifest(
+            enabled=plan.capture,
+            settings=plan.capture_settings,
+            ffmpeg_cmd=state.capture_cmd,
+            run_dir=plan.run_dir,
+        ),
+        env=_env_manifest(display=plan.capture_settings.display),
+        git=_git_manifest(plan.paths.root),
+        started_at=plan.started_at,
+        ended_at=datetime.now(timezone.utc).isoformat(),
+        error=state.error,
+        lane=plan.lane,
+    )
+    write_run_manifest(plan.run_dir, manifest)
+    runlog.log("teardown", "manifest_written", path=str(plan.run_dir / "manifest.json"))
 
 
 def remote_tmux_command(
