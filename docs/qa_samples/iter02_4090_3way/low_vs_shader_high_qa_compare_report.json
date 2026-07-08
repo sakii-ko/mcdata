@@ -1,0 +1,311 @@
+{
+  "inputs": [
+    "runs/20260708T062243Z_matrix_low",
+    "runs/20260708T062705Z_matrix_shader_high"
+  ],
+  "outputs": {
+    "contact_sheet": "runs/iter02_qa_compare/low_vs_shader_high/qa_compare_contact_sheet.jpg",
+    "json": "runs/iter02_qa_compare/low_vs_shader_high/qa_compare_report.json",
+    "markdown": "runs/iter02_qa_compare/low_vs_shader_high/qa_compare_report.md"
+  },
+  "probe": [
+    {
+      "codec": "h264",
+      "duration_sec": 60.0,
+      "fps": 24.0,
+      "height": 720,
+      "raw": {
+        "format": {
+          "bit_rate": "1966270",
+          "duration": "60.000000",
+          "filename": "runs/20260708T062243Z_matrix_low/capture.mp4",
+          "format_long_name": "QuickTime / MOV",
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+          "nb_programs": 0,
+          "nb_streams": 1,
+          "probe_score": 100,
+          "size": "14747026",
+          "start_time": "0.000000",
+          "tags": {
+            "compatible_brands": "isomiso2avc1mp41",
+            "encoder": "Lavf58.76.100",
+            "major_brand": "isom",
+            "minor_version": "512"
+          }
+        },
+        "streams": [
+          {
+            "avg_frame_rate": "24/1",
+            "bit_rate": "1964002",
+            "bits_per_raw_sample": "8",
+            "chroma_location": "left",
+            "closed_captions": 0,
+            "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+            "codec_name": "h264",
+            "codec_tag": "0x31637661",
+            "codec_tag_string": "avc1",
+            "codec_type": "video",
+            "coded_height": 720,
+            "coded_width": 1280,
+            "disposition": {
+              "attached_pic": 0,
+              "clean_effects": 0,
+              "comment": 0,
+              "default": 1,
+              "dub": 0,
+              "forced": 0,
+              "hearing_impaired": 0,
+              "karaoke": 0,
+              "lyrics": 0,
+              "original": 0,
+              "timed_thumbnails": 0,
+              "visual_impaired": 0
+            },
+            "duration": "60.000000",
+            "duration_ts": 737280,
+            "has_b_frames": 2,
+            "height": 720,
+            "index": 0,
+            "is_avc": "true",
+            "level": 31,
+            "nal_length_size": "4",
+            "nb_frames": "1440",
+            "pix_fmt": "yuv420p",
+            "profile": "High",
+            "r_frame_rate": "24/1",
+            "refs": 1,
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "tags": {
+              "handler_name": "VideoHandler",
+              "language": "und",
+              "vendor_id": "[0][0][0][0]"
+            },
+            "time_base": "1/12288",
+            "width": 1280
+          }
+        ]
+      },
+      "width": 1280
+    },
+    {
+      "codec": "h264",
+      "duration_sec": 60.0,
+      "fps": 24.0,
+      "height": 720,
+      "raw": {
+        "format": {
+          "bit_rate": "1374731",
+          "duration": "60.000000",
+          "filename": "runs/20260708T062705Z_matrix_shader_high/capture.mp4",
+          "format_long_name": "QuickTime / MOV",
+          "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+          "nb_programs": 0,
+          "nb_streams": 1,
+          "probe_score": 100,
+          "size": "10310484",
+          "start_time": "0.000000",
+          "tags": {
+            "compatible_brands": "isomiso2avc1mp41",
+            "encoder": "Lavf58.76.100",
+            "major_brand": "isom",
+            "minor_version": "512"
+          }
+        },
+        "streams": [
+          {
+            "avg_frame_rate": "24/1",
+            "bit_rate": "1372424",
+            "bits_per_raw_sample": "8",
+            "chroma_location": "left",
+            "closed_captions": 0,
+            "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+            "codec_name": "h264",
+            "codec_tag": "0x31637661",
+            "codec_tag_string": "avc1",
+            "codec_type": "video",
+            "coded_height": 720,
+            "coded_width": 1280,
+            "disposition": {
+              "attached_pic": 0,
+              "clean_effects": 0,
+              "comment": 0,
+              "default": 1,
+              "dub": 0,
+              "forced": 0,
+              "hearing_impaired": 0,
+              "karaoke": 0,
+              "lyrics": 0,
+              "original": 0,
+              "timed_thumbnails": 0,
+              "visual_impaired": 0
+            },
+            "duration": "60.000000",
+            "duration_ts": 737280,
+            "has_b_frames": 2,
+            "height": 720,
+            "index": 0,
+            "is_avc": "true",
+            "level": 31,
+            "nal_length_size": "4",
+            "nb_frames": "1440",
+            "pix_fmt": "yuv420p",
+            "profile": "High",
+            "r_frame_rate": "24/1",
+            "refs": 1,
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "tags": {
+              "handler_name": "VideoHandler",
+              "language": "und",
+              "vendor_id": "[0][0][0][0]"
+            },
+            "time_base": "1/12288",
+            "width": 1280
+          }
+        ]
+      },
+      "width": 1280
+    }
+  ],
+  "rows": [
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.7149865627288818,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 4.615
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.6483860611915588,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 9.231
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.5470392107963562,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 13.846
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.9289399981498718,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 18.462
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.025436580181121826,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 23.077
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": -0.08811715990304947,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 27.692
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": -0.21185550093650818,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 32.308
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": -0.03499988093972206,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 36.923
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.11501853913068771,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 41.538
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.4216804504394531,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 46.154
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.2051105797290802,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 50.769
+    },
+    {
+      "pairs": [
+        {
+          "left": "runs/20260708T062243Z_matrix_low",
+          "ncc": 0.1975092589855194,
+          "right": "runs/20260708T062705Z_matrix_shader_high"
+        }
+      ],
+      "timestamp_sec": 55.385
+    }
+  ],
+  "timestamps_sec": [
+    4.615,
+    9.231,
+    13.846,
+    18.462,
+    23.077,
+    27.692,
+    32.308,
+    36.923,
+    41.538,
+    46.154,
+    50.769,
+    55.385
+  ],
+  "videos": [
+    "runs/20260708T062243Z_matrix_low/capture.mp4",
+    "runs/20260708T062705Z_matrix_shader_high/capture.mp4"
+  ]
+}
