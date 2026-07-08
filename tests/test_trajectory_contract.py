@@ -45,6 +45,37 @@ def test_configured_key_events_are_paired() -> None:
 def test_ground_astar_loop_route_stays_inside_walkable_area() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["ground_astar_loop"]
     trajectory = build_trajectory("ground_astar_loop", spec)
+    _assert_route_stays_inside_walkable_area(trajectory, spec)
+
+
+def test_astar_loop_routes_stay_inside_walkable_area() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") != "astar_walk":
+            continue
+        trajectory = build_trajectory(name, spec)
+        _assert_route_stays_inside_walkable_area(trajectory, spec)
+
+
+def test_waypoint_actions_insert_pause_and_look_events() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["light_closeup_tour"]
+    trajectory = build_trajectory("light_closeup_tour", spec)
+
+    pause_events = [event for event in trajectory["events"] if event.get("pause") is True]
+    look_events = [
+        event
+        for event in trajectory["events"]
+        if event.get("mouse_dy") == 20 and event.get("duration") == 0.35
+    ]
+
+    assert len(pause_events) == len(spec["waypoint_actions"])
+    assert len(look_events) == len(spec["waypoint_actions"])
+
+
+def _assert_route_stays_inside_walkable_area(
+    trajectory: dict[str, Any],
+    spec: dict[str, Any],
+) -> None:
     min_x, max_x, min_z, max_z = spec["bounds"]
     blocked_rects = list(spec.get("blocked_rects") or [])
 

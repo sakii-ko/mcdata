@@ -7,6 +7,7 @@ import typer
 from rich.console import Console
 
 from mcdata.actions import generate_strategy
+from mcdata.actions.viz import load_trajectory, render_trajectory_map
 from mcdata.config import load_profile, load_yaml
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
@@ -79,6 +80,25 @@ def make_trajectory(
     """Generate an action trajectory JSON file."""
     trajectory = generate_strategy(root.resolve() / "configs", strategy, out)
     console.print(f"Wrote {len(trajectory.get('events', []))} events to {out}")
+
+
+@app.command("viz-trajectory")
+def viz_trajectory(
+    traj: Path = typer.Argument(...),
+    out: Path = typer.Option(..., "--out"),
+    spec_strategy: Optional[str] = typer.Option(None, "--spec-strategy"),
+    root: Path = typer.Option(Path("."), "--root"),
+) -> None:
+    """Render a top-down trajectory map."""
+    spec = None
+    if spec_strategy:
+        strategies = load_yaml(root.resolve() / "configs" / "actions.yml").get("strategies", {})
+        if spec_strategy not in strategies:
+            known = ", ".join(sorted(strategies))
+            raise typer.BadParameter(f"Unknown strategy '{spec_strategy}'. Known strategies: {known}")
+        spec = dict(strategies[spec_strategy])
+    render_trajectory_map(load_trajectory(traj), spec=spec, out=out)
+    console.print(f"Wrote trajectory map: {out}")
 
 
 @app.command("run-matrix")
