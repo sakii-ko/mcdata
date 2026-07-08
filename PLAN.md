@@ -41,106 +41,68 @@
 
 ---
 
-## ITER-01：可验证性基建（当前 iteration）
+## ITER-01：可验证性基建 —— ✅ 已完成（2026-07-08）
 
-分支名：`iter/01-foundations`。执行顺序 T0 → T1 → T2/T3/T4（后三个相互独立，顺序随意）。
+review 通过并 merge（merge commit `b10a4ec`，tag `iter-01-done`）。任务明细、验收证据与 5 个非阻塞 findings 见 `docs/iterations/ITER-01-report.md` / `ITER-01-review.md`；findings 修复并入 ITER-02 T0。
 
-### T0 — 开发工具链（前置，小）
+## ITER-02：真 GPU 采集验证 + 多卡并行化（当前 iteration）
 
-- `pyproject.toml` 增加：
-  - `[project.optional-dependencies]`：`dev = ["pytest>=8", "jsonschema", "ruff"]`，`qa = ["numpy", "Pillow", "matplotlib"]`。
-  - `[tool.pytest.ini_options]`：`pythonpath = ["src"]`，`testpaths = ["tests"]`。
-- 新建 `scripts/dev_check.sh`：依次跑 `python -m compileall -q src`、`python3 scripts/check_standards.py`、`ruff check src tests`、`pytest -q`，任一失败即非零退出。用 `.venv/bin/python`。（`check_standards.py` 已由 planner 提供，勿改其规则；误报或规则要调整时在 report 里提。）
-- 安装：`.venv/bin/pip install -e '.[dev,qa]'`（网络装不上某个包就在 report 里说明并降级处理，不要卡死）。
+分支名：`iter/02-gpu-collection`（从 main 切，`git switch -c iter/02-gpu-collection main`；注意 main 已被 planner worktree 占用 checkout，直接从任意分支切即可）。执行顺序 T0 → T1 → T2；T3 依赖用户提供 8 卡环境，T2 的代码先行。
 
-**验收**：`bash scripts/dev_check.sh` 退出码 0，输出贴进 report。
+前置事实（planner 已备好，见"渲染主机与数据存放政策"）：
+- 4090 `:77` = NVIDIA RTX 4090 display 可用，smoke run 已验证。远端代码在 `/home/lyf/mcdata`（系统 python3、XTEST backend、无 venv），**开跑前先 rsync 同步 main 最新代码**。
+- L40S 单卡容器 `ssh l40s` 可用：`:77` display 已起（挂了重跑 `scripts/l40s_container_gpu_display.sh start`）、python 依赖已装、项目在 `/root/mcdata`。**必须显式 `export MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata`**。
+- 回传：`scripts/pull_runs_from_remote.sh` 已在两台机器演练。
 
-### T1 — actions 纯化 + 策略注册表 + 单元测试
+### T0 — ITER-01 review findings 修复（小，先做）
 
-目的：把"纯逻辑与副作用分离"和"golden 锁定确定性"落到 actions 层（`src/mcdata/actions/strategies.py`）。
+1. ARCHITECTURE.md trajectory 契约补充：`{"pause": true}` 事件语义；"replay 对未知事件类型必须静默跳过"的前向兼容规则。
+2. `write_run_manifest` 与 run 内 trajectory 拷贝改为 `.tmp` + `os.replace` 原子写（R16）。
+3. xdotool 后端注入失败加 warning（非零 returncode 至少记一次，可去重防刷屏）（R9）。
+4. `settings._parse_bool` 非法值从静默 False 改为 RuntimeError，与其他 parser 一致；更新单测。
 
-- 重构（行为必须完全不变）：
-  - 拆出纯函数 `build_trajectory(name: str, spec: dict) -> dict`，不碰文件系统；`generate_strategy` 保持现有签名，内部变成 load config → build → 写文件。
-  - `strategies.py:19-34` 的 if/elif 分发改成模块级注册表 `STRATEGY_BUILDERS: dict[str, Callable]`，后续外部 policy adapter 可以注册新类型而不改分发代码。
-- 新建 `tests/`，覆盖：
-  - `test_astar.py`：`_astar` 绕开 blocked、越界不可走、不可达时 raise、路径首尾正确；`_points_in_rect` 边界含端点。
-  - `test_route_segments.py`：`_route_segments` 同向合并、`_shortest_turn`（如 350→10 应为 +20）、`_turn_steps`（>90 度拆两半）。
-  - `test_trajectory_contract.py`：对 `configs/actions.yml` 里每个非 external 策略执行 `build_trajectory`，断言 events 按 `t` 非递减、key down/up 配对、同配置两次生成结果相等（确定性）；`ground_astar_loop` 的 route 不进 blocked_rects、不越 bounds。
-  - `test_golden_trajectories.py`：把每个策略的生成结果存为 `tests/golden/<name>.json`（**重构前的输出**），测试断言重构后 byte-identical。生成 golden 的方法：在动 strategies.py 之前先提交 golden 文件（这一步单独一个 commit，`[test] add golden trajectories from baseline behavior`），再做重构 commit——这样 git 历史本身就是行为等价的证据。
-  - `test_configs.py`：三个 yml 交叉引用完整性——每个 profile 的 `asset_set` 存在于 asset_sets.yml；所有 `matrix_` profile 的 `world_profile` 都是 `render_matrix_base` 且 `server_port` 一致；actions.yml 每个策略的 `type` 都在注册表里。
-  - `test_options.py`：`write_options` 输出包含全部 QUIET_CAPTURE_OPTIONS 键、resourcePacks 格式正确；`write_iris_config` 有/无 shaderpack 两种情况。
+**验收**：dev_check 全绿；每项修复有对应单测或文档 diff。
 
-**验收**：`pytest -q` 全绿；golden 覆盖所有非 external 策略；重构 commit 与 golden commit 分离。
+### T1 — 4090 真 GPU 3-way 采集验证（关键路径）
 
-### T2 — run manifest + 结构化日志 + 溯源
+1. rsync main 代码到 4090（命令见 PROGRESS.md；exclude .git/.venv/.mcdata/runs）。跑前 `nvidia-smi` 确认 GPU 0 显存余量（与他人训练共享）；若紧张改在 l40s 执行本任务（命令相同，路径/存储见前置事实）。
+2. tmux 里 `DISPLAY=:77` 跑 `run-matrix --profiles matrix_low,matrix_textured,matrix_shader_high --strategy ground_astar_loop --duration 60`。
+3. 每个 run 跑 `qa-run`；三方两两 `qa-compare`。
+4. 另跑一次 `matrix_night_complementary`（60s）验证夜晚亮度可用。
+5. 人工抽帧核对（PROGRESS.md 录制要求）：无黑边、不含加载画面、HUD 保留、无 toast、shader profile 有可见水反/光影/emissive 差异。
+6. 回传 + 清理：`pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge`。
+7. 产物入库 `docs/qa_samples/iter02_4090_3way/`：qa_report ×4、compare 报告（跨 profile NCC 数值）、每 profile 一张代表帧（压缩，单张 <300KB）。
 
-目的：每个 run 落盘完整可复现描述 + 机器可读日志。契约见 `docs/ARCHITECTURE.md` 的 manifest 一节。
+**验收**：4 个 manifest 完整且 `env` 里 GL renderer 为 NVIDIA；ffprobe fps=24、1280x720、时长正确；跨 profile NCC 数值记录在案（本轮不设硬阈值，收集定标数据）；回传后远端 runs 已清空。
 
-- 新模块 `src/mcdata/manifest.py`：
-  - 纯函数 `build_run_manifest(...)`，输入全部显式传参（profile dict、资源清单、trajectory 路径+sha256、capture 设置、ffprobe 结果、env 信息、git commit/dirty），输出 dict；单独的 `write_run_manifest(run_dir, manifest)` 落盘为 `manifest.json`。
-  - schema 文件 `src/mcdata/schemas/manifest.schema.json`，测试里用 jsonschema 校验。
-- 新模块 `src/mcdata/runlog.py`：`RunLogger`，同时输出 console 和 `<run_dir>/pipeline.jsonl`（每行 `{"ts": ..., "stage": ..., "event": ..., **detail}`）。stage 取值如 `bootstrap/server/launch/join/warmup/capture/replay/teardown`。
-- pipeline 接入（`src/mcdata/render/pipeline.py`）：
-  - 关键节点全部走 RunLogger：server start、player join、apply_join_state、warmup、capture start/stop（含完整 ffmpeg 命令）、replay start/end、各进程退出码、terminate。
-  - 散落的 `MCDATA_CAPTURE_SIZE / MCDATA_CAPTURE_FPS / MCDATA_CAPTURE_DESKTOP / MCDATA_HIDE_HUD / MCDATA_VIEW_SETTLE_SEC / MCDATA_CAPTURE_READY_DELAY` 收敛成 `CaptureSettings.from_env(profile)` dataclass（一次解析、显式传参、整体写进 manifest）。dataclass 放**新文件 `src/mcdata/settings.py`**——这是 CODE_STANDARDS R2 规定的 env 边界文件，放 pipeline.py 里会被 check_standards 标为 baseline 违规。
-  - trajectory JSON 复制一份到 run_dir 内并记 sha256（当前 `runs/trajectories/<strategy>.json` 会被后续运行覆盖，run 内拷贝保证溯源）。
-  - run 结束时写 manifest.json；dry-run 也写（capture/ffprobe 字段为 null）。
-  - `run-matrix`（`src/mcdata/cli.py`）：game_version 在矩阵开始时解析一次并透传给每个 profile 的 bootstrap/launch，避免矩阵跑到一半上游发新版导致版本漂移；解析结果记入每个 manifest。
-- replay 观测（`src/mcdata/actions/replay.py`）：每个事件记录 scheduled_t 与 actual_t（monotonic 差值）到 `<run_dir>/replay_log.jsonl`（run_dir 通过参数传入，保持 replay 不依赖 render 模块）；`_keycode` 查不到键时打 warning 而不是静默丢弃。
-- ffprobe 封装放 `src/mcdata/qa/probe.py`（T3 也用，谁先做谁建，注意 qa 包不 import render——render 调 probe 是允许方向）。
+### T2 — run-matrix 多实例并行化改造
 
-**验收**：
-- manifest 纯函数单测 + schema 校验通过；CaptureSettings 单测（env 设置/未设置/非法值）。
-- `python3 scripts/check_standards.py` 无 FAIL 且 **R2 baseline 清零**（pipeline.py 不再直接读 env；随后把 checker 里 `ENV_TEMP_BASELINE` 的 pipeline 条目删除——这是唯一允许 coder 改 checker 的操作）。
-- 集成验证：若本机 Xvfb 可用（`mcdata doctor` 确认），跑 `run --profile matrix_low --with-server --replay-actions --capture --duration 10`，产出 manifest.json / pipeline.jsonl / replay_log.jsonl；不可用则至少 dry-run 产出 manifest。样例 manifest 拷到 `docs/examples/run_manifest_example.json` 入库。
+目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。
 
-### T3 — QA 工具（离线，用现有录像验证）
+- `launch_profile` / `run-matrix` 增加显式覆盖参数：`--display`、`--server-port`；server_dir 按实例隔离。世界一致性依赖固定 seed + scene 命令重建（跨机等价已在 4090/L40S smoke 验证）。
+- 铁律：并行实例之间零共享可写路径（server dir / run dir / instance dir / trajectory 拷贝逐一确认）。DISPLAY 传参优先于环境变量，进 CaptureSettings 并写入 manifest。
+- 新增 `scripts/matrix_shard.sh <gpu_index> <profiles_csv> [duration]`：DISPLAY=:$((77+gpu))、端口偏移、调用 run-matrix；遵守 R21。
+- 本机无 GPU 验证：两个并发 dry-run 实例证明无路径/端口冲突（集成测试或脚本演示均可，证据入 report）。
 
-目的：把"抽帧人眼检查"变成可重复执行的命令。新包 `src/mcdata/qa/`，**禁止 import render/actions**，输入只有 run dir / 视频文件。
+**验收**：单测 + 并发 dry-run 证据；dev_check 全绿。
 
-- 结构：`probe.py`（ffprobe json 封装）、`frames.py`（ffmpeg 均匀抽 N 帧）、`metrics.py`（纯 numpy 函数）、`report.py`（组装 json+md+图）。
-- `mcdata qa-run <run_dir|video> [--frames 12]`：
-  - ffprobe 校验：fps==24、分辨率、时长、编码。
-  - 黑边检测：每帧四边 8px 带的亮度均值/方差，低于阈值判黑边（阈值做成参数）。
-  - 亮度统计：灰度 p5/p50/p95 + 直方图（夜晚可用性判据：p50 过低报 warning）。
-  - 产出 `qa_report.json`、`qa_report.md`、`contact_sheet.jpg`（Pillow 拼 3x4 网格，jpg quality~80）。
-- `mcdata qa-compare <dirA> <dirB> [...]`：
-  - 相同 timestamp 抽帧，缩到 64x36 灰度，两两算 zero-mean NCC（手写 numpy，不引 scipy）；相似度高 = 内容/机位对齐、只有渲染不同，这正是 N-way 数据集的核心验收指标。
-  - 产出并排对比图 + markdown 表格（每 timestamp 一行，NCC 值 + 缩略图）。
-- `metrics.py` 单测：numpy 合成图像（纯黑边框/无边框/加噪、平移图像对）验证黑边检测和 NCC 方向正确。
-- 真实数据验证：对 `runs/screen_recordings/matrix_low_ground_astar_final_20260707T173901`、`matrix_low_ground_astar_stable_24fps_20260707T170812`、`matrix_emissive_makeup_nochat_20260707T171753` 跑 qa-run；对前两个（同策略不同 run）跑 qa-compare。报告 md + 压缩图入 `docs/qa_samples/`（单图 <300KB）。
+### T3 — L40S 8 卡全矩阵（依赖用户提供 8 卡容器，代码就绪即可开跑）
 
-**验收**：单测全绿；三份 qa_report + 一份 compare 报告入库；`qa` 包无 render/actions import（可在 test_configs.py 里加一条 import 检查断言）。
+1. 每卡：`MCDATA_GPU_INDEX=i MCDATA_HEADLESS_DISPLAY=:$((77+i)) scripts/l40s_container_gpu_display.sh install && start && verify`。
+2. 17 个 matrix profile 按卡分片（每卡 2–3 个），`matrix_shard.sh` 并行 60s 采集。
+3. 全部 qa-run + 关键组合 qa-compare；结果先落 l40s CephFS，批次归档回传 local NAS。
 
-### T4 — 路线扩展 + 轨迹可视化
+**验收**：17 份完整 manifest + QA 报告；摘要 + 代表帧入库 `docs/qa_samples/iter02_full_matrix/`。
 
-目的：不启动游戏就能 review 路线；用配置（而非新代码）扩出贴近水面/玻璃/光源的采集路线。
+### ITER-02 完成定义（DoD）
 
-- `mcdata viz-trajectory <traj.json> --out <png>`（新 CLI，另可选 `--spec-strategy <name>` 直接从 actions.yml 读 spec 画禁区）：俯视图画 bounds 边框、blocked_rects 半透明填充、blocked 散点、route 折线 + 起点/终点标记 + goals 序号。matplotlib Agg backend。实现放 `src/mcdata/actions/viz.py`（只依赖 trajectory JSON 和 spec dict）。
-- astar_walk 通用扩展：spec 支持 `waypoint_actions`（列表，形如 `{"at": [x, z], "pause_sec": 2.0, "look_dy_px": 40}`）——到达对应 goal 后插入停顿/低头抬头事件。实现为通用参数，禁止写死具体场景坐标；golden 文件不受影响（旧策略不配这个字段）。
-- `configs/actions.yml` 新增三条路线（场景坐标参考 `server.py:225-254` 的 `_scene_commands`，水区 x∈[-14,-5] z∈[-2,7]，玻璃区 x∈[5,14] z∈[-2,7]，光源排 z=-10）：
-  - `water_edge_loop`：沿水区外沿一圈（如 x=-4 和 z=-3/z=8 边线），在两个岸边点驻留看水面。
-  - `glass_edge_loop`：镜像地沿玻璃区外沿一圈。
-  - `light_closeup_tour`：沿 z=-8 从 x=-10 走到 x=+11，在每个光源前（z=-10 那排）驻留 2s。
-- 每条新路线：生成 trajectory JSON + viz PNG 入 `docs/trajectories/`；`test_trajectory_contract.py` 扩展断言其 route 不进 blocked_rects/不越界。
-- 夜晚采集复用 `ground_astar_loop` + `matrix_night_complementary` profile，不需要新路线。
-
-**验收**：三张路线图 + JSON 入库、测试全绿、`viz-trajectory` 对旧的 `ground_astar_loop` 也能出图（一并入库）。
-
-### ITER-01 完成定义（DoD）
-
-- `bash scripts/dev_check.sh` 全绿。
-- 上述每个 T 的验收条目都有落盘证据（测试输出 / 报告 / 图 / 样例文件）。
-- `docs/iterations/ITER-01-report.md` 写完：每任务 commit 哈希、跑过的命令与关键输出、产物路径、偏离计划的决定及理由、希望 planner 重点 review 的点。
-- 分支推到 `iter/01-foundations`，不 merge。
+- dev_check 全绿；`docs/iterations/ITER-02-report.md`（要求同 ITER-01：commit 哈希、命令与输出、产物路径、偏离说明、review 提示点）；分支不自行 merge。
 
 ---
 
 ## Backlog（ITER-02+，暂不执行）
 
-1. **GPU 就绪后立刻做**：4090/L40S 真 GPU display 上跑 3-way matrix + qa-run/qa-compare 全套验证 → 扩 17 profile 全矩阵（这是 ITER-02 主体）。每批次跑完执行回传政策（见"渲染主机与数据存放政策"）。
-1b. **L40S 8 卡扩展**：单卡容器已验证。8 卡机器上每卡一个 headless Xorg（`MCDATA_GPU_INDEX=i MCDATA_HEADLESS_DISPLAY=:$((77+i)) scripts/l40s_container_gpu_display.sh install/start/verify`），17 个 matrix profile 分片到 8 卡并行采集；需要给 `run-matrix` 增加 display/端口隔离参数（每个并行实例独立 `DISPLAY`、独立 `server_port`、独立 instance dir），或提供一个按卡分片的包装脚本。ITER-02 具体化。
-2. `launch_profile`（`pipeline.py:141-258`）编排层分解（plan 阶段纯函数化 + 进程管理拆到 procutil/capture 模块）——等 T2/T3 的观测和 QA 就位后再动，降低回归风险。
+1. `launch_profile`（`pipeline.py:141-258`）编排层分解（plan 阶段纯函数化 + 进程管理拆到 procutil/capture 模块）——等 T2/T3 的观测和 QA 就位后再动，降低回归风险。
 3. 轨迹相机契约从像素改成角度（`yaw_deg`/`pitch_deg`），px-per-degree 换算下沉到 replay 层并按 profile 标定；向后兼容旧字段。
 4. 渲染机上优先 XTEST backend（避免 xdotool 每步 spawn 子进程的抖动），补全 keycode 表。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
@@ -150,4 +112,5 @@
 ## 等待用户/管理员的事项
 
 - ~~4090 headless Xorg~~ **已完成（2026-07-08）**：`mcdata-xorg` 服务运行中，`:77` = RTX 4090，smoke run 已验证（见"当前状态摘要"）。
-- 远端大规模采集的可写大盘仍待解决（`/home` 6.0T 只剩 209G，97% 使用）。17 profile 全矩阵长时段采集前需要挂载大盘或远端 NAS。
+- 远端大规模采集的可写大盘仍待解决（4090 `/home` 6.0T 只剩 209G，97% 使用）。短期用回传+purge 缓解；长时段采集建议直接用 l40s（自带 298T CephFS）。
+- **8 卡 L40S 容器**：单卡验证已通过，T3 需要用户提供 8 卡环境（还是 `ssh l40s` 这种容器即可，要求 NVIDIA_VISIBLE_DEVICES 暴露 8 卡；graphics 能力不需要，脚本会自行补齐 X 模块）。

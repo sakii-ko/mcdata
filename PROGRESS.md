@@ -2,7 +2,9 @@
 
 本文档记录当前 `mcdata` 仓库的任务目标、已经完成的实现、验证结果、远端机器状态、已知阻塞点和后续接手建议。目标是让后续同事不用翻完整对话，也能直接上手继续推进 Minecraft 渲染数据采集。
 
-> **协作入口（2026-07-08 起）**：当前的执行计划在根目录 `PLAN.md`（planner 维护，coder 按其执行）；架构分层、依赖规则、数据契约与 git 约定在 `docs/ARCHITECTURE.md`。本文档保留为长期交接背景，iteration 级别的进展看 `docs/iterations/`。
+> **协作入口（2026-07-08 起）**：当前的执行计划在根目录 `PLAN.md`（planner 维护，coder 按其执行）；架构分层、依赖规则、数据契约与 git 约定在 `docs/ARCHITECTURE.md`；代码规范在 `docs/CODE_STANDARDS.md`。本文档保留为长期交接背景，iteration 级别的进展看 `docs/iterations/`。
+>
+> **状态快照（2026-07-08）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。当前 iteration 为 ITER-02（真 GPU 3-way 验证 → 多卡并行化 → 8 卡全矩阵），见 PLAN.md。
 
 ## 任务目标
 
