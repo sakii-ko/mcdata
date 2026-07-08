@@ -95,7 +95,11 @@ def route_reference_report(run_dir: Path) -> dict[str, Any] | None:
         ideal_track = simulate_track(trajectory)
     except ValueError as exc:
         return {"passed": False, "error": str(exc)}
-    return check_route_reference(positions, ideal_track)
+    return check_route_reference(
+        positions,
+        ideal_track,
+        yaw_ignore_windows=_yaw_ignore_windows(trajectory),
+    )
 
 
 def check_route_reference(
@@ -106,10 +110,13 @@ def check_route_reference(
     max_yaw_dev_deg: float = 10.0,
     min_y: float = 63.0,
     max_y: float = 66.0,
+    yaw_ignore_windows: list[tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
     samples = []
     yaw_errors: list[float] = []
     missing_yaw_count = 0
+    skipped_yaw_count = 0
+    yaw_ignore_windows = yaw_ignore_windows or []
     for position in positions:
         t_rel = position.get("t_rel")
         if t_rel is None or t_rel < 0:
@@ -129,7 +136,13 @@ def check_route_reference(
             "y_in_range": min_y <= y <= max_y,
         }
         if "yaw" in ideal:
-            if "yaw" in position:
+            if _in_any_window(t_rel, yaw_ignore_windows):
+                skipped_yaw_count += 1
+                sample["ideal_yaw"] = ideal["yaw"]
+                if "yaw" in position:
+                    sample["yaw"] = position["yaw"]
+                    sample["yaw_skipped"] = True
+            elif "yaw" in position:
                 yaw_error = yaw_error_deg(position["yaw"], ideal["yaw"])
                 yaw_errors.append(yaw_error)
                 sample.update(
@@ -162,6 +175,7 @@ def check_route_reference(
         "mean_yaw_error_degrees": mean_yaw_error,
         "yaw_sample_count": len(yaw_errors),
         "missing_yaw_count": missing_yaw_count,
+        "skipped_yaw_count": skipped_yaw_count,
         "observed_y_min": min(y_values) if y_values else None,
         "observed_y_max": max(y_values) if y_values else None,
         "y_out_of_range_count": y_out_of_range,
@@ -174,6 +188,21 @@ def check_route_reference(
         ),
         "samples": samples,
     }
+
+
+def _yaw_ignore_windows(trajectory: dict[str, Any], *, margin_sec: float = 0.5) -> list[tuple[float, float]]:
+    windows = []
+    for event in trajectory.get("events", []):
+        if "mouse_dx" not in event and "mouse_dy" not in event:
+            continue
+        start = float(event.get("t", 0.0))
+        duration = float(event.get("duration", 0.0) or 0.0)
+        windows.append((start - margin_sec, start + duration + margin_sec))
+    return windows
+
+
+def _in_any_window(value: float, windows: list[tuple[float, float]]) -> bool:
+    return any(start <= value <= end for start, end in windows)
 
 
 def write_compare_report(
@@ -321,6 +350,7 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"- route_yaw_threshold_degrees: `{route_reference.get('yaw_threshold_degrees')}`",
                 f"- route_yaw_sample_count: `{route_reference.get('yaw_sample_count')}`",
                 f"- route_missing_yaw_count: `{route_reference.get('missing_yaw_count')}`",
+                f"- route_skipped_yaw_count: `{route_reference.get('skipped_yaw_count')}`",
                 f"- route_y_range: `{route_reference.get('y_min')}..{route_reference.get('y_max')}`",
                 f"- route_y_out_of_range_count: `{route_reference.get('y_out_of_range_count')}`",
                 "",

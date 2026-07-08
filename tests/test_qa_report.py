@@ -101,6 +101,31 @@ def test_route_reference_fails_on_large_circular_yaw_error() -> None:
     assert result["max_yaw_error_degrees"] == 20.0
 
 
+def test_route_reference_skips_yaw_inside_turn_window_but_keeps_position_check() -> None:
+    positions = [
+        {"idx": 0, "t_rel": 1.0, "x": 0.5, "y": 64.0, "yaw": 87.0, "z": 0.0},
+        {"idx": 1, "t_rel": 2.0, "x": 1.0, "y": 64.0, "yaw": 0.0, "z": 0.0},
+    ]
+    ideal = [
+        {"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0},
+        {"t": 2.0, "x": 1.0, "yaw": 0.0, "z": 0.0},
+    ]
+
+    result = report.check_route_reference(
+        positions,
+        ideal,
+        max_yaw_dev_deg=10.0,
+        yaw_ignore_windows=[(0.5, 1.5)],
+    )
+
+    assert result["passed"] is True
+    assert result["max_deviation_blocks"] == 0.0
+    assert result["max_yaw_error_degrees"] == 0.0
+    assert result["yaw_sample_count"] == 1
+    assert result["skipped_yaw_count"] == 1
+    assert result["samples"][0]["yaw_skipped"] is True
+
+
 def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
     out = tmp_path / "qa"
     qa_report = {
@@ -116,6 +141,7 @@ def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
             "yaw_threshold_degrees": 10.0,
             "yaw_sample_count": 2,
             "missing_yaw_count": 1,
+            "skipped_yaw_count": 3,
             "y_min": 63.0,
             "y_max": 66.0,
             "y_out_of_range_count": 1,
@@ -138,6 +164,7 @@ def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
     assert "- route_max_yaw_error_degrees: `12.000`" in text
     assert "- route_yaw_sample_count: `2`" in text
     assert "- route_missing_yaw_count: `1`" in text
+    assert "- route_skipped_yaw_count: `3`" in text
     assert "- route_y_out_of_range_count: `1`" in text
 
 
