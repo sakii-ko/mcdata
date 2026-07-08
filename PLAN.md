@@ -4,6 +4,7 @@
 
 配套文档：
 - `docs/ARCHITECTURE.md` — 架构分层、依赖规则、数据契约、git 约定（**先读这个再动代码**）。
+- `docs/CODE_STANDARDS.md` — 硬性代码规范（环境变量纪律、副作用分离、错误处理、日志要求、依赖纪律）。其中 [checker] 条目由 `scripts/check_standards.py` 机械执行，**任何时候都必须保持退出码 0**。
 - `PROGRESS.md` — 长期交接文档，记录已完成能力和远端机器状态。
 - `docs/iterations/ITER-NN-report.md` — coder 的完成汇报（coder 写）。
 - `docs/iterations/ITER-NN-review.md` — planner 的 review 结论（planner 写）。
@@ -24,8 +25,9 @@
 ## 当前状态摘要
 
 - 代码链路（bootstrap → server/scene → launch → join-gate → warmup → capture → replay）已跑通，见 PROGRESS.md。
-- **硬阻塞（等用户/管理员，不在 coder 范围内）**：4090 上没有普通用户可用的 NVIDIA-backed X display；需要管理员执行 `scripts/install_headless_xorg_service.sh` 并验证 `DISPLAY=:77 glxinfo -B` 是 NVIDIA renderer。
-- 因此本 iteration 全部选择**不依赖 GPU、本机可完整验证**的工程化任务：测试基建、manifest/日志、QA 工具、路线扩展与可视化。这些同时是 GPU 就绪后立刻放量采集的前置条件。
+- **原硬阻塞已解除（2026-07-08）**：管理员已在 4090 安装 `mcdata-xorg` systemd 服务，`DISPLAY=:77` 为 NVIDIA RTX 4090（direct rendering: Yes，驱动 550.67）。planner 已用 baseline 代码在真 GPU 上完成 20s smoke run（`matrix_low` + `ground_astar_loop`）：capture.mp4 1280x720 / 24fps / 480 帧整，Sodium 识别到 NVIDIA 适配器，56 mods 正常加载，run 结束无残留进程。远端 run dir：`/home/lyf/mcdata/runs/20260708T052709Z_matrix_low`。
+  - 注意：GPU 0 与其他用户的训练任务共享（约 9GB 显存被占）。ITER-02 大规模采集前评估换空闲卡（重装服务改 `MCDATA_GPU_INDEX` 即可）。
+- 本 iteration 仍按原计划做**不依赖 GPU、本机可完整验证**的工程化任务：manifest/QA/测试是 GPU 放量采集的前置条件，缺了它们采回来的数据无法验收。ITER-01 merge 后立即启动 ITER-02（真 GPU 3-way → 17 全矩阵）。
 - 仓库已初始化 git（`v0.0-baseline`）。canonical repo 是 NAS 路径；`/home/chijw/workspace/projs/mcdata` 是历史手工镜像，先不要动它（planner 后续处理）。
 
 ---
@@ -39,7 +41,7 @@
 - `pyproject.toml` 增加：
   - `[project.optional-dependencies]`：`dev = ["pytest>=8", "jsonschema", "ruff"]`，`qa = ["numpy", "Pillow", "matplotlib"]`。
   - `[tool.pytest.ini_options]`：`pythonpath = ["src"]`，`testpaths = ["tests"]`。
-- 新建 `scripts/dev_check.sh`：依次跑 `python -m compileall -q src`、`ruff check src tests`、`pytest -q`，任一失败即非零退出。用 `.venv/bin/python`。
+- 新建 `scripts/dev_check.sh`：依次跑 `python -m compileall -q src`、`python3 scripts/check_standards.py`、`ruff check src tests`、`pytest -q`，任一失败即非零退出。用 `.venv/bin/python`。（`check_standards.py` 已由 planner 提供，勿改其规则；误报或规则要调整时在 report 里提。）
 - 安装：`.venv/bin/pip install -e '.[dev,qa]'`（网络装不上某个包就在 report 里说明并降级处理，不要卡死）。
 
 **验收**：`bash scripts/dev_check.sh` 退出码 0，输出贴进 report。
@@ -71,7 +73,7 @@
 - 新模块 `src/mcdata/runlog.py`：`RunLogger`，同时输出 console 和 `<run_dir>/pipeline.jsonl`（每行 `{"ts": ..., "stage": ..., "event": ..., **detail}`）。stage 取值如 `bootstrap/server/launch/join/warmup/capture/replay/teardown`。
 - pipeline 接入（`src/mcdata/render/pipeline.py`）：
   - 关键节点全部走 RunLogger：server start、player join、apply_join_state、warmup、capture start/stop（含完整 ffmpeg 命令）、replay start/end、各进程退出码、terminate。
-  - 散落的 `MCDATA_CAPTURE_SIZE / MCDATA_CAPTURE_FPS / MCDATA_CAPTURE_DESKTOP / MCDATA_HIDE_HUD / MCDATA_VIEW_SETTLE_SEC / MCDATA_CAPTURE_READY_DELAY` 收敛成 `CaptureSettings.from_env(profile)` dataclass（一次解析、显式传参、整体写进 manifest）。os.environ 只允许在 `from_env` 里读。
+  - 散落的 `MCDATA_CAPTURE_SIZE / MCDATA_CAPTURE_FPS / MCDATA_CAPTURE_DESKTOP / MCDATA_HIDE_HUD / MCDATA_VIEW_SETTLE_SEC / MCDATA_CAPTURE_READY_DELAY` 收敛成 `CaptureSettings.from_env(profile)` dataclass（一次解析、显式传参、整体写进 manifest）。dataclass 放**新文件 `src/mcdata/settings.py`**——这是 CODE_STANDARDS R2 规定的 env 边界文件，放 pipeline.py 里会被 check_standards 标为 baseline 违规。
   - trajectory JSON 复制一份到 run_dir 内并记 sha256（当前 `runs/trajectories/<strategy>.json` 会被后续运行覆盖，run 内拷贝保证溯源）。
   - run 结束时写 manifest.json；dry-run 也写（capture/ffprobe 字段为 null）。
   - `run-matrix`（`src/mcdata/cli.py`）：game_version 在矩阵开始时解析一次并透传给每个 profile 的 bootstrap/launch，避免矩阵跑到一半上游发新版导致版本漂移；解析结果记入每个 manifest。
@@ -80,6 +82,7 @@
 
 **验收**：
 - manifest 纯函数单测 + schema 校验通过；CaptureSettings 单测（env 设置/未设置/非法值）。
+- `python3 scripts/check_standards.py` 无 FAIL 且 **R2 baseline 清零**（pipeline.py 不再直接读 env；随后把 checker 里 `ENV_TEMP_BASELINE` 的 pipeline 条目删除——这是唯一允许 coder 改 checker 的操作）。
 - 集成验证：若本机 Xvfb 可用（`mcdata doctor` 确认），跑 `run --profile matrix_low --with-server --replay-actions --capture --duration 10`，产出 manifest.json / pipeline.jsonl / replay_log.jsonl；不可用则至少 dry-run 产出 manifest。样例 manifest 拷到 `docs/examples/run_manifest_example.json` 入库。
 
 ### T3 — QA 工具（离线，用现有录像验证）
@@ -136,5 +139,5 @@
 
 ## 等待用户/管理员的事项
 
-- 4090：管理员执行 `cd /home/lyf/mcdata && sudo MCDATA_GPU_INDEX=0 MCDATA_HEADLESS_DISPLAY=:77 scripts/install_headless_xorg_service.sh`，然后 `DISPLAY=:77 glxinfo -B` 必须显示 NVIDIA renderer。
-- 远端大规模采集的可写大盘（`/home` 已 97%）。
+- ~~4090 headless Xorg~~ **已完成（2026-07-08）**：`mcdata-xorg` 服务运行中，`:77` = RTX 4090，smoke run 已验证（见"当前状态摘要"）。
+- 远端大规模采集的可写大盘仍待解决（`/home` 6.0T 只剩 209G，97% 使用）。17 profile 全矩阵长时段采集前需要挂载大盘或远端 NAS。
