@@ -4,6 +4,41 @@ from mcdata import cli
 from mcdata.settings import CaptureSettings
 
 
+def test_run_passes_hidden_debug_flags(tmp_path: Path, monkeypatch) -> None:
+    calls: list[dict] = []
+
+    def fake_generate_strategy(_configs: Path, strategy: str, out: Path) -> dict:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text('{"events": []}\n', encoding="utf-8")
+        return {"events": []}
+
+    def fake_launch_profile(_root: Path, _profile: str, **kwargs) -> None:
+        calls.append(kwargs)
+
+    monkeypatch.setattr(cli, "generate_strategy", fake_generate_strategy)
+    monkeypatch.setattr(cli, "launch_profile", fake_launch_profile)
+
+    cli.run(
+        profile="matrix_low",
+        root=tmp_path,
+        dry_run=False,
+        capture=True,
+        strategy="ground_astar_loop",
+        duration=5,
+        with_server=True,
+        replay_actions=True,
+        display=None,
+        server_port=None,
+        lane=None,
+        game_version="26.2",
+        debug_no_reapply=True,
+        debug_no_replay_gate=True,
+    )
+
+    assert calls[0]["debug_no_reapply"] is True
+    assert calls[0]["debug_no_replay_gate"] is True
+
+
 def test_run_matrix_uses_lane_trajectory_and_overrides(tmp_path: Path, monkeypatch) -> None:
     calls: list[tuple[str, dict]] = []
 

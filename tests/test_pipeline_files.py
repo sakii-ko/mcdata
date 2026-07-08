@@ -288,6 +288,97 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
     )
 
 
+def test_capture_debug_flags_skip_reapply_and_replay_gate(tmp_path: Path, monkeypatch) -> None:
+    events: list[tuple[str, object | None]] = []
+    profile = {
+        "loader": "fabric",
+        "quality": "low",
+        "asset_set": "vanilla",
+        "width": 320,
+        "height": 180,
+        "username": "mcdata_bot",
+        "jvm_args": "-Xmx1G",
+        "server_port": 25570,
+        "world_seed": 1,
+        "world_profile": "render_matrix_base",
+        "world_state": {},
+        "capture_ready_delay_sec": 0,
+    }
+
+    class FakeProc:
+        args = ["fake"]
+        returncode = 0
+        pid = 123
+
+        def poll(self):
+            return None
+
+    class FakeStop:
+        def set(self) -> None:
+            events.append(("probe_stop", None))
+
+    monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
+    monkeypatch.setenv("MCDATA_OUTPUT_DIR", str(tmp_path / "runs"))
+    (tmp_path / "instances" / "matrix_low").mkdir(parents=True)
+    monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
+    monkeypatch.setattr(pipeline, "_start_replay_thread", lambda *args, **kwargs: None)
+    monkeypatch.setattr(pipeline, "start_server", lambda *args, **kwargs: FakeProc())
+    monkeypatch.setattr(pipeline, "wait_for_player_join", lambda *args, **kwargs: events.append(("join", None)))
+    monkeypatch.setattr(pipeline, "apply_join_state", lambda _proc, _profile: events.append(("apply_join_state", None)))
+    monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
+    monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
+    monkeypatch.setattr(pipeline, "_wait_for_capture", lambda *args, **kwargs: events.append(("wait_capture", None)))
+    monkeypatch.setattr(pipeline, "start_position_probe", lambda *args, **kwargs: events.append(("probe_start", None)) or FakeStop())
+    monkeypatch.setattr(
+        pipeline,
+        "wait_for_position_sample",
+        lambda *args, **kwargs: events.append(("probe_first_sample", None)) or 1,
+    )
+    monkeypatch.setattr(pipeline, "write_positions_jsonl", lambda *args, **kwargs: events.append(("positions_written", None)) or 2)
+    monkeypatch.setattr(pipeline, "_terminate_process_tree", lambda proc, *, timeout: events.append(("terminate", timeout)))
+    monkeypatch.setattr(pipeline, "_resource_manifest", lambda _work_dir, _profile: {
+        "asset_set": "vanilla",
+        "mods": [],
+        "resourcepacks": [],
+        "shaderpacks": [],
+    })
+    monkeypatch.setattr(pipeline, "_env_manifest", lambda *, display: {"hostname": "host", "display": display})
+    monkeypatch.setattr(pipeline, "_git_manifest", lambda _root: {"commit": "abc", "dirty": False})
+    monkeypatch.setattr(pipeline.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+
+    pipeline.launch_profile(
+        tmp_path,
+        "matrix_low",
+        dry_run=False,
+        capture=True,
+        strategy=None,
+        duration=1,
+        with_server=True,
+        replay_actions=False,
+        trajectory_path=None,
+        game_version="26.2",
+        debug_no_reapply=True,
+        debug_no_replay_gate=True,
+    )
+
+    assert events.count(("apply_join_state", None)) == 1
+    assert ("probe_start", None) in events
+    assert ("probe_first_sample", None) not in events
+    run_dir = next((tmp_path / "runs").glob("*_matrix_low"))
+    pipeline_events = [
+        json.loads(line)
+        for line in (run_dir / "pipeline.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert any(
+        item["stage"] == "join" and item["event"] == "re_apply_state_skipped"
+        for item in pipeline_events
+    )
+    assert any(
+        item["stage"] == "position_probe" and item["event"] == "first_sample_skipped"
+        for item in pipeline_events
+    )
+
+
 def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, monkeypatch) -> None:
     profile = {
         "loader": "vanilla",

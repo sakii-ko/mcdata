@@ -180,6 +180,8 @@ def launch_profile(
     game_version: str | None = None,
     server_port: int | None = None,
     lane: str | None = None,
+    debug_no_reapply: bool = False,
+    debug_no_replay_gate: bool = False,
 ) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
     profile = _profile_with_overrides(
@@ -217,6 +219,8 @@ def launch_profile(
         "with_server": with_server,
         "replay_actions": replay_actions,
         "lane": lane,
+        "debug_no_reapply": debug_no_reapply,
+        "debug_no_replay_gate": debug_no_replay_gate,
         "started_at": started_at,
     }
     _write_json(run_dir / "metadata.json", metadata)
@@ -305,9 +309,12 @@ def launch_profile(
                         _wait_or_raise_if_exited(game_proc, capture_settings.ready_delay_sec)
                         runlog.log("warmup", "end")
                     if capture:
-                        apply_join_state(server_proc, profile)
-                        runlog.log("join", "re_apply_state")
-                        _wait_or_raise_if_exited(game_proc, 1.0)
+                        if debug_no_reapply:
+                            runlog.log("join", "re_apply_state_skipped", debug=True)
+                        else:
+                            apply_join_state(server_proc, profile)
+                            runlog.log("join", "re_apply_state")
+                            _wait_or_raise_if_exited(game_proc, 1.0)
                         _prepare_capture_view(capture_settings)
                         runlog.log("capture", "view_prepared")
                 if capture:
@@ -324,14 +331,17 @@ def launch_profile(
                             sent_at=position_probe_sent_at,
                         )
                         runlog.log("position_probe", "start", interval_sec=5.0)
-                        count = wait_for_position_sample(
-                            run_dir / "server.log",
-                            str(profile.get("username")),
-                            proc=server_proc,
-                            after_count=position_probe_baseline,
-                            wait_sec=10.0,
-                        )
-                        runlog.log("position_probe", "first_sample", count=count)
+                        if debug_no_replay_gate:
+                            runlog.log("position_probe", "first_sample_skipped", debug=True)
+                        else:
+                            count = wait_for_position_sample(
+                                run_dir / "server.log",
+                                str(profile.get("username")),
+                                proc=server_proc,
+                                after_count=position_probe_baseline,
+                                wait_sec=10.0,
+                            )
+                            runlog.log("position_probe", "first_sample", count=count)
                     replay_start_mono = time.monotonic()
                     ready_event.set()
                     runlog.log("replay", "released")

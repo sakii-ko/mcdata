@@ -53,8 +53,12 @@ def run(
     server_port: Optional[int] = typer.Option(None, "--server-port"),
     lane: Optional[str] = typer.Option(None, "--lane"),
     game_version: Optional[str] = typer.Option(None, "--game-version"),
+    debug_no_reapply: bool = typer.Option(False, "--debug-no-reapply", hidden=True),
+    debug_no_replay_gate: bool = typer.Option(False, "--debug-no-replay-gate", hidden=True),
 ) -> None:
     """Launch Minecraft for a profile."""
+    debug_no_reapply = debug_no_reapply if isinstance(debug_no_reapply, bool) else False
+    debug_no_replay_gate = debug_no_replay_gate if isinstance(debug_no_replay_gate, bool) else False
     if display:
         apply_display_override(display)
     root = root.resolve()
@@ -78,6 +82,8 @@ def run(
         game_version=game_version,
         server_port=server_port,
         lane=lane,
+        debug_no_reapply=debug_no_reapply,
+        debug_no_replay_gate=debug_no_replay_gate,
     )
 
 
