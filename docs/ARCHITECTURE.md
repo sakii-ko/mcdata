@@ -49,14 +49,17 @@
 
 | 模块 | 允许 import | 明确禁止 |
 |---|---|---|
-| `mcdata.actions` | config, paths | render、qa（策略不知道渲染的存在） |
-| `mcdata.render` | config, paths, packs, manifest, runlog | actions 的内部实现（只消费 trajectory JSON 文件） |
-| `mcdata.qa` | config, paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
-| `mcdata.manifest` / `mcdata.runlog` | paths | render、actions、qa（被依赖方，不反向依赖） |
-| `mcdata.packs` / `modrinth` / `mojang` | net, paths | 上层模块 |
+| `mcdata.actions`（strategies/viz） | config, paths | render、qa（策略不知道渲染的存在） |
+| `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
+| `mcdata.render` | config, paths, packs, net, mojang, modrinth, manifest, runlog, settings, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装） | actions 的策略实现（只消费 trajectory JSON 文件） |
+| `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
+| `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | paths（settings 另可 config） | render、actions、qa（被依赖方，不反向依赖） |
+| `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.cli` | 所有模块 | —（但只做参数解析和调用，不写业务逻辑） |
 
-违反依赖规则的 PR 一律打回。
+注：`actions.replay` 是运行时输入注入后端（消费 trajectory JSON、驱动 X 输入），允许被 render 调用，但它自身必须保持零 mcdata 依赖；长期可能迁出 actions 包成为独立模块。
+
+白名单由 `scripts/check_standards.py` 机械执行（dev_check.sh 的一部分），与本表不一致时以先修文档、再改 checker 为流程。函数/文件级行为规范（环境变量纪律、错误处理、日志要求等）见 `docs/CODE_STANDARDS.md`。违反依赖规则的 PR 一律打回。
 
 ## 数据契约
 
