@@ -149,7 +149,26 @@ def simulate_track(trajectory: dict) -> list[dict]:
 - D：默认（完整 T1b）
 每组跑前先做一次 10s 丢弃 run。用步骤 1 的路线基准门判定各组在/不在路线上，锁定引入回归的机制。**若 A 也偏航，停下来上报 planner**（说明回归不在 T1b 代码，而在环境/时序因素）。
 
-**步骤 3 — 修复**：按实验结论移除/修复肇事机制（探针是测量工具原则上保留；若 C 证明探针本身干扰，改探针实现——降频到 10s 或改用其他查询方式——再验证）。debug flags 保留（hidden）供未来诊断。
+**步骤 2 结果（2026-07-08，planner 诊断，B/C/D 取消）**：A 组偏航触发停止条件后由 planner 现场仪器化诊断，根因已定：**replay 截断导致 XTEST 按键状态残留在 X server 上跨 run 污染**（铁证与完整复盘见 `docs/iterations/ITER-02-t1c-diagnosis.md`）。T1b 各机制无罪保留；planner 此前规定的"10s 丢弃 run"规程正式撤销（它就是播种源）。
+
+**步骤 3 — 修复（规格 planner 定死）**：
+
+1. `src/mcdata/actions/replay.py` 按键状态保证释放：
+   - `replay_trajectory` 新增参数 `stop_event: threading.Event | None = None`；事件循环每次 sleep 以 ≤0.25s 分片并检查 `stop_event.is_set()`，置位即 break。
+   - 维护 `held: set[str]`（提取纯 helper `_update_held(held, event)`：action=="down" 加入、=="up"/"tap" 移除；配单测）。
+   - 整个循环包 try/finally：finally 对 `held` 中每个键发 KeyRelease（两种 backend 都实现）并 log 一行 released 键列表。
+   - `pipeline.launch_profile`：创建 `replay_stop = threading.Event()` 传入线程；teardown finally 的**第一行**先 `replay_stop.set()`，join(timeout=5) 后再 terminate 各进程。
+2. replay 开始前的卫生释放（防 SIGKILL 等跳过 finally 的场景）：focus 之后、首事件之前，XTEST backend 用 `query_keymap` 找出移动键集合 {w,a,s,d,space,left_shift} 中处于按下状态的键并释放，**有释放时 log warning "inherited stuck keys: [...]"**（观测污染来源）；xdotool backend 无法查询则对该集合无条件 keyup。
+3. `options.py` QUIET_CAPTURE_OPTIONS 增加 `"rawMouseInput": "true"`（确定性硬化，消除对 GLFW 默认值的依赖）；同步 test_options。
+4. 单测：`_update_held` 纯逻辑；mock backend 记录调用，验证 stop_event 提前置位的截断 replay 会对 held 键发 KeyRelease。
+
+**步骤 3.5 — 修复验证（4090）**：
+1. `sync_to_remote.sh` 同步 → `bootstrap --profile matrix_low --game-version 26.2`（让 options.txt 正式含 rawMouseInput）。
+2. **不做丢弃 run**，连续两个默认配置 run：`run --profile matrix_low --with-server --replay-actions --capture --strategy ground_astar_loop --duration 60 --game-version 26.2 --lane t1cval1`（第二次 `t1cval2`）。两个都必须路线基准门 PASS（第一 run 验证卫生释放兜住既有污染，第二 run 验证自洁）。
+3. 其中一个 run 并行跑 `scripts/pointer_probe.py`（用法见文件头），report 记录 gameplay 段 edge-parking 占比——用于对 P2（指针边缘截断）结案：若 run PASS 则 P2 归档为污染次生现象。
+4. 任一 FAIL：停，收集 positions/pointer_probe/replay 日志上报 planner，不要自行加机制。
+
+**步骤 4 — 全量重采**（同原文）：验证通过后四路同批次重采（**无需丢弃 run**），双门 PASS + t=30 抽帧对照路线图，替换 `docs/qa_samples/iter02_4090_3way/`，回传 + purge。
 
 **步骤 4 — 全量重采**：修复合入后四路同批次重采（丢弃 run 先行），验收 = 每路路线基准门 PASS（≤3.0）+ 四路交叉门 PASS（≤2.0）+ t=30 抽帧与 `docs/trajectories/ground_astar_loop.png` 预期场景一致（平台上）；整体替换 `docs/qa_samples/iter02_4090_3way/`；回传 + purge。
 
