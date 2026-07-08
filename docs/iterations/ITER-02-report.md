@@ -1044,6 +1044,83 @@ Artifacts and cleanup:
 - Remote `/root/nas/bigdata1/tmp/mcdata/runs` was manually purged after confirming no real `mcdata.cli`, `portablemc`, `x11grab`, `ffmpeg`, Minecraft server, or Minecraft Java process remained.
 - I did not perform any 4090 work after the user redirected scope to l40s-only.
 
+## T4 Architecture Cleanup And l40s Behavior Check
+
+Commits:
+
+- `6384baa5b5b958766dbe9261da4a463bb2d0fa7e` `[fix] clamp notification display time to documented minimum`
+- `d175b81ebc81dd8155f7d27e0bd7f0c84e68c6ef` `[refactor] split launch profile phases`
+- `b3c26893af5e8b4bd00f7fae656fa4f7e9ded5ff` `[refactor] split render server scene and probe`
+- `3f0c1dad204d0113ccad88b990e2d2f2c208fd18` `[refactor] move route gates into qa route`
+- `3dfea71334461704313d719cc7b9dbbf664c31c1` `[test] split pipeline file tests by feature`
+- `e0812bb677e3678fe7d224d6710fc878db96e541` `[refactor] move run matrix loop into pipeline`
+
+Implementation summary:
+
+- `notificationDisplayTime` is back to Minecraft's documented minimum `0.5`; suppression still relies on `inGameNotification:false`, `musicToast:"never"`, and `realmsNotifications:false`.
+- `launch_profile` is now a coordinator around `RunOptions`, `RunPlan`, `RunState`, `_plan_run`, `_server_phase`, `_replay_phase`, `_client_phase`, `_capture_phase`, and `_teardown_phase`. `launch_profile` is 61 lines and no longer trips the function-length warning.
+- `render/server.py` now keeps server lifecycle only. Scene construction/receipt verification moved to `render/scene.py`; position/yaw probe and server-log parsing moved to `render/probe.py`. ARCHITECTURE and checker comments now document render-internal modules.
+- Route/position gate logic moved from `qa/report.py` into `qa/route.py`; report.py now assembles videos, frames, markdown, and JSON around gate results.
+- `test_pipeline_files.py` was deleted and split into `test_manifest_files.py`, `test_lane_isolation.py`, `test_position_probe.py`, and `test_scene_verify.py`.
+- `cli.py run-matrix` now generates the shared trajectory then calls `pipeline.run_matrix_profiles`; profile-list validation, once-per-matrix version resolution, and bootstrap/launch loop live in pipeline. The trajectory generation remains in CLI to preserve the render/actions dependency boundary.
+
+Verification:
+
+```text
+scripts/dev_check.sh
+WARN  R19: render/pipeline.py has 1343 lines (>600) -- justify in report
+check_standards: 0 failure(s), 1 warning(s)
+All checks passed!
+85 passed
+
+git diff --name-only HEAD -- tests/golden docs/trajectories docs/qa_samples/iter02_4090_3way
+# no output
+```
+
+l40s sync and validation:
+
+```text
+rsync -az --delete --exclude .git --exclude .venv --exclude .mcdata/runs --exclude runs ./ l40s:/root/mcdata/
+ssh l40s 'cd /root/mcdata && printf "%s\n" e0812bb677e3678fe7d224d6710fc878db96e541 > .sync_commit'
+ssh l40s 'DISPLAY=:77 glxinfo -B | grep -E "OpenGL renderer|direct rendering"; nvidia-smi --query-gpu=index,name,memory.used,memory.total --format=csv,noheader,nounits'
+```
+
+Key output:
+
+```text
+direct rendering: Yes
+OpenGL renderer string: NVIDIA L40S/PCIe/SSE2
+0, NVIDIA L40S, 29, 46068
+```
+
+60s behavior validation:
+
+```text
+python3 -m mcdata.cli run --profile matrix_low \
+  --with-server --replay-actions --capture \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 \
+  --display :77 --server-port 25677 --lane t4verify
+python3 -m mcdata.cli qa-run "$RUN_DIR" --frames 12 --out-dir "$RUN_DIR/qa"
+```
+
+Validation result:
+
+| run | route | max dev | mean dev | max yaw | yaw samples | skipped yaw | warnings | renderer |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `20260708T182342Z_matrix_low__t4verify` | PASS | 0.959 | 0.736 | 0.000030 | 8 | 4 | 0 | `NVIDIA L40S/PCIe/SSE2` |
+
+Run evidence:
+
+- Local pulled copy: `runs/remote_l40s/20260708T182342Z_matrix_low__t4verify`
+- QA report: `runs/remote_l40s/20260708T182342Z_matrix_low__t4verify/qa/qa_report.json`
+- Manifest records `git.source=sync_commit`, `git.commit=e0812bb677e3678fe7d224d6710fc878db96e541`, `dirty=false`, `lane=t4verify`.
+
+Cleanup / deviations:
+
+- The first `pull_runs_from_remote.sh ... --purge` completed rsync verification but refused purge because its `pgrep -f 'mcdata.cli|portablemc|x11grab'` check matched the remote shell command containing that literal pattern. I confirmed with a non-self-matching pattern (`[m]cdata.cli|[p]ortablemc|[x]11grab`) that no pipeline was active, then manually purged `/root/nas/bigdata1/tmp/mcdata/runs`.
+- The local login environment has `PWD=/home/chijw/workspace/projs/mcdata`, which is the same inode/worktree as `/root/nas/bigdata1/cjw/projs/mcdata`; an initial pull therefore also wrote a duplicate ignored evidence copy under that alias. The canonical evidence path for review is the `runs/remote_l40s/...` path in this worktree.
+- Remaining checker warning: `render/pipeline.py` is still above 600 lines after moving matrix orchestration into it. Function-level warnings are cleared; the file-level split is a larger follow-up candidate, not a behavior risk found in T4.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -1081,6 +1158,7 @@ Artifacts and cleanup:
     - Validation PASS: `20260708T171833Z_matrix_low__t1hl40sA2`, `20260708T172041Z_matrix_low__t1hl40sB2`
     - Final recapture PASS: `20260708T172734Z_matrix_low__t1hfinal`, `20260708T172923Z_matrix_textured__t1hfinal`, `20260708T173106Z_matrix_shader_high__t1hfinal`, `20260708T173252Z_matrix_night_complementary__t1hfinal`
     - Compare outputs: `qa_compare_t1hfinal`, `qa_pair_*`
+    - T4 notification/architecture validation: `20260708T175407Z_matrix_low__t4notif`, `20260708T182342Z_matrix_low__t4verify`
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
@@ -1110,9 +1188,10 @@ Artifacts and cleanup:
 - T1g stopped after the first formal l40s validation A run failed the position gate. P8 and P9 instrumentation behaved as expected: scene receipts were complete, server.log had no scene failure pattern, and `positions.jsonl` used the replay-log start baseline.
 - T1g black-border investigation found `xwininfo` geometry unavailable (`geometry=null`), capture falling back to full display `:77`, and black-border warnings on all sampled frames. I recorded the data and did not attempt a display/window workaround without planner direction.
 - T1h completed on l40s-only scope: both 60s validation runs and all four final recapture runs passed route/yaw gates, QA black-border checks, and visual toast checks. The largest final pairwise position distance was `0.475` blocks.
+- T4 completed on l40s-only scope. The final 60s validation passed route/yaw gates with no QA warnings after the `notificationDisplayTime=0.5` clamp and architecture refactors.
 - I did not start 4090 validation after l40s validation A failed. 4090 `nvidia-smi` was also blocked by other active/stuck GPU-query state at the time of validation.
 - After the user redirected work to l40s-only, I did not perform further 4090 checks or workloads.
-- `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
+- `scripts/check_standards.py` still warns about `render/pipeline.py` file size. T4 cleared the previous `launch_profile` and QA gate function-length warnings; the remaining file-level split is report-justified.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
 ## Review Focus
@@ -1127,4 +1206,5 @@ Artifacts and cleanup:
 - T1f failure interpretation: yaw residuals are removed after turn-window filtering, scene occupied cells are now covered by config/tests, but l40s still fails the position gate by `23.813` blocks on A. Review should focus on the remaining position-model / collision-margin mismatch rather than P3/P4/P5/yaw sampling.
 - T1g failure interpretation: scene construction is now verified cleanly and `t_rel` starts from actual replay start, but l40s still fails position by `25.244` blocks with yaw effectively exact. Review should also decide the black-border/window-geometry path because `xwininfo` did not find usable Minecraft geometry on l40s.
 - T1h review focus: P10 pool sinking fixed the route divergence; xdotool geometry plus onscreen move removed black borders; toast did not recur in validation/recapture, though Minecraft logs show `notificationDisplayTime:0.0` is outside the accepted range.
+- T4 review focus: architecture moves are intended to be behavior-preserving; golden, trajectory docs, and committed QA samples did not change. The final l40s 60s run validates behavior after `notificationDisplayTime=0.5` and all refactors.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
