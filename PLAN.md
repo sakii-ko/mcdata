@@ -205,6 +205,19 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：标定拟合数据（v、t0、残差、各 hold 的 d_i/T_i 表）写进 report；围挡后场景截图一张入 report 佐证；四个验证 run + 重采产物入库；dev_check 全绿。
 
+### T1f — 场景障碍完备映射（P7）+ yaw 门去伪影 + 终局重采
+
+背景：T1e v2 标定完美（v=4.3172、t0≈0.9ms、残差 2.5e-5），且该验证 run 证实 P3/P4/P5 全部根治（起点精确、静止段 yaw 全为 90 的整数倍、结束后干净静止）。剩余两个问题（planner 已从 run 数据定位）：①yaw 门未过滤转向窗口内的采样（新轨迹转向密度大增后 5s 采样必然撞上，35.9° 为 mid-turn 伪影）；②P7——场景固体障碍（树叶墙 z=9 x∈[-2,2]、白墙 z=14 x∈[-4,4]、角落标记块）从未进入 A* blocked 配置，P6 重规划后的新路线合法穿墙，t≈20s 起玩家被树叶墙卡住导致位置发散。**以下设计 planner 定死。**
+
+1. **yaw 门去伪影**：route gate 的 yaw 校验跳过转向窗口内样本（窗口 = 每个 mouse 事件的 `[t − 0.5, t + duration + 0.5]`；trajectory.json 就在 run dir，gate 可直接读）。位置校验不变（转向中玩家静止，位置样本仍有效）。合成单测覆盖"mid-turn 样本被跳过"。
+2. **P7 障碍完备映射**：coder 逐条核对 `server.py _scene_commands`，把 y=64/65 层的每一个固体格枚举成表（report 里附全表：命令 → 占用格 → 是否已在 blocked/blocked_rects），并把缺失的补进 `configs/actions.yml` 全部 astar_walk 的 `blocked`。已知缺失至少包括：树叶墙 `[-2,9],[-1,9],[0,9],[1,9],[2,9]`；白墙 `[-4,14]..[4,14]`（9 格）；角落标记 `[-14,12],[14,12]`。光源排（z=-10）与岩浆盆已在配置的逐一确认。
+3. **防回归契约测试**：新增测试内置场景障碍格清单（硬编码镜像 `_scene_commands`，注释注明来源与同步义务），断言所有 astar_walk 策略的 route 与全部障碍格无交集。场景与配置的单一来源统一（scene.yml 方案）记入 Backlog，ITER-03 处理。
+4. **golden / docs/trajectories 重生成**（独立 commit，注明 P7 路线变更）；目检新 viz PNG 确认路线不再穿越任何场景元素后再进验证。
+5. **验证 + 终局重采**（同 T1e v2 步骤 6）：l40s 先行 2×60s；4090 侧 nvidia-smi 阻塞若持续，报告即可、勿硬等（planner 跟进环境问题）；4090 恢复后 2×60s。四个 run（或 l40s 双 run + 4090 待补）双门全 PASS 后做四路重采、替换 QA samples、回传 + purge。
+6. 停止条件照旧：任何 FAIL 停、留证据、上报。
+
+**验收**：障碍映射全表 + 新 viz 目检 + 验证 run 结果 + 重采产物；dev_check 全绿。
+
 ### T2 — run-matrix 多实例并行化改造
 
 目标：同一台多卡机器，N 个 profile 在 N 张卡上并行采集互不干扰。**以下设计由 planner 定死，照此实现；发现设计缺陷在 report 里提出，不要自行变更接口。**
@@ -263,6 +276,7 @@ if server_port is not None:
 4. 渲染机上优先 XTEST backend（避免 xdotool 每步 spawn 子进程的抖动），补全 keycode 表。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
 6. 数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。
+6a. **场景单一来源统一**：`_scene_commands` 与 A* blocked 配置目前双维护（P7 教训），ITER-03 统一为 `configs/scene.yml`（方块清单 → server 生成 fill/setblock 命令 + actions 派生障碍格），杜绝手工同步。
 6b. **仿真/渲染加速（deferred，ITER-04+，方案由 planner 设计，coder 勿自行引入）**：目标是超实时出片。硬性要求：**加速采集的渲染结果必须与实时采集等价可互换**（同一世界/轨迹/资源下逐帧内容一致或统计上不可区分，QA 工具可验证）。候选主路线 ReplayMod 离线渲染（record-once-render-N，顺带获得完美 N-way 对齐），spike 需验证：MC 版本兼容、Iris 光影渲染、HUD 保留方案、实测速度倍率、与实时采集的等价性对比。tick-rate 加速路线因 correctness 风险已排除。在此之前，采集管线里禁止引入任何时间缩放。
 7. workspace 镜像目录改成 git clone/worktree（planner 处理）。
 
