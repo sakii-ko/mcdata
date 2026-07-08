@@ -85,6 +85,26 @@ def test_turn_calibration_probe_is_eight_600px_turns() -> None:
     assert all(event["duration"] == 0.35 for event in trajectory["events"])
 
 
+def test_walk_calibration_probe_has_four_4s_forward_holds() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["walk_calibration_probe"]
+    trajectory = build_trajectory("walk_calibration_probe", spec)
+    events = trajectory["events"]
+
+    holds = [
+        (down["t"], up["t"])
+        for down, up in zip(events, events[1:])
+        if down.get("key") == "w" and down.get("action") == "down"
+    ]
+    turns = [event for event in events if event.get("mouse_dx") == 600]
+
+    assert trajectory["type"] == "scripted"
+    assert trajectory["duration_sec"] == 40
+    assert holds == [(2.0, 6.0), (10.9, 14.9), (19.8, 23.8), (28.7, 32.7)]
+    assert len(turns) == 6
+    assert all(event["mouse_dy"] == 0 for event in turns)
+    assert all(event["duration"] == 0.35 for event in turns)
+
+
 def _assert_route_stays_inside_walkable_area(
     trajectory: dict[str, Any],
     spec: dict[str, Any],

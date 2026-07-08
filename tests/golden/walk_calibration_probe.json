@@ -1,0 +1,82 @@
+{
+  "duration_sec": 40,
+  "events": [
+    {
+      "action": "down",
+      "key": "w",
+      "t": 2.0
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 6.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 8.0
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 8.55
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 10.9
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 14.9
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 16.9
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 17.45
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 19.8
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 23.8
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 25.8
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 26.35
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 28.7
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 32.7
+    }
+  ],
+  "type": "scripted"
+}

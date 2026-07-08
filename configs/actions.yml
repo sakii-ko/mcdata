@@ -28,6 +28,25 @@ strategies:
       - {t: 17.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
       - {t: 20.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
 
+  walk_calibration_probe:
+    type: "scripted"
+    duration_sec: 40
+    steps:
+      - {t: 2.0, key: "w", action: "down"}
+      - {t: 6.0, key: "w", action: "up"}
+      - {t: 8.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 8.55, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 10.9, key: "w", action: "down"}
+      - {t: 14.9, key: "w", action: "up"}
+      - {t: 16.9, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 17.45, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 19.8, key: "w", action: "down"}
+      - {t: 23.8, key: "w", action: "up"}
+      - {t: 25.8, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 26.35, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 28.7, key: "w", action: "down"}
+      - {t: 32.7, key: "w", action: "up"}
+
   scene_probe:
     type: "scene_probe"
     duration_sec: 90
