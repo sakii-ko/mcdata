@@ -77,12 +77,21 @@ strategies:
       - [-7, -10]
       - [-4, -10]
       - [-1, -10]
+      - [1, -11]
+      - [2, -11]
+      - [3, -11]
+      - [1, -10]
       - [2, -10]
+      - [3, -10]
+      - [1, -9]
+      - [2, -9]
+      - [3, -9]
       - [5, -10]
       - [8, -10]
       - [11, -10]
     turn_px_per_degree: 6.6667
-    seconds_per_block: 0.32
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
     look_pitch_px: 30
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
@@ -106,7 +115,15 @@ strategies:
       - [-7, -10]
       - [-4, -10]
       - [-1, -10]
+      - [1, -11]
+      - [2, -11]
+      - [3, -11]
+      - [1, -10]
       - [2, -10]
+      - [3, -10]
+      - [1, -9]
+      - [2, -9]
+      - [3, -9]
       - [5, -10]
       - [8, -10]
       - [11, -10]
@@ -118,7 +135,8 @@ strategies:
         pause_sec: 2.0
         look_dy_px: 40
     turn_px_per_degree: 6.6667
-    seconds_per_block: 0.32
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
     look_pitch_px: 30
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
@@ -142,7 +160,15 @@ strategies:
       - [-7, -10]
       - [-4, -10]
       - [-1, -10]
+      - [1, -11]
+      - [2, -11]
+      - [3, -11]
+      - [1, -10]
       - [2, -10]
+      - [3, -10]
+      - [1, -9]
+      - [2, -9]
+      - [3, -9]
       - [5, -10]
       - [8, -10]
       - [11, -10]
@@ -154,7 +180,8 @@ strategies:
         pause_sec: 2.0
         look_dy_px: 35
     turn_px_per_degree: 6.6667
-    seconds_per_block: 0.32
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
     look_pitch_px: 30
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
@@ -181,7 +208,15 @@ strategies:
       - [-7, -10]
       - [-4, -10]
       - [-1, -10]
+      - [1, -11]
+      - [2, -11]
+      - [3, -11]
+      - [1, -10]
       - [2, -10]
+      - [3, -10]
+      - [1, -9]
+      - [2, -9]
+      - [3, -9]
       - [5, -10]
       - [8, -10]
       - [11, -10]
@@ -211,7 +246,8 @@ strategies:
         pause_sec: 2.0
         look_dy_px: 20
     turn_px_per_degree: 6.6667
-    seconds_per_block: 0.32
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
     look_pitch_px: 20
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
