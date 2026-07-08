@@ -85,7 +85,7 @@ def test_turn_calibration_probe_is_eight_600px_turns() -> None:
     assert all(event["duration"] == 0.35 for event in trajectory["events"])
 
 
-def test_walk_calibration_probe_has_four_4s_forward_holds() -> None:
+def test_walk_calibration_probe_uses_varied_holds_on_corridor() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["walk_calibration_probe"]
     trajectory = build_trajectory("walk_calibration_probe", spec)
     events = trajectory["events"]
@@ -95,12 +95,13 @@ def test_walk_calibration_probe_has_four_4s_forward_holds() -> None:
         for down, up in zip(events, events[1:])
         if down.get("key") == "w" and down.get("action") == "down"
     ]
-    turns = [event for event in events if event.get("mouse_dx") == 600]
+    turns = [event for event in events if "mouse_dx" in event]
 
     assert trajectory["type"] == "scripted"
-    assert trajectory["duration_sec"] == 40
-    assert holds == [(2.0, 6.0), (10.9, 14.9), (19.8, 23.8), (28.7, 32.7)]
-    assert len(turns) == 6
+    assert trajectory["duration_sec"] == 32
+    assert holds == [(4.0, 5.0), (9.6, 11.1), (15.7, 17.7), (22.3, 24.8)]
+    assert [(round(up - down, 3)) for down, up in holds] == [1.0, 1.5, 2.0, 2.5]
+    assert [event["mouse_dx"] for event in turns] == [-600, 600, 600, 600, 600, 600, 600]
     assert all(event["mouse_dy"] == 0 for event in turns)
     assert all(event["duration"] == 0.35 for event in turns)
 

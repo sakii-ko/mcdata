@@ -3,6 +3,7 @@ import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS
 from mcdata.config import load_yaml
+from mcdata.render.server import _scene_commands
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,6 +34,17 @@ def test_action_strategy_types_are_registered() -> None:
 
     for name, spec in strategies.items():
         assert spec.get("type") in STRATEGY_BUILDERS, name
+
+
+def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    glass = "fill 1 64 -11 3 64 -9 minecraft:glass"
+    lava = "setblock 2 64 -10 minecraft:lava"
+
+    assert glass in commands
+    assert lava in commands
+    assert commands.index(glass) < commands.index(lava)
 
 
 def test_qa_package_does_not_import_render_or_actions() -> None:

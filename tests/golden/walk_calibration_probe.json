@@ -1,81 +1,87 @@
 {
-  "duration_sec": 40,
+  "duration_sec": 32,
   "events": [
     {
-      "action": "down",
-      "key": "w",
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
       "t": 2.0
     },
     {
+      "action": "down",
+      "key": "w",
+      "t": 4.0
+    },
+    {
       "action": "up",
       "key": "w",
-      "t": 6.0
+      "t": 5.0
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 8.0
+      "t": 7.0
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 8.55
+      "t": 7.55
     },
     {
       "action": "down",
       "key": "w",
-      "t": 10.9
+      "t": 9.6
     },
     {
       "action": "up",
       "key": "w",
-      "t": 14.9
+      "t": 11.1
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 16.9
+      "t": 13.1
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 17.45
+      "t": 13.65
     },
     {
       "action": "down",
       "key": "w",
-      "t": 19.8
+      "t": 15.7
     },
     {
       "action": "up",
       "key": "w",
-      "t": 23.8
+      "t": 17.7
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 25.8
+      "t": 19.7
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 26.35
+      "t": 20.25
     },
     {
       "action": "down",
       "key": "w",
-      "t": 28.7
+      "t": 22.3
     },
     {
       "action": "up",
       "key": "w",
-      "t": 32.7
+      "t": 24.8
     }
   ],
   "type": "scripted"

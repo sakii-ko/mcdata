@@ -380,6 +380,7 @@ def _scene_commands(scene: dict[str, Any]) -> list[str]:
         f"setblock {ox - 7} {oy} {oz - 10} minecraft:lantern",
         f"setblock {ox - 4} {oy} {oz - 10} minecraft:redstone_torch",
         f"setblock {ox - 1} {oy} {oz - 10} minecraft:redstone_lamp[lit=true]",
+        f"fill {ox + 1} {oy} {oz - 11} {ox + 3} {oy} {oz - 9} minecraft:glass",
         f"setblock {ox + 2} {oy} {oz - 10} minecraft:lava",
         f"setblock {ox + 5} {oy} {oz - 10} minecraft:sea_lantern",
         f"setblock {ox + 8} {oy} {oz - 10} minecraft:glowstone",
