@@ -1,0 +1,66 @@
+{
+  "duration_sec": 60.0,
+  "events": [
+    {
+      "duration": 6.0,
+      "mouse_dx": 520,
+      "mouse_dy": 25,
+      "t": 0.0
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": -520,
+      "mouse_dy": -25,
+      "t": 6.5
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": 520,
+      "mouse_dy": 25,
+      "t": 13.0
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": -520,
+      "mouse_dy": -25,
+      "t": 19.5
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": 520,
+      "mouse_dy": 25,
+      "t": 26.0
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": -520,
+      "mouse_dy": -25,
+      "t": 32.5
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": 520,
+      "mouse_dy": 25,
+      "t": 39.0
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": -520,
+      "mouse_dy": -25,
+      "t": 45.5
+    },
+    {
+      "duration": 6.0,
+      "mouse_dx": 520,
+      "mouse_dy": 25,
+      "t": 52.0
+    },
+    {
+      "duration": 1.5,
+      "mouse_dx": -520,
+      "mouse_dy": -25,
+      "t": 58.5
+    }
+  ],
+  "type": "look_scan"
+}
