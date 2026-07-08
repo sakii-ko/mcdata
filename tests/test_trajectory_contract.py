@@ -72,6 +72,19 @@ def test_waypoint_actions_insert_pause_and_look_events() -> None:
     assert len(look_events) == len(spec["waypoint_actions"])
 
 
+def test_turn_calibration_probe_is_eight_600px_turns() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["turn_calibration_probe"]
+    trajectory = build_trajectory("turn_calibration_probe", spec)
+
+    assert trajectory["type"] == "scripted"
+    assert trajectory["duration_sec"] == 24
+    assert len(trajectory["events"]) == 8
+    assert [event["t"] for event in trajectory["events"]] == [2.5, 5.0, 7.5, 10.0, 12.5, 15.0, 17.5, 20.0]
+    assert all(event["mouse_dx"] == 600 for event in trajectory["events"])
+    assert all(event["mouse_dy"] == 0 for event in trajectory["events"])
+    assert all(event["duration"] == 0.35 for event in trajectory["events"])
+
+
 def _assert_route_stays_inside_walkable_area(
     trajectory: dict[str, Any],
     spec: dict[str, Any],

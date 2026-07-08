@@ -15,6 +15,19 @@ strategies:
     vertical_px: 45
     pause_sec: 0.7
 
+  turn_calibration_probe:
+    type: "scripted"
+    duration_sec: 24
+    steps:
+      - {t: 2.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 5.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 7.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 10.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 12.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 15.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 17.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 20.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+
   scene_probe:
     type: "scene_probe"
     duration_sec: 90
@@ -48,7 +61,7 @@ strategies:
       - [5, -10]
       - [8, -10]
       - [11, -10]
-    turn_px_per_degree: 6.0
+    turn_px_per_degree: 6.6667
     seconds_per_block: 0.32
     look_pitch_px: 30
     initial_pause_sec: 1.0
@@ -84,7 +97,7 @@ strategies:
       - at: [-4, 8]
         pause_sec: 2.0
         look_dy_px: 40
-    turn_px_per_degree: 6.0
+    turn_px_per_degree: 6.6667
     seconds_per_block: 0.32
     look_pitch_px: 30
     initial_pause_sec: 1.0
@@ -120,7 +133,7 @@ strategies:
       - at: [4, 8]
         pause_sec: 2.0
         look_dy_px: 35
-    turn_px_per_degree: 6.0
+    turn_px_per_degree: 6.6667
     seconds_per_block: 0.32
     look_pitch_px: 30
     initial_pause_sec: 1.0
@@ -177,7 +190,7 @@ strategies:
       - at: [11, -8]
         pause_sec: 2.0
         look_dy_px: 20
-    turn_px_per_degree: 6.0
+    turn_px_per_degree: 6.6667
     seconds_per_block: 0.32
     look_pitch_px: 20
     initial_pause_sec: 1.0
