@@ -336,10 +336,14 @@ def launch_profile(
                         _prepare_capture_view(capture_settings)
                         runlog.log("capture", "view_prepared")
                 if capture:
+                    geometry_record = _window_geometry_record(
+                        requested_width=capture_settings.width,
+                        requested_height=capture_settings.height,
+                    )
                     runlog.log(
                         "capture",
                         "window_geometry",
-                        geometry=_window_geometry_record(),
+                        **geometry_record,
                         requested_width=capture_settings.width,
                         requested_height=capture_settings.height,
                         desktop=capture_settings.desktop,
@@ -552,15 +556,88 @@ def _capture_input(display: str, *, width: int, height: int, desktop: bool) -> s
     return f"{display}+{x},{y}"
 
 
-def _window_geometry_record(window_name: str = "Minecraft") -> dict[str, int] | None:
+def _window_geometry_record(
+    window_name: str = "Minecraft",
+    *,
+    requested_width: int | None = None,
+    requested_height: int | None = None,
+) -> dict[str, object]:
     geometry = _minecraft_window_geometry(window_name=window_name)
     if geometry is None:
-        return None
+        return {"geometry": None, "warning": "unavailable"}
     x, y, width, height = geometry
-    return {"x": x, "y": y, "width": width, "height": height}
+    warning = None
+    if requested_width is not None and requested_height is not None:
+        if width != requested_width or height != requested_height:
+            warning = "size_mismatch"
+    return {
+        "geometry": {"x": x, "y": y, "width": width, "height": height},
+        "warning": warning,
+    }
 
 
 def _minecraft_window_geometry(window_name: str = "Minecraft") -> tuple[int, int, int, int] | None:
+    geometry = _minecraft_window_geometry_xdotool(window_name)
+    if geometry is not None:
+        return geometry
+    return _minecraft_window_geometry_xwininfo(window_name)
+
+
+def _minecraft_window_geometry_xdotool(window_name: str) -> tuple[int, int, int, int] | None:
+    if not shutil.which("xdotool"):
+        return None
+    try:
+        search = subprocess.run(
+            ["xdotool", "search", "--name", window_name],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    if search.returncode != 0:
+        return None
+    candidates: list[tuple[int, int, int, int]] = []
+    for window_id in search.stdout.split():
+        geometry = _xdotool_window_geometry(window_id)
+        if geometry is not None:
+            candidates.append(geometry)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item[2] * item[3])
+
+
+def _xdotool_window_geometry(window_id: str) -> tuple[int, int, int, int] | None:
+    try:
+        result = subprocess.run(
+            ["xdotool", "getwindowgeometry", "--shell", window_id],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except subprocess.TimeoutExpired:
+        return None
+    if result.returncode != 0:
+        return None
+    values: dict[str, int] = {}
+    for line in result.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key not in {"X", "Y", "WIDTH", "HEIGHT"}:
+            continue
+        try:
+            values[key] = int(value)
+        except ValueError:
+            return None
+    if {"X", "Y", "WIDTH", "HEIGHT"} <= values.keys():
+        return values["X"], values["Y"], values["WIDTH"], values["HEIGHT"]
+    return None
+
+
+def _minecraft_window_geometry_xwininfo(window_name: str) -> tuple[int, int, int, int] | None:
     try:
         result = subprocess.run(
             ["xwininfo", "-name", window_name],

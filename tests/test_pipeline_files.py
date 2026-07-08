@@ -181,6 +181,53 @@ def test_wait_for_position_sample_returns_after_new_sample(tmp_path: Path) -> No
     assert count == 1
 
 
+def test_window_geometry_prefers_largest_xdotool_match(monkeypatch) -> None:
+    monkeypatch.setattr(pipeline.shutil, "which", lambda name: "/usr/bin/xdotool" if name == "xdotool" else None)
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[:3] == ["xdotool", "search", "--name"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="101\n202\n", stderr="")
+        if cmd == ["xdotool", "getwindowgeometry", "--shell", "101"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="X=9\nY=8\nWIDTH=320\nHEIGHT=180\n", stderr="")
+        if cmd == ["xdotool", "getwindowgeometry", "--shell", "202"]:
+            return subprocess.CompletedProcess(cmd, 0, stdout="X=12\nY=34\nWIDTH=1280\nHEIGHT=720\n", stderr="")
+        raise AssertionError(cmd)
+
+    monkeypatch.setattr(pipeline.subprocess, "run", fake_run)
+
+    assert pipeline._minecraft_window_geometry("Minecraft") == (12, 34, 1280, 720)
+    assert pipeline._window_geometry_record(requested_width=1280, requested_height=720) == {
+        "geometry": {"x": 12, "y": 34, "width": 1280, "height": 720},
+        "warning": None,
+    }
+
+
+def test_window_geometry_falls_back_to_xwininfo(monkeypatch) -> None:
+    monkeypatch.setattr(pipeline.shutil, "which", lambda _name: None)
+
+    def fake_run(cmd, **_kwargs):
+        assert cmd == ["xwininfo", "-name", "Minecraft"]
+        return subprocess.CompletedProcess(
+            cmd,
+            0,
+            stdout=(
+                "Absolute upper-left X:  3\n"
+                "Absolute upper-left Y:  4\n"
+                "Width: 640\n"
+                "Height: 360\n"
+            ),
+            stderr="",
+        )
+
+    monkeypatch.setattr(pipeline.subprocess, "run", fake_run)
+
+    assert pipeline._minecraft_window_geometry("Minecraft") == (3, 4, 640, 360)
+    assert pipeline._window_geometry_record(requested_width=1280, requested_height=720) == {
+        "geometry": {"x": 3, "y": 4, "width": 640, "height": 360},
+        "warning": "size_mismatch",
+    }
+
+
 def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monkeypatch) -> None:
     profile = {
         "loader": "fabric",

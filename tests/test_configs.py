@@ -58,6 +58,14 @@ def test_scene_air_clear_is_split_under_fill_limit() -> None:
     )
 
 
+def test_scene_pool_is_below_walk_surface() -> None:
+    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+
+    assert "fill -14 64 -2 -5 64 7 minecraft:water" not in commands
+    assert "fill -14 63 -2 -5 63 7 minecraft:water" in commands
+    assert "fill -14 62 -2 -5 62 7 minecraft:blue_concrete" in commands
+
+
 def test_qa_package_does_not_import_render_or_actions() -> None:
     for path in (ROOT / "src" / "mcdata" / "qa").glob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))

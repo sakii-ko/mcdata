@@ -19,6 +19,10 @@ def test_write_options_includes_quiet_capture_keys(tmp_path: Path) -> None:
         assert options[key] == value
     assert options["rawMouseInput"] == "true"
     assert options["mouseSensitivity"] == "0.5"
+    assert options["notificationDisplayTime"] == "0.0"
+    assert options["inGameNotification"] == "false"
+    assert options["musicToast"] == '"never"'
+    assert options["realmsNotifications"] == "false"
 
 
 def test_write_options_resourcepack_format(tmp_path: Path) -> None:

@@ -11,8 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # Keep this list in sync with y=64/65 scene cells until ITER-03 scene.yml
 # makes server scene generation and A* blocking share one source.
 SCENE_OCCUPIED_XZ = (
-    {(x, z) for x in range(-14, -4) for z in range(-2, 8)}
-    | {(x, z) for x in range(5, 15) for z in range(-2, 8)}
+    {(x, z) for x in range(5, 15) for z in range(-2, 8)}
     | {(x, 9) for x in range(-2, 3)}
     | {(x, 14) for x in range(-4, 5)}
     | {(-10, -10), (-7, -10), (-4, -10), (-1, -10), (5, -10), (8, -10), (11, -10)}
