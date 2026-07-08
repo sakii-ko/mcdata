@@ -188,18 +188,22 @@ def simulate_track(trajectory: dict) -> list[dict]:
 
 **验收**：步骤 5 的 4+2 个验证产物 + 步骤 6 的重采产物全部入库/落盘；dev_check 全绿。
 
-### T1e — 行走速度标定（P5，最后一环）+ 终局重采
+### T1e（修订 v2）— 场景岩浆围挡（P6）+ 行走速度标定（P5）+ 终局重采
 
-背景：T1d 后 yaw 门完美（max 0.00003°，转向修复生效），位置门仍 FAIL 且两台机器偏差一致（22.3/21.4 blocks）——**行走距离是错的**：`seconds_per_block: 0.32` 假设步速 3.125 b/s，MC 实际步行速度 4.317 m/s（0.2317 s/block），每段 leg 超走 ~38%。这是 ITER-01 遗留的第三个开环标定错误（P3 按键、P4 转向、P5 行走），也是最后一个可动部件。**以下设计 planner 定死；标定值以实测为准，不拍脑袋。**
+修订原因（2026-07-08 第二次）：首版标定 probe 设计有两处 planner 错误——①标定路线朝南直穿场景岩浆流（岩浆源 (2,64,-10) 裸露，流淌半径 3 格覆盖 x∈[-1,5]×z∈[-13,-7]；hold-1 实测 4.5 格 ≈ 岩浆内移速×4s，证据吻合）；②4 个等长 hold 拟合 v/t0 秩亏（coder 指出，正确）。并由此发现 P6：**真实路线第一段也擦过岩浆流边缘**，不围挡则步速修好后位置门仍会被岩浆减速拖爆。yaw≈171° 判定为 1s 采样落在转向中途的伪影，非缺陷。
 
-1. **探针采样间隔参数化**：`start_position_probe(..., interval_sec: float = 5.0)`；`run`/`run-matrix` 加 hidden option `--probe-interval`（default 5.0）透传。标定 run 用 1.0（服务端 1Hz 查询无压力）。
-2. **`walk_calibration_probe` 入库**（scripted，actions.yml）：pause 2s → w-hold 4.0s → pause 2s → 2×{600px,0.35s} 转 180° → pause 2s → w-hold 4.0s → 再重复一轮（共 4 个 hold，来回穿梭不出平台：起点 (0.5,-13.5) 朝南 4s×4.3≈17 格，z 到 ~4 后折返）。
-3. **在 l40s 实测**：`run --profile matrix_low ... --strategy walk_calibration_probe --duration 40 --probe-interval 1 --lane walkcal`。从 positions.jsonl 对每个 hold 计算净位移 d_i（yaw 恒定段的欧氏位移）。四个 hold 按 `d = v × (T − t0)` 最小二乘拟合（T=4.0，两未知 v/t0），得实测步速 v 与起步亏损 t0。拟合残差 >0.5 block → 停，上报。
-4. **generator 修正**（`strategies.py` astar_walk，通用参数）：hold 时长公式改为 `distance × seconds_per_block + walk_startup_comp_sec`（新 spec 参数，default 0.0，不写死场景）。`configs/actions.yml` 全部 astar_walk 设 `seconds_per_block: <1/v 实测值>`（预期 ≈0.2317）与 `walk_startup_comp_sec: <t0 实测值>`（预期 0.05–0.15）。`simulate_track` 维持匀速模型不改（起步亏损在 leg 内造成的瞬时偏差 ≤ v×t0 ≈ 0.4 格，位置门 3.0 容差覆盖）。
-5. **golden / docs/trajectories 重生成**（独立 commit，注明 P5 标定修正）。
-6. **验证 + 终局重采**（同 T1d 步骤 5/6 但免转向探针）：两台各连续 2× `ground_astar_loop` 60s 默认 run，位置门 + yaw 门全 PASS → 4090 四路同批次重采（替换 `docs/qa_samples/iter02_4090_3way/`）→ 回传 + purge。任一 FAIL：停、留证据、上报。
+1. **P6 岩浆围挡**（`server.py` `_scene_commands`）：在 lava setblock 之前加一行 `fill ox+1 oy oz-11 ox+3 oy oz-9 minecraft:glass`，再原位 `setblock ox+2 oy oz-10 minecraft:lava`（源被四邻玻璃围死不再流淌；光照/emissive 保留，隔玻璃可见）。同步：`configs/actions.yml` 所有 astar_walk 的 `blocked` 增补围挡 9 格 `[1,-11],[2,-11],[3,-11],[1,-10],[3,-10],[1,-9],[2,-9],[3,-9],[2,-10]`（源本就在 blocked 则去重）。scene 命令如有单测断言数量/内容，一并更新。
+2. **标定 probe 重设计**（替换现有 walk_calibration_probe）：走**东西向干净走廊 z=-13.5**（该行无任何场景物）。序列（scripted）：
+   - t=2.0：`{mouse_dx: -600}`（南→东）；
+   - t=4.0 起四个**变长** hold，方向交替（每次 hold 后 2×600px 转 180°，转前后各 pause ≥1.5s）：T₁=1.0s（东）、T₂=1.5s（西）、T₃=2.0s（东）、T₄=2.5s（西）。累计漂移 ≈ −v×1s ≈ −4.3 格，全程 x∈[-5,12] 不出走廊、不碰任何东西。
+   - 总时长 ~28s，`--duration 32 --probe-interval 1`。
+3. **拟合**：d_i 取每个 hold 前后**静止段**样本的欧氏位移（静止段=不在任何事件 ±0.5s 内）；`d = v×(T−t0)` 两未知、四方程最小二乘；残差 >0.5 格 → 停、上报。yaw 校验同样只用静止段样本。
+4. **generator 修正**（同首版）：hold 公式 `distance × seconds_per_block + walk_startup_comp_sec`；actions.yml 填实测 v、t0。
+5. **golden / docs/trajectories 重生成**（P5+P6 一并，独立 commit；路线会因 blocked 增补绕行，viz PNG 重出）。
+6. **验证 + 终局重采**（同首版步骤 6）：两台各 2×60s 默认 run 双门全 PASS → 4090 四路重采替换 QA samples → 回传 + purge。任一 FAIL：停、留证据、上报。
+7. 执行顺序注意：步骤 1 合入并部署后再跑步骤 2 的标定 run（旧 lane 世界有历史岩浆流，**标定与验证一律用新 lane 名**保证场景重建）。
 
-**验收**：标定 run 的拟合数据（v、t0、残差）写进 report；四个验证 run + 重采产物入库；dev_check 全绿。
+**验收**：标定拟合数据（v、t0、残差、各 hold 的 d_i/T_i 表）写进 report；围挡后场景截图一张入 report 佐证；四个验证 run + 重采产物入库；dev_check 全绿。
 
 ### T2 — run-matrix 多实例并行化改造
 
