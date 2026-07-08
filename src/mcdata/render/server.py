@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import os
-import json
-import re
 import subprocess
-import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -13,20 +10,9 @@ from rich.console import Console
 
 from mcdata.mojang import version_manifest
 from mcdata.net import download_file, get_json
+from mcdata.render.scene import apply_world_state
 
 console = Console()
-
-SCENE_FAILURE_PATTERNS = (
-    "Too many blocks",
-    "Cannot place",
-    "Expected",
-    "Unknown",
-)
-SCENE_RECEIPT_PATTERNS = (
-    "Successfully filled",
-    "Changed the block",
-    "No blocks were filled",
-)
 
 
 def ensure_server(
@@ -102,8 +88,40 @@ def start_server(
         start_new_session=True,
     )
     _wait_for_server_log(log_path, proc, wait_sec=wait_sec)
-    _apply_world_state(proc, profile)
+    apply_world_state(proc, profile)
     return proc
+
+
+def server_profile_name(
+    profile: dict[str, Any],
+    *,
+    profile_name: str,
+    lane: str | None = None,
+) -> str:
+    name = str(profile.get("world_profile") or profile_name)
+    if lane:
+        return f"{name}__{lane}"
+    return name
+
+
+def wait_for_player_join(
+    log_path: Path,
+    player: str,
+    *,
+    proc: subprocess.Popen | None = None,
+    wait_sec: int = 120,
+) -> None:
+    deadline = time.time() + wait_sec
+    needle = f"{player} joined the game"
+    while time.time() < deadline:
+        if proc is not None and proc.poll() is not None:
+            raise RuntimeError(f"Minecraft server exited before {player} joined; see {log_path}")
+        if log_path.exists():
+            text = log_path.read_text(encoding="utf-8", errors="replace")
+            if needle in text:
+                return
+        time.sleep(0.5)
+    raise TimeoutError(f"Timed out waiting for {player} to join; see {log_path}")
 
 
 def _server_download_url(game_version: str) -> str:
@@ -121,18 +139,6 @@ def _server_download_url(game_version: str) -> str:
     if not server or not server.get("url"):
         raise RuntimeError(f"No server jar in Mojang metadata for {game_version}")
     return str(server["url"])
-
-
-def server_profile_name(
-    profile: dict[str, Any],
-    *,
-    profile_name: str,
-    lane: str | None = None,
-) -> str:
-    name = str(profile.get("world_profile") or profile_name)
-    if lane:
-        return f"{name}__{lane}"
-    return name
 
 
 def _write_server_properties(path: Path, profile: dict[str, Any], *, level_name: str | None = None) -> None:
@@ -175,338 +181,3 @@ def _wait_for_server_log(log_path: Path, proc: subprocess.Popen, *, wait_sec: in
                 return
         time.sleep(1)
     raise TimeoutError(f"Timed out waiting for Minecraft server; see {log_path}")
-
-
-def wait_for_player_join(log_path: Path, player: str, *, proc: subprocess.Popen | None = None, wait_sec: int = 120) -> None:
-    deadline = time.time() + wait_sec
-    needle = f"{player} joined the game"
-    while time.time() < deadline:
-        if proc is not None and proc.poll() is not None:
-            raise RuntimeError(f"Minecraft server exited before {player} joined; see {log_path}")
-        if log_path.exists():
-            text = log_path.read_text(encoding="utf-8", errors="replace")
-            if needle in text:
-                return
-        time.sleep(0.5)
-    raise TimeoutError(f"Timed out waiting for {player} to join; see {log_path}")
-
-
-def _apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
-    if proc.stdin is None:
-        return
-    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
-    gamerules = dict(state.get("gamerules", {}) or {})
-    commands = [
-        *_gamerule_commands(gamerules),
-        *_time_weather_commands(state),
-        *_scene_commands(state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}),
-    ]
-    _write_commands(proc, commands)
-
-
-def expected_scene_fill_count(profile: dict[str, Any]) -> int:
-    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
-    scene = state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}
-    return _count_receipted_scene_commands(_scene_commands(scene))
-
-
-def verify_scene_commands(
-    log_path: Path,
-    *,
-    expected_fill_count: int,
-    wait_sec: float = 10.0,
-    poll_sec: float = 0.2,
-) -> int:
-    deadline = time.time() + wait_sec
-    last_count = 0
-    while time.time() <= deadline:
-        lines = _read_log_lines(log_path)
-        for line in lines:
-            if _is_scene_failure_line(line):
-                raise RuntimeError(f"Scene command failed: {line.strip()} (see {log_path})")
-        last_count = sum(1 for line in lines if _is_scene_receipt_line(line))
-        if last_count == expected_fill_count:
-            return last_count
-        if last_count > expected_fill_count:
-            raise RuntimeError(
-                f"Scene command receipt count exceeded expected count: "
-                f"saw {last_count}/{expected_fill_count}; see {log_path}"
-            )
-        time.sleep(poll_sec)
-    raise TimeoutError(
-        f"Timed out waiting for scene command receipts: "
-        f"saw {last_count}/{expected_fill_count}; see {log_path}"
-    )
-
-
-def _read_log_lines(log_path: Path) -> list[str]:
-    if not log_path.exists():
-        return []
-    return log_path.read_text(encoding="utf-8", errors="replace").splitlines()
-
-
-def _is_scene_failure_line(line: str) -> bool:
-    return any(pattern in line for pattern in SCENE_FAILURE_PATTERNS)
-
-
-def _is_scene_receipt_line(line: str) -> bool:
-    return any(pattern in line for pattern in SCENE_RECEIPT_PATTERNS)
-
-
-def _count_receipted_scene_commands(commands: list[str]) -> int:
-    return sum(1 for command in commands if command.startswith(("fill ", "setblock ")))
-
-
-def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
-    if proc.stdin is None:
-        return
-    state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
-    commands = [*_time_weather_commands(state)]
-    player = state.get("player", {}) if isinstance(state.get("player"), dict) else {}
-    if player:
-        commands.append(_tp_command("@a", player))
-    _write_commands(proc, commands)
-
-
-def start_position_probe(
-    proc: subprocess.Popen,
-    username: str,
-    *,
-    interval_sec: float = 5.0,
-    sent_at: list[float] | None = None,
-) -> threading.Event:
-    stop_event = threading.Event()
-
-    def run() -> None:
-        while not stop_event.is_set():
-            if sent_at is not None:
-                sent_at.append(time.monotonic())
-            _write_commands(
-                proc,
-                [
-                    f"data get entity {username} Pos",
-                    f"data get entity {username} Rotation",
-                ],
-            )
-            stop_event.wait(interval_sec)
-
-    threading.Thread(target=run, daemon=True).start()
-    return stop_event
-
-
-def wait_for_position_sample(
-    log_path: Path,
-    username: str,
-    *,
-    proc: subprocess.Popen | None = None,
-    after_count: int = 0,
-    wait_sec: float = 10.0,
-) -> int:
-    deadline = time.time() + wait_sec
-    while time.time() < deadline:
-        if proc is not None and proc.poll() is not None:
-            raise RuntimeError(f"Minecraft server exited before position probe sample; see {log_path}")
-        count = len(parse_position_log(log_path, username=username))
-        if count > after_count:
-            return count
-        time.sleep(0.2)
-    raise TimeoutError(f"Timed out waiting for position probe sample; see {log_path}")
-
-
-def write_positions_jsonl(
-    log_path: Path,
-    out_path: Path,
-    *,
-    username: str,
-    sent_at: list[float] | None = None,
-    replay_start_mono: float | None = None,
-    replay_log_path: Path | None = None,
-) -> int:
-    positions = parse_position_log(log_path, username=username)
-    rotations = parse_rotation_log(log_path, username=username)
-    t_rel_baseline = _position_time_baseline(
-        replay_log_path=replay_log_path,
-        fallback_mono=replay_start_mono,
-    )
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", encoding="utf-8") as fh:
-        for idx, item in enumerate(positions):
-            row = {"idx": idx, **item}
-            if idx < len(rotations):
-                row["yaw"] = rotations[idx]["yaw"]
-            if sent_at is not None and t_rel_baseline is not None and idx < len(sent_at):
-                row["t_rel"] = sent_at[idx] - t_rel_baseline
-            fh.write(json.dumps(row, sort_keys=True) + "\n")
-    return len(positions)
-
-
-def _position_time_baseline(
-    *,
-    replay_log_path: Path | None,
-    fallback_mono: float | None,
-) -> float | None:
-    if replay_log_path is not None:
-        replay_start = replay_start_mono_from_log(replay_log_path)
-        if replay_start is not None:
-            return replay_start
-        if fallback_mono is not None:
-            console.print(
-                f"Warning: replay start not found in {replay_log_path}; "
-                "using capture-ready position baseline."
-            )
-    return fallback_mono
-
-
-def replay_start_mono_from_log(replay_log_path: Path) -> float | None:
-    if not replay_log_path.exists():
-        return None
-    first_line = replay_log_path.read_text(encoding="utf-8", errors="replace").splitlines()
-    if not first_line:
-        return None
-    try:
-        first = json.loads(first_line[0])
-    except json.JSONDecodeError:
-        return None
-    if first.get("event") != "start":
-        return None
-    mono = first.get("mono")
-    if not isinstance(mono, int | float):
-        return None
-    return float(mono)
-
-
-def parse_position_log(log_path: Path, *, username: str) -> list[dict[str, float]]:
-    if not log_path.exists():
-        return []
-    needle = f"{username} has the following entity data:"
-    positions: list[dict[str, float]] = []
-    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if needle not in line:
-            continue
-        raw = line.split(needle, 1)[1]
-        values = _parse_position_values(raw)
-        if values is not None:
-            x, y, z = values
-            positions.append({"x": x, "y": y, "z": z})
-    return positions
-
-
-def parse_rotation_log(log_path: Path, *, username: str) -> list[dict[str, float]]:
-    if not log_path.exists():
-        return []
-    needle = f"{username} has the following entity data:"
-    rotations: list[dict[str, float]] = []
-    for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if needle not in line:
-            continue
-        raw = line.split(needle, 1)[1]
-        values = _parse_rotation_values(raw)
-        if values is not None:
-            yaw, _pitch = values
-            rotations.append({"yaw": yaw})
-    return rotations
-
-
-def _parse_position_values(raw: str) -> tuple[float, float, float] | None:
-    values = [
-        float(match.group(1))
-        for match in re.finditer(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[dDfF]?", raw)
-    ]
-    if len(values) < 3:
-        return None
-    return values[0], values[1], values[2]
-
-
-def _parse_rotation_values(raw: str) -> tuple[float, float] | None:
-    values = [
-        float(match.group(1))
-        for match in re.finditer(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[dDfF]?", raw)
-    ]
-    if len(values) != 2:
-        return None
-    return values[0], values[1]
-
-
-def _write_commands(proc: subprocess.Popen, commands: list[str]) -> None:
-    if proc.stdin is None:
-        return
-    try:
-        for command in commands:
-            proc.stdin.write(command + "\n")
-        proc.stdin.flush()
-    except OSError:
-        return
-
-
-def _gamerule_commands(gamerules: dict[str, Any]) -> list[str]:
-    commands: list[str] = []
-    for key, value in sorted(gamerules.items()):
-        commands.append(f"gamerule {key} {_bool_or_value(value)}")
-    return commands
-
-
-def _time_weather_commands(state: dict[str, Any]) -> list[str]:
-    commands: list[str] = []
-    time_value = state.get("time")
-    if time_value is not None:
-        commands.append(f"time set {time_value}")
-    weather = state.get("weather")
-    if weather:
-        commands.append(f"weather {weather} {int(state.get('weather_duration_sec', 999999))}")
-    return commands
-
-
-def _tp_command(target: str, player: dict[str, Any]) -> str:
-    return (
-        f"tp {target} "
-        f"{_num(player.get('x', 0))} {_num(player.get('y', 67))} {_num(player.get('z', -12))} "
-        f"{_num(player.get('yaw', 0))} {_num(player.get('pitch', 15))}"
-    )
-
-
-def _scene_commands(scene: dict[str, Any]) -> list[str]:
-    if not scene.get("enabled", True):
-        return []
-    origin = scene.get("origin", [0, 64, 0])
-    ox, oy, oz = (int(origin[0]), int(origin[1]), int(origin[2]))
-    return [
-        f"forceload add {ox - 32} {oz - 32} {ox + 32} {oz + 32}",
-        f"fill {ox - 18} {oy} {oz - 18} {ox + 18} {oy + 22} {oz + 18} minecraft:air",
-        f"fill {ox - 18} {oy + 23} {oz - 18} {ox + 18} {oy + 28} {oz + 18} minecraft:air",
-        f"fill {ox - 24} {oy - 4} {oz - 24} {ox + 24} {oy - 2} {oz + 24} minecraft:dirt",
-        f"fill {ox - 24} {oy - 1} {oz - 24} {ox + 24} {oy - 1} {oz + 24} minecraft:grass_block",
-        f"fill {ox - 15} {oy - 1} {oz - 15} {ox + 15} {oy - 1} {oz + 15} minecraft:smooth_stone",
-        f"fill {ox - 14} {oy - 1} {oz - 2} {ox - 5} {oy - 1} {oz + 7} minecraft:water",
-        f"fill {ox - 14} {oy - 2} {oz - 2} {ox - 5} {oy - 2} {oz + 7} minecraft:blue_concrete",
-        f"fill {ox + 5} {oy} {oz - 2} {ox + 14} {oy} {oz + 7} minecraft:glass",
-        f"fill {ox + 5} {oy - 1} {oz - 2} {ox + 14} {oy - 1} {oz + 7} minecraft:white_concrete",
-        f"fill {ox - 2} {oy} {oz + 9} {ox + 2} {oy + 3} {oz + 9} minecraft:oak_leaves",
-        f"fill {ox - 4} {oy} {oz + 14} {ox + 4} {oy + 4} {oz + 14} minecraft:white_concrete",
-        f"setblock {ox - 10} {oy} {oz - 10} minecraft:torch",
-        f"setblock {ox - 7} {oy} {oz - 10} minecraft:lantern",
-        f"setblock {ox - 4} {oy} {oz - 10} minecraft:redstone_torch",
-        f"setblock {ox - 1} {oy} {oz - 10} minecraft:redstone_lamp[lit=true]",
-        f"fill {ox + 1} {oy} {oz - 11} {ox + 3} {oy} {oz - 9} minecraft:glass",
-        f"setblock {ox + 2} {oy} {oz - 10} minecraft:lava",
-        f"setblock {ox + 5} {oy} {oz - 10} minecraft:sea_lantern",
-        f"setblock {ox + 8} {oy} {oz - 10} minecraft:glowstone",
-        f"setblock {ox + 11} {oy} {oz - 10} minecraft:beacon",
-        f"setblock {ox - 14} {oy} {oz + 12} minecraft:oak_log",
-        f"setblock {ox - 14} {oy + 1} {oz + 12} minecraft:oak_leaves",
-        f"setblock {ox + 14} {oy} {oz + 12} minecraft:polished_deepslate",
-        f"setblock {ox + 14} {oy + 1} {oz + 12} minecraft:glass",
-    ]
-
-
-def _bool_or_value(value: Any) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
-
-
-def _num(value: Any) -> str:
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        return f"{value:.3f}".rstrip("0").rstrip(".")
-    return str(value)

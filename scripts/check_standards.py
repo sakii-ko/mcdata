@@ -50,7 +50,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "render": {
         "config", "paths", "packs", "mojang", "modrinth", "net",
         "manifest", "runlog", "settings", "actions.replay", "qa.probe", "render",
-    },
+    },  # "render" target covers render-internal modules: pipeline/server/scene/probe/options.
     "qa": {"paths", "qa"},
 }
 

@@ -7,7 +7,7 @@ from mcdata.config import load_yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Mirrored from render.server._scene_commands at origin [0, 64, 0].
+# Mirrored from render.scene._scene_commands at origin [0, 64, 0].
 # Keep this list in sync with y=64/65 scene cells until ITER-03 scene.yml
 # makes server scene generation and A* blocking share one source.
 SCENE_OCCUPIED_XZ = (

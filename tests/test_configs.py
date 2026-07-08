@@ -3,7 +3,7 @@ import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS
 from mcdata.config import load_yaml
-from mcdata.render.server import _scene_commands
+from mcdata.render.scene import _scene_commands
 
 ROOT = Path(__file__).resolve().parents[1]
 

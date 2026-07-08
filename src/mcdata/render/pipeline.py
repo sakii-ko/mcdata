@@ -27,16 +27,20 @@ from mcdata.packs import install_asset_set, install_mods
 from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.render.options import write_iris_config, write_options
-from mcdata.render.server import (
-    apply_join_state,
-    expected_scene_fill_count,
-    server_profile_name,
+from mcdata.render.probe import (
     start_position_probe,
-    start_server,
-    verify_scene_commands,
-    wait_for_player_join,
     wait_for_position_sample,
     write_positions_jsonl,
+)
+from mcdata.render.scene import (
+    apply_join_state,
+    expected_scene_fill_count,
+    verify_scene_commands,
+)
+from mcdata.render.server import (
+    server_profile_name,
+    start_server,
+    wait_for_player_join,
 )
 from mcdata.runlog import RunLogger
 from mcdata.settings import CaptureSettings

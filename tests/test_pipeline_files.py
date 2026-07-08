@@ -9,16 +9,17 @@ import pytest
 
 from mcdata.render import pipeline
 from mcdata.render.pipeline import _copy_trajectory, _profile_with_overrides, _run_dir
-from mcdata.render.server import (
-    ensure_server,
-    expected_scene_fill_count,
+from mcdata.render.probe import (
     parse_position_log,
     parse_rotation_log,
     replay_start_mono_from_log,
-    server_profile_name,
-    verify_scene_commands,
     wait_for_position_sample,
     write_positions_jsonl,
+)
+from mcdata.render.scene import expected_scene_fill_count, verify_scene_commands
+from mcdata.render.server import (
+    ensure_server,
+    server_profile_name,
 )
 
 
