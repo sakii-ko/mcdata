@@ -743,6 +743,102 @@ Remote cleanup:
 - `scripts/pull_runs_from_remote.sh ... --purge` verified both l40s pulls, but refused purge due to its self-matching active-process check.
 - I verified no l40s `portablemc`, `x11grab`, `mcdata.cli`, Minecraft Java, or ffmpeg processes remained, then manually removed `/root/nas/bigdata1/tmp/mcdata/runs/*`.
 
+## T1f Scene Obstacles And Validation Stop
+
+Implemented and pushed the T1f commits:
+
+- `4087a58fdbf7fca978f046c10411fa21d4ff1d03` `[qa] ignore yaw samples during turn windows`
+- `2c01dd774eb71acf1646530cdb5dc1c5ee1bddb9` `[data] cover P7 scene obstacles in astar routes`
+
+Local verification:
+
+```text
+.venv/bin/python -m pytest tests/test_qa_report.py -q
+10 passed
+
+.venv/bin/python -m pytest tests/test_trajectory_contract.py tests/test_golden_trajectories.py -q
+11 passed
+
+scripts/dev_check.sh
+check_standards: 0 failure(s), 3 warning(s)
+All checks passed!
+73 passed
+```
+
+Yaw gate change:
+
+- `route_reference_report` now derives yaw ignore windows from every trajectory mouse event as `[t-0.5, t+duration+0.5]`.
+- `check_route_reference` leaves position/y range checks unchanged, skips yaw scoring only inside those windows, and records `skipped_yaw_count`.
+- Synthetic unit coverage verifies that a mid-turn yaw outlier is skipped while its position sample still participates in the position gate.
+
+P7 scene obstacle audit, normalized to origin `[0,64,0]`:
+
+| `_scene_commands` command(s) | y=64/65 occupied x,z cells | Previous config coverage | T1f final coverage |
+|---|---|---|---|
+| `fill -14 64 -2 -5 64 7 minecraft:water` | `x=-14..-5, z=-2..7` | `blocked_rects` yes | unchanged yes |
+| `fill 5 64 -2 14 64 7 minecraft:glass` | `x=5..14, z=-2..7` | `blocked_rects` yes | unchanged yes |
+| `fill -2 64 9 2 67 9 minecraft:oak_leaves` | `[-2,9],[-1,9],[0,9],[1,9],[2,9]` | no | added to every `astar_walk.blocked` |
+| `fill -4 64 14 4 68 14 minecraft:white_concrete` | `[-4,14]..[4,14]` | no | added to every `astar_walk.blocked` |
+| light row setblocks | `[-10,-10],[-7,-10],[-4,-10],[-1,-10],[5,-10],[8,-10],[11,-10]` | `blocked` yes | unchanged yes |
+| P6 basin + lava source | `[1,-11]..[3,-9]` | `blocked` yes | unchanged yes |
+| left corner marker `oak_log`/`oak_leaves` | `[-14,12]` | no | added to every `astar_walk.blocked` |
+| right corner marker `polished_deepslate`/`glass` | `[14,12]` | no | added to every `astar_walk.blocked` |
+
+Ground/floor fills at `y=63` are not A* obstacles for the player centerline. The new contract tests hardcode the y=64/65 occupied set mirrored from `_scene_commands`, assert every `astar_walk` config covers it via `blocked`/`blocked_rects`, and assert every generated route avoids it.
+
+Golden/data note: `tests/golden/*.json` and `docs/trajectories/*.json` remained byte-identical because the current integer-center routes already avoid the newly added cells. The four `docs/trajectories/*.png` files changed because the visualization now draws the newly configured blocked points. I did not inflate blocked radii beyond the PLAN-specified occupied cells.
+
+l40s formal validation used the NAS-backed environment:
+
+```text
+cd /root/mcdata
+export MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata
+source scripts/mcdata_env.sh
+export DISPLAY=:77 PYTHONPATH=src
+python3 -m mcdata.cli run --profile matrix_low --capture --with-server \
+  --replay-actions --strategy ground_astar_loop --duration 60 \
+  --game-version 26.2 --display :77 --server-port 25652 --lane t1fl40snasA
+python3 -m mcdata.cli qa-run \
+  /root/nas/bigdata1/tmp/mcdata/runs/20260708T144528Z_matrix_low__t1fl40snasA \
+  --frames 12 --out-dir .../qa
+```
+
+Validation stopped on l40s A:
+
+```text
+runs/remote_l40s/20260708T144528Z_matrix_low__t1fl40snasA
+route_reference: FAIL
+route_max_deviation_blocks: 23.813
+route_mean_deviation_blocks: 13.381
+route_max_yaw_error_degrees: 0.000030
+route_mean_yaw_error_degrees: 0.000024
+route_yaw_sample_count: 8
+route_skipped_yaw_count: 4
+route_missing_yaw_count: 0
+route_y_out_of_range_count: 0
+```
+
+Representative route-reference samples:
+
+| idx | t_rel | observed `(x,z)` | ideal `(x,z)` | dev | observed yaw | ideal yaw | yaw status |
+|---:|---:|---|---|---:|---:|---:|---|
+| 1 | 4.769 | `(8.659,-11.561)` | `(9.297,-12.000)` | 0.775 | -90.000 | -90.000 | scored |
+| 2 | 9.769 | `(8.527,-2.499)` | `(6.870,-3.000)` | 1.731 | 90.000 | 90.000 | scored |
+| 3 | 14.799 | `(4.601,10.449)` | `(5.092,10.000)` | 0.665 | -36.000 | -90.000 | skipped: turn window |
+| 4 | 19.799 | `(6.584,10.449)` | `(3.000,10.000)` | 3.612 | 90.000 | 35.171 | skipped: turn window |
+| 5 | 24.799 | `(-2.531,10.666)` | `(-12.000,12.000)` | 9.562 | 90.000 | 134.834 | skipped: turn window |
+| 6 | 29.799 | `(1.865,10.300)` | `(-4.000,4.795)` | 8.044 | 180.000 | 180.000 | scored |
+| 8 | 39.800 | `(3.261,8.704)` | `(-2.759,-14.000)` | 23.488 | -90.000 | -90.000 | scored |
+| 9 | 44.800 | `(7.182,8.704)` | `(0.000,-14.000)` | 23.813 | -90.000 | -90.000 | scored |
+
+Interpretation: the T1f yaw gate fix works: all non-skipped yaw samples are effectively exact, and mid-turn samples are no longer counted as yaw failures. The remaining failure is purely positional. Because T1f requires stopping on any validation FAIL, I did not run l40s B, did not run final recapture, and did not replace `docs/qa_samples/iter02_4090_3way/`.
+
+Operational notes:
+
+- The first l40s T1f wrapper omitted `source scripts/mcdata_env.sh`, so it wrote a non-acceptance evidence run under `/root/mcdata/runs/20260708T143629Z_matrix_low__t1fl40sA`. I pulled it, QA also failed with `route_max_deviation_blocks=25.124` and `route_max_yaw_error_degrees=0.000030`, then removed the remote root-disk copy.
+- The formal NAS-backed run above was pulled with `scripts/pull_runs_from_remote.sh l40s /root/nas/bigdata1/tmp/mcdata/runs`; the second rsync pass was zero-transfer (`verify: OK`). I then manually removed `/root/nas/bigdata1/tmp/mcdata/runs/*t1fl40snas*` and confirmed no l40s `portablemc`, Minecraft Java, `ffmpeg`, `mcdata.cli`, or `x11grab` process remained.
+- Per the latest operator instruction, I did not perform further 4090 work in this T1f pass. The current stop evidence is l40s-only.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -768,6 +864,10 @@ Remote cleanup:
     - Walk calibration FAIL: `20260708T122513Z_matrix_low__walkcal`
     - v2 walk calibration PASS: `20260708T132328Z_matrix_low__t1ev2walkcal`
     - v2 first validation FAIL: `20260708T133709Z_matrix_low__t1ev2l40sA`
+  - T1f l40s evidence:
+    - Root-path wrapper mistake, evidence only: `20260708T143629Z_matrix_low__t1fl40sA`
+    - Formal NAS-backed validation FAIL: `20260708T144528Z_matrix_low__t1fl40snasA`
+    - Wrapper logs: `t1f_l40s_verify_root.log`, `t1f_l40s_nas_verify.log`
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
@@ -792,7 +892,10 @@ Remote cleanup:
 - T1d stopped before full recapture. The first completed `ground_astar_loop` run on both 4090 and l40s failed the position gate while yaw samples were present and matched the ideal yaw timeline. I did not implement the waypoint yaw resync fallback because the yaw residual did not accumulate or exceed threshold.
 - The T1d turn probe on 4090 visually overlapped at +360/+720 but measured NCC `0.7867/0.7887`, just below the numeric `0.8` threshold; l40s measured `0.9057/0.9105`. The ground validation failures independently satisfy the stop condition.
 - T1e v2 stopped after l40s validation A failed. Calibration itself passed with residual `0.000025` blocks, so the remaining failure is not the same lava/translation fit issue as T1e v1.
+- T1f stopped after the first formal l40s validation A run failed the position gate. Yaw de-artifacting worked (`route_max_yaw_error_degrees=0.000030`, `route_skipped_yaw_count=4`), so the remaining T1f failure is not a yaw-gate artifact.
+- T1f P7 added the PLAN-specified occupied cells to every `astar_walk.blocked`, but the route JSON did not change because the generated integer-center routes already avoided those exact cells. The visualization PNGs changed to show the new blocked points; I did not expand blocked cells beyond the audited y=64/65 occupied grid.
 - I did not start 4090 validation after l40s validation A failed. 4090 `nvidia-smi` was also blocked by other active/stuck GPU-query state at the time of validation.
+- After the user redirected work to l40s-only, I did not perform further 4090 checks or workloads.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
@@ -805,4 +908,5 @@ Remote cleanup:
 - T1c Step 3.5 failure interpretation: key-state cleanup behaved as designed (`thread_joined alive=false`, no inherited/released replay-control records), but route-reference still failed and pointer edge parking was 95.7% during gameplay.
 - T1d failure interpretation: after P4 correction, yaw aligns to the ideal route on both hosts, but observed position diverges from the ideal path by >21 blocks. This points away from residual turn calibration and toward movement/translation timing or route-model calibration.
 - T1e v2 failure interpretation: initial route samples now pass position/yaw after P5/P6; validation fails later around the new P6 detour with yaw residuals >10 degrees and then terminal position divergence.
+- T1f failure interpretation: yaw residuals are removed after turn-window filtering, scene occupied cells are now covered by config/tests, but l40s still fails the position gate by `23.813` blocks on A. Review should focus on the remaining position-model / collision-margin mismatch rather than P3/P4/P5/yaw sampling.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
