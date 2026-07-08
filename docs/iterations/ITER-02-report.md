@@ -641,6 +641,108 @@ The purge refusal was a false positive from the script's `pgrep` pattern matchin
 
 Stop condition: because the l40s calibration residual exceeded `0.5` blocks, I did not set `seconds_per_block` / `walk_startup_comp_sec`, did not regenerate P5 golden/docs trajectories, did not run the two-host validation, and did not perform 4090 final recapture.
 
+## T1e v2 Calibration And Validation Stop
+
+Implemented and pushed the T1e v2 setup/data commits:
+
+- `4260b02df84c3ac39de5016340f019fc4e91ce6b` `[actions] revise walk calibration probe for P6`
+- `9e54003210be66bfaca7db5dbc8c116f15c9cdb3` `[data] regenerate trajectories for P5 P6 calibration`
+
+Local verification before remote validation:
+
+```text
+scripts/dev_check.sh
+
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+70 passed
+```
+
+P6 scene containment:
+
+- `_scene_commands` now runs `fill 1 64 -11 3 64 -9 minecraft:glass` before `setblock 2 64 -10 minecraft:lava`.
+- l40s fresh-lane server log confirms `Successfully filled 9 block(s)` immediately before the lava `setblock`.
+- Screenshot evidence: `docs/qa_samples/t1e_v2/lava_basin_glass.jpg`.
+
+P5 v2 calibration ran on l40s with a fresh lane:
+
+```text
+MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata \
+MCDATA_OUTPUT_DIR=/root/nas/bigdata1/tmp/mcdata/runs \
+DISPLAY=:77 PYTHONPATH=src MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 \
+python3 -m mcdata.cli run --profile matrix_low --capture --with-server \
+  --replay-actions --strategy walk_calibration_probe --duration 32 \
+  --probe-interval 1 --lane t1ev2walkcal --game-version 26.2
+```
+
+Calibration evidence:
+
+```text
+runs/remote_l40s/20260708T132328Z_matrix_low__t1ev2walkcal
+positions_written count=33
+replay_log: all 15 events sent on schedule
+```
+
+Static-segment fit table, using samples outside every event +/-0.5s:
+
+| hold | T sec | d blocks | residual |
+|---:|---:|---:|---:|
+| 1 | 1.0 | 4.313362 | -0.000019 |
+| 2 | 1.5 | 6.472017 | 0.000025 |
+| 3 | 2.0 | 8.630607 | 0.000006 |
+| 4 | 2.5 | 10.789198 | -0.000013 |
+
+Fit result:
+
+```text
+v=4.317219527 blocks/sec
+seconds_per_block=0.231630565
+t0=0.000889052 sec
+max_abs_residual=0.000025487 blocks
+```
+
+I used those measured values in `configs/actions.yml` for all `astar_walk` strategies and added the P6 glass/lava basin cells to every `blocked` list:
+
+```text
+[1,-11], [2,-11], [3,-11],
+[1,-10], [2,-10], [3,-10],
+[1,-9],  [2,-9],  [3,-9]
+```
+
+Golden trajectories and `docs/trajectories/*.{json,png}` were regenerated in the independent data commit listed above.
+
+Validation then stopped on the first l40s 60s `ground_astar_loop` run:
+
+```text
+runs/remote_l40s/20260708T133709Z_matrix_low__t1ev2l40sA
+route_reference: FAIL
+route_max_deviation_blocks: 25.094
+route_mean_deviation_blocks: 13.335
+route_max_yaw_error_degrees: 35.903
+route_missing_yaw_count: 0
+route_y_out_of_range_count: 0
+```
+
+Representative route-reference samples:
+
+| idx | t_rel | observed `(x,z)` | ideal `(x,z)` | dev | observed yaw | ideal yaw | yaw err |
+|---:|---:|---|---|---:|---:|---:|---:|
+| 1 | 4.799 | `(9.522,-11.561)` | `(9.429,-12.000)` | 0.449 | -90.000 | -90.000 | 0.000 |
+| 2 | 9.799 | `(7.879,-2.499)` | `(6.739,-3.000)` | 1.246 | 90.000 | 90.000 | 0.000 |
+| 3 | 14.799 | `(5.228,10.449)` | `(5.093,10.000)` | 0.469 | -90.000 | -90.000 | 0.000 |
+| 4 | 19.800 | `(3.561,10.449)` | `(3.000,10.000)` | 0.718 | 54.000 | 35.097 | 18.903 |
+| 5 | 24.800 | `(-6.082,13.020)` | `(-12.000,12.000)` | 6.005 | 99.000 | 134.903 | 35.903 |
+| 9 | 44.800 | `(4.242,10.733)` | `(0.000,-14.000)` | 25.094 | -90.000 | -90.000 | 0.000 |
+
+Interpretation: P6/P5 fixed the initial translation problem. The first three samples are within the 3-block position gate and have near-zero yaw error. The failure begins around the new mid-route detour/turn sequence introduced by the P6 blocked cells, with yaw gate failures at samples 4 and 5 and a later terminal position far off the route. I stopped before l40s run B, 4090 validation, and final recapture as required.
+
+4090 note: after syncing commit `9e54003210be66bfaca7db5dbc8c116f15c9cdb3`, `nvidia-smi` queries on 4090 blocked and left stuck query processes. Because the l40s validation already failed, I did not start any 4090 Minecraft workload.
+
+Remote cleanup:
+
+- `scripts/pull_runs_from_remote.sh ... --purge` verified both l40s pulls, but refused purge due to its self-matching active-process check.
+- I verified no l40s `portablemc`, `x11grab`, `mcdata.cli`, Minecraft Java, or ffmpeg processes remained, then manually removed `/root/nas/bigdata1/tmp/mcdata/runs/*`.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -664,6 +766,8 @@ Stop condition: because the l40s calibration residual exceeded `0.5` blocks, I d
     - Remote wrapper log: `t1d_verify_l40s.log`
   - T1e l40s evidence:
     - Walk calibration FAIL: `20260708T122513Z_matrix_low__walkcal`
+    - v2 walk calibration PASS: `20260708T132328Z_matrix_low__t1ev2walkcal`
+    - v2 first validation FAIL: `20260708T133709Z_matrix_low__t1ev2l40sA`
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
@@ -687,6 +791,8 @@ Stop condition: because the l40s calibration residual exceeded `0.5` blocks, I d
 - T1c Step 3.5 failed on the first default 60s no-discard run despite replay key cleanup, normal replay thread completion, and no inherited-stuck-key replay log record. I stopped before Step 4 per PLAN.md.
 - T1d stopped before full recapture. The first completed `ground_astar_loop` run on both 4090 and l40s failed the position gate while yaw samples were present and matched the ideal yaw timeline. I did not implement the waypoint yaw resync fallback because the yaw residual did not accumulate or exceed threshold.
 - The T1d turn probe on 4090 visually overlapped at +360/+720 but measured NCC `0.7867/0.7887`, just below the numeric `0.8` threshold; l40s measured `0.9057/0.9105`. The ground validation failures independently satisfy the stop condition.
+- T1e v2 stopped after l40s validation A failed. Calibration itself passed with residual `0.000025` blocks, so the remaining failure is not the same lava/translation fit issue as T1e v1.
+- I did not start 4090 validation after l40s validation A failed. 4090 `nvidia-smi` was also blocked by other active/stuck GPU-query state at the time of validation.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
@@ -698,4 +804,5 @@ Stop condition: because the l40s calibration residual exceeded `0.5` blocks, I d
 - T1c A failure interpretation: both hidden skips are active in the formal run, but route-reference still fails with max deviation `31.127` blocks and y drop to `51.0`.
 - T1c Step 3.5 failure interpretation: key-state cleanup behaved as designed (`thread_joined alive=false`, no inherited/released replay-control records), but route-reference still failed and pointer edge parking was 95.7% during gameplay.
 - T1d failure interpretation: after P4 correction, yaw aligns to the ideal route on both hosts, but observed position diverges from the ideal path by >21 blocks. This points away from residual turn calibration and toward movement/translation timing or route-model calibration.
+- T1e v2 failure interpretation: initial route samples now pass position/yaw after P5/P6; validation fails later around the new P6 detour with yaw residuals >10 degrees and then terminal position divergence.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
