@@ -261,15 +261,15 @@
       "t": 46.665
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 47.015
-    },
-    {
       "duration": 3.297,
       "mouse_dx": -50,
       "mouse_dy": 14,
       "t": 46.765
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 47.015
     },
     {
       "action": "up",
@@ -287,15 +287,15 @@
       "t": 50.402
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 50.752
-    },
-    {
       "duration": 2.347,
       "mouse_dx": 256,
       "mouse_dy": 12,
       "t": 50.502
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 50.752
     },
     {
       "action": "up",
@@ -411,15 +411,15 @@
       "t": 62.837
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 63.187
-    },
-    {
       "duration": 2.268,
       "mouse_dx": -71,
       "mouse_dy": 4,
       "t": 62.937
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 63.187
     },
     {
       "action": "up",
@@ -447,15 +447,15 @@
       "t": 65.413
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 65.763
-    },
-    {
       "duration": 1.469,
       "mouse_dx": 19,
       "mouse_dy": -3,
       "t": 65.513
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 65.763
     },
     {
       "action": "up",
@@ -525,15 +525,15 @@
       "t": 71.594
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 71.944
-    },
-    {
       "duration": 3.732,
       "mouse_dx": -96,
       "mouse_dy": 17,
       "t": 71.694
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 71.944
     },
     {
       "action": "up",
@@ -759,15 +759,15 @@
       "t": 92.502
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 92.852
-    },
-    {
       "duration": 1.949,
       "mouse_dx": 128,
       "mouse_dy": 30,
       "t": 92.602
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 92.852
     },
     {
       "action": "up",
@@ -842,15 +842,15 @@
       "t": 100.243
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 100.593
-    },
-    {
       "duration": 3.355,
       "mouse_dx": -20,
       "mouse_dy": 37,
       "t": 100.343
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 100.593
     },
     {
       "action": "up",
@@ -936,15 +936,15 @@
       "t": 110.816
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 111.166
-    },
-    {
       "duration": 1.32,
       "mouse_dx": 42,
       "mouse_dy": -39,
       "t": 110.916
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 111.166
     },
     {
       "action": "up",
@@ -1057,15 +1057,15 @@
       "t": 126.199
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 126.549
-    },
-    {
       "duration": 3.557,
       "mouse_dx": -40,
       "mouse_dy": 39,
       "t": 126.299
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 126.549
     },
     {
       "action": "up",
@@ -1166,15 +1166,15 @@
       "t": 139.003
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 139.353
-    },
-    {
       "duration": 3.372,
       "mouse_dx": -166,
       "mouse_dy": -9,
       "t": 139.103
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 139.353
     },
     {
       "action": "up",
@@ -1355,15 +1355,15 @@
       "t": 164.346
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 164.696
-    },
-    {
       "duration": 2.937,
       "mouse_dx": 5,
       "mouse_dy": -5,
       "t": 164.446
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 164.696
     },
     {
       "action": "up",
@@ -1530,15 +1530,15 @@
       "t": 190.436
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 190.786
-    },
-    {
       "duration": 2.727,
       "mouse_dx": -14,
       "mouse_dy": 8,
       "t": 190.536
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 190.786
     },
     {
       "action": "up",
@@ -1583,15 +1583,15 @@
       "t": 201.554
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 201.904
-    },
-    {
       "duration": 2.061,
       "mouse_dx": 189,
       "mouse_dy": 34,
       "t": 201.654
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 201.904
     },
     {
       "action": "up",
@@ -1824,15 +1824,15 @@
       "t": 230.027
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 230.377
-    },
-    {
       "duration": 1.693,
       "mouse_dx": -101,
       "mouse_dy": 10,
       "t": 230.127
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 230.377
     },
     {
       "action": "up",
@@ -1861,15 +1861,15 @@
       "t": 235.906
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 236.256
-    },
-    {
       "duration": 2.151,
       "mouse_dx": 5,
       "mouse_dy": 22,
       "t": 236.006
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 236.256
     },
     {
       "action": "up",
@@ -2029,15 +2029,15 @@
       "t": 257.773
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 258.123
-    },
-    {
       "duration": 3.613,
       "mouse_dx": -91,
       "mouse_dy": 34,
       "t": 257.873
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 258.123
     },
     {
       "action": "up",
@@ -2087,15 +2087,15 @@
       "t": 269.016
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 269.366
-    },
-    {
       "duration": 1.577,
       "mouse_dx": 146,
       "mouse_dy": 1,
       "t": 269.116
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 269.366
     },
     {
       "action": "up",
@@ -2160,15 +2160,15 @@
       "t": 275.376
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 275.726
-    },
-    {
       "duration": 1.769,
       "mouse_dx": 149,
       "mouse_dy": -11,
       "t": 275.476
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 275.726
     },
     {
       "action": "up",
@@ -2286,15 +2286,15 @@
       "t": 287.361
     },
     {
-      "action": "tap",
-      "key": "space",
-      "t": 287.711
-    },
-    {
       "duration": 2.826,
       "mouse_dx": -198,
       "mouse_dy": 27,
       "t": 287.461
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "t": 287.711
     },
     {
       "action": "up",

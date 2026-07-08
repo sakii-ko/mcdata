@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from mcdata.config import load_yaml
+
+StrategyBuilder = Callable[[str, dict[str, Any]], dict[str, Any]]
 
 
 def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
@@ -14,27 +16,35 @@ def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
     if name not in strategies:
         known = ", ".join(sorted(strategies))
         raise RuntimeError(f"Unknown strategy '{name}'. Known strategies: {known}")
-    spec = dict(strategies[name])
-    kind = spec.get("type")
-    if kind == "scripted":
-        trajectory = _scripted(spec)
-    elif kind == "astar_walk":
-        trajectory = _astar_walk(spec)
-    elif kind == "scene_probe":
-        trajectory = _scene_probe(spec)
-    elif kind == "look_scan":
-        trajectory = _look_scan(spec)
-    elif kind == "grid_patrol":
-        trajectory = _grid_patrol(spec)
-    elif kind == "random":
-        trajectory = _random(spec)
-    elif kind == "external":
-        trajectory = {"name": name, "type": "external", "spec": spec, "events": []}
-    else:
-        raise RuntimeError(f"Unsupported strategy type for {name}: {kind}")
+    trajectory = build_trajectory(name, dict(strategies[name]))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(trajectory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return trajectory
+
+
+def build_trajectory(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    spec = dict(spec)
+    kind = spec.get("type")
+    builder = STRATEGY_BUILDERS.get(str(kind))
+    if builder is None:
+        raise RuntimeError(f"Unsupported strategy type for {name}: {kind}")
+    trajectory = builder(name, spec)
+    if "events" not in trajectory:
+        return trajectory
+    result = dict(trajectory)
+    result["events"] = sorted(result.get("events", []), key=lambda event: float(event.get("t", 0)))
+    return result
+
+
+def _from_spec(builder: Callable[[dict[str, Any]], dict[str, Any]]) -> StrategyBuilder:
+    def wrapped(_name: str, spec: dict[str, Any]) -> dict[str, Any]:
+        return builder(spec)
+
+    return wrapped
+
+
+def _external(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    return {"name": name, "type": "external", "spec": spec, "events": []}
 
 
 def _scripted(spec: dict[str, Any]) -> dict[str, Any]:
@@ -319,3 +329,14 @@ def _turn_steps(turn: float) -> list[float]:
 
 def _shortest_turn(current: float, desired: float) -> float:
     return (desired - current + 180) % 360 - 180
+
+
+STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
+    "scripted": _from_spec(_scripted),
+    "astar_walk": _from_spec(_astar_walk),
+    "scene_probe": _from_spec(_scene_probe),
+    "look_scan": _from_spec(_look_scan),
+    "grid_patrol": _from_spec(_grid_patrol),
+    "random": _from_spec(_random),
+    "external": _external,
+}
