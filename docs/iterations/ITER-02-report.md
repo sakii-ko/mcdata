@@ -86,6 +86,63 @@ textured_vs_shader_high: NCC min/mean/max 0.4051/0.6136/0.9241, position PASS ma
 
 The largest four-way position deviation is `0.421` blocks, below the T1b `2.0` block threshold. The t=30 representative frames were visually checked as the same water/kelp camera position across all four profiles.
 
+## T1c Step 0
+
+Compared local pulled textured runs before any T1c code changes:
+
+- First batch, correct route: `runs/remote_4090/20260708T062500Z_matrix_textured`
+- T1b batch, aligned but off-route: `runs/remote_4090/20260708T082306Z_matrix_textured`
+- `trajectory.json` is byte-identical: sha256 `ad4930a8406093a04cfc03f23a747e2fb141cc2c2a6adf6da6621ebc4f5a2f3a`, 9346 bytes.
+
+Timeline summary, relative to `capture/start`:
+
+| event | first batch | T1b batch |
+|---|---:|---:|
+| `join/player_joined` | -16.237s | -17.234s |
+| `warmup/start` | -16.234s | -17.232s |
+| `warmup/end` | -1.233s | -2.232s |
+| `join/re_apply_state` | absent | -2.230s |
+| `capture/view_prepared` | -0.011s | -0.011s |
+| `capture/start` | +0.000s | +0.000s |
+| `position_probe/start` | absent | +0.001s |
+| `position_probe/first_sample` | absent | +0.203s |
+| `capture/stop` | +60.590s | +60.287s |
+| `replay/thread_joined` | +62.215s | +61.161s |
+
+Interval differences:
+
+- Server startup and join timings differ only by normal run-to-run variance: server start wall time `13.022s` vs `14.019s`; join wait `32.564s` vs `30.558s`.
+- Warmup duration is unchanged: `15.0009s` vs `15.0007s`.
+- T1b inserts `join/re_apply_state` immediately after warmup end, then waits through the 1s re-apply settle plus view preparation. Net `warmup/end -> view_prepared` grew from `1.222s` to `2.221s`.
+- `view_prepared -> capture/start` is unchanged: `0.0107s` vs `0.0106s`.
+- T1b starts the position probe `0.001s` after capture start and receives `first_sample` `0.203s` after capture start before releasing replay.
+- The first batch has no capture-time `re_apply_state`, no position probe commands, no first-sample gate, no `positions.jsonl` write.
+
+Replay wall-clock alignment:
+
+- First replay event is `mouse_dx=0, mouse_dy=30, duration=0.4, t=1.0`. Because replay logging happens after event dispatch, the event's estimated start is a better release proxy than its log timestamp.
+- First batch: first event log at capture `+1.442s`; event start estimate `+1.042s`; inferred replay release `+0.041s`.
+- T1b batch: first event log at capture `+1.643s`; event start estimate `+1.243s`; inferred replay release `+0.242s`.
+- The first `w down` event similarly infers replay release at capture `+0.030s` for first batch and `+0.230s` for T1b.
+- Therefore T1b releases replay about `0.20s` later relative to capture start, matching the first-sample wait (`+0.203s`). Scheduled replay timing after release remains equivalent.
+
+Replay delivery comparison:
+
+```text
+first batch: 46 events, delay min/mean/max 0.0003/0.0056/0.0180s
+T1b batch:   46 events, delay min/mean/max 0.0002/0.0063/0.0214s
+```
+
+Step 0 difference list:
+
+1. T1b adds a second `apply_join_state` at warmup end; first batch goes directly from warmup end to capture view preparation.
+2. T1b starts a server position probe immediately after capture start; first batch sends no capture-time `data get entity ... Pos` commands.
+3. T1b waits for the first position probe response before setting the replay ready event; first batch releases replay immediately after capture start.
+4. T1b replay starts about `0.20s` later relative to capture start, but its per-event replay schedule accuracy is still comparable to the first batch.
+5. Trajectory content, launcher command, capture settings, warmup duration, and replay event count are unchanged between the two textured runs.
+
+Step 0 conclusion: the zero-cost diagnosis narrows pre-replay/pre-second-turn behavioral differences to the T1b mechanisms called out by planner: capture-time `re_apply_state`, position probe command traffic, and the first-sample replay gate. The logs do not show a replay input delivery regression; the next step is to add the route-reference gate and run the A/B/C/D isolation matrix.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
