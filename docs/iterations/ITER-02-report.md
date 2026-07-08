@@ -560,6 +560,87 @@ Harness deviations:
 - The first l40s tmux wrapper had a shell quoting bug: `$MCDATA_OUTPUT_DIR` expanded before reaching the remote shell, so it exited after writing the first ground run instead of running `qa-run` and B. I ran `qa-run` manually against the completed l40s A run and used that as the stop evidence.
 - The 4090 tmux wrapper did not parse `qa_report.json` after A, and `qa-run` itself exits zero even when route_reference is FAIL. It briefly started `t1d4090b`; I interrupted and killed the session once the A FAIL was confirmed. The pulled `runs/remote_4090/20260708T111930Z_matrix_low__t1d4090b` is partial/empty and is evidence only, not part of acceptance.
 
+## T1e Walk Calibration Stop
+
+Implemented and pushed the T1e setup commits:
+
+- `444a38686bc7c906590ab920cb8b627c2b60a739` `[runner] parameterize position probe interval`
+- `5fe2bdd7864190d24df2c476d49f754c6ea7a735` `[actions] add walk calibration probe`
+
+Local verification before l40s calibration:
+
+```text
+scripts/dev_check.sh
+
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+69 passed in 3.81s
+```
+
+l40s calibration command:
+
+```text
+scripts/sync_to_remote.sh l40s /root/mcdata
+
+MCDATA_TMP_ROOT=/root/nas/bigdata1/tmp/mcdata \
+MCDATA_OUTPUT_DIR=/root/nas/bigdata1/tmp/mcdata/runs \
+DISPLAY=:77 PYTHONPATH=src MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 \
+python3 -m mcdata.cli run --profile matrix_low --capture --with-server \
+  --replay-actions --strategy walk_calibration_probe --duration 40 \
+  --probe-interval 1 --lane walkcal --game-version 26.2
+```
+
+Run evidence:
+
+```text
+runs/remote_l40s/20260708T122513Z_matrix_low__walkcal
+metadata: probe_interval=1.0, strategy=walk_calibration_probe, duration=40
+pipeline: position_probe positions_written count=41
+replay_log: all 14 events sent on schedule; no inherited/released-key records
+capture: 40.000s, 960 frames, 1280x720
+```
+
+The calibration fit failed the PLAN stop threshold. Net displacement per 4.0s hold, using interpolated positions at the scheduled hold start/end:
+
+```text
+hold 1: d=4.546418, yaw samples=[0.0, 0.0, 0.0, 0.0]
+hold 2: d=6.963183, yaw samples=[171.00002, 171.00002, 171.00002, 171.00002]
+hold 3: d=12.661103, yaw samples=[-8.9999695, -8.9999695, -8.9999695, -8.9999695]
+hold 4: d=5.398182, yaw samples=[171.00006, 171.00006, 171.00006, 171.00006]
+mean_d=7.392221
+effective_v_if_t0_zero=1.848055
+max_abs_residual_to_equal_d=5.268882
+```
+
+The residual is far above the `0.5` block stop threshold, so I stopped before applying any P5 walk constants. A per-sample diagnostic fit also showed the data are not a usable constant-speed calibration:
+
+```text
+per_sample_fit_v=1.100631
+t0=-1.915940
+max_abs_residual=5.424831
+n=12
+```
+
+Additional evidence points to an invalid calibration run, not a usable slow-walk measurement:
+
+- The first post-turn yaw settled near `171°`, not `180°`; subsequent turns alternated around `-9°` and `171°`.
+- The path visibly interacted with scene/platform boundaries: positions clamp or stall near `z=-8.7`, `z=-15.3`, and later drift only slightly after the final hold.
+- The l40s instance `options.txt` does contain `mouseSensitivity:0.5` and `rawMouseInput:true`, but this run's 2x600px turn did not reproduce the T1d l40s turn probe result.
+
+I also found one specification issue in the PLAN wording: four equal-duration net displacements with `T=4.0` cannot uniquely identify both `v` and `t0` from `d = v * (T - t0)`. The design matrix is rank-deficient for net-only samples; it can identify only the product `v * (4.0 - t0)` unless additional durations or within-hold samples are used. I did not substitute a new calibration method because the run already failed the residual stop condition.
+
+Cleanup:
+
+```text
+scripts/pull_runs_from_remote.sh l40s /root/nas/bigdata1/tmp/mcdata/runs --purge
+verify: OK
+error: mcdata pipeline appears active on l40s; refusing to purge.
+```
+
+The purge refusal was a false positive from the script's `pgrep` pattern matching its own ssh check. I verified there were no `portablemc`, `x11grab`, `mcdata.cli`, Minecraft Java, or ffmpeg processes and then manually removed the remote run directories under `/root/nas/bigdata1/tmp/mcdata/runs`.
+
+Stop condition: because the l40s calibration residual exceeded `0.5` blocks, I did not set `seconds_per_block` / `walk_startup_comp_sec`, did not regenerate P5 golden/docs trajectories, did not run the two-host validation, and did not perform 4090 final recapture.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -581,6 +662,8 @@ Harness deviations:
     - Turn probe: `20260708T111536Z_matrix_low__t1dturnl40s`
     - Formal FAIL: `20260708T111650Z_matrix_low__t1dl40sa`
     - Remote wrapper log: `t1d_verify_l40s.log`
+  - T1e l40s evidence:
+    - Walk calibration FAIL: `20260708T122513Z_matrix_low__walkcal`
   - T1d NCC/contact-sheet scratch output is under ignored `runs/t1d_turn_ncc/`.
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
