@@ -52,7 +52,7 @@ QUIET_CAPTURE_OPTIONS: dict[str, str] = {
     "joinedFirstServer": "true",
     "mouseSensitivity": "0.5",
     "musicToast": '"never"',
-    "notificationDisplayTime": "0.0",
+    "notificationDisplayTime": "0.5",
     "pauseOnLostFocus": "false",
     "rawMouseInput": "true",
     "realmsNotifications": "false",
