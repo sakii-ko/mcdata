@@ -193,11 +193,93 @@ All checks passed!
 
 The R19 warnings remain from the intentionally deferred `render/pipeline.py` split; no checker rule was changed.
 
+4090 sync and A-group isolation run:
+
+- Preflight:
+  ```text
+  ssh 4090 'hostname; nvidia-smi --query-gpu=index,name,memory.used,memory.free --format=csv,noheader,nounits; tmux ls 2>/dev/null || true'
+  ```
+  GPU 0 reported RTX 4090 with 9114 MiB free. Existing Xorg `:77` was running and no mcdata/portablemc/ffmpeg process was active.
+- Code sync:
+  ```text
+  scripts/sync_to_remote.sh 4090 /home/lyf/mcdata
+  ```
+  Remote `.sync_commit`: `d40d84f551809b1ca6fb08e4cfb4ce3d4c5384eb`.
+- A discard:
+  ```text
+  DISPLAY=:77 MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+  python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+    --strategy ground_astar_loop --duration 10 --game-version 26.2 --lane t1cA \
+    --debug-no-reapply --debug-no-replay-gate
+  ```
+  Run dir: `runs/remote_4090/20260708T093746Z_matrix_low__t1cA`.
+- A formal:
+  ```text
+  DISPLAY=:77 MCDATA_CAPTURE_SIZE=1280x720 MCDATA_CAPTURE_FPS=24 PYTHONPATH=src \
+  python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+    --strategy ground_astar_loop --duration 30 --game-version 26.2 --lane t1cA \
+    --debug-no-reapply --debug-no-replay-gate
+  python3 -m mcdata.cli qa-run runs/20260708T093856Z_matrix_low__t1cA --frames 12 \
+    --out-dir runs/20260708T093856Z_matrix_low__t1cA/qa
+  ```
+  Run dir: `runs/remote_4090/20260708T093856Z_matrix_low__t1cA`.
+
+A formal pipeline confirmed both debug skips before replay release:
+
+```text
+join/re_apply_state_skipped debug=True
+capture/start
+position_probe/start
+position_probe/first_sample_skipped debug=True
+replay/released
+position_probe/positions_written count=7
+teardown/manifest_written
+```
+
+A formal route-reference QA failed:
+
+```text
+route_reference: FAIL
+route_max_deviation_blocks: 31.127
+route_mean_deviation_blocks: 27.909
+route_threshold_blocks: 3.0
+route_y_range: 63.0..66.0
+route_y_out_of_range_count: 5
+video: 30.0s, 24.0fps, 1280x720
+manifest git: d40d84f551809b1ca6fb08e4cfb4ce3d4c5384eb, source=sync_commit, dirty=false
+```
+
+Route samples show the run was already far from the trajectory reference by the first post-release sample:
+
+| idx | t_rel | observed `(x,y,z)` | ideal `(x,z)` | deviation | y in range |
+|---:|---:|---|---|---:|---|
+| 1 | 5.001 | `(11.506,64.000,14.672)` | `(6.908,-12.000)` | 27.066 | yes |
+| 2 | 10.001 | `(18.794,61.310,27.010)` | `(12.000,-3.184)` | 30.950 | no |
+| 3 | 15.001 | `(13.761,58.117,30.561)` | `(4.000,1.004)` | 31.127 | no |
+| 4 | 20.001 | `(16.375,55.892,35.972)` | `(8.911,10.000)` | 27.023 | no |
+| 5 | 25.002 | `(13.969,53.392,33.934)` | `(3.000,10.000)` | 26.328 | no |
+| 6 | 30.002 | `(7.545,51.000,32.073)` | `(-7.287,12.000)` | 24.958 | no |
+
+Pull and purge:
+
+```text
+scripts/pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge
+verify: OK
+purge: done
+local copy: /home/chijw/workspace/projs/mcdata/runs/remote_4090
+size: 132M
+```
+
+Step 2 conclusion: A disables both suspected T1b additions (`re_apply_state` repeat and replay first-sample gate) while leaving only the initial join state, capture, probe sampling, and replay itself. A still failed the route-reference gate badly, so I stopped before B/C/D as prescribed by PLAN.md. This means the off-route failure is not explained solely by either added mechanism from T1b Step 0; planner review is needed before choosing the Step 3 fix path.
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
   - Passing T1b run dirs listed above.
   - Failed/retry evidence also pulled locally, including `20260708T081124Z_matrix_low` and `20260708T081832Z_matrix_low`.
+  - T1c A isolation evidence:
+    - Discard: `20260708T093746Z_matrix_low__t1cA`
+    - Formal FAIL: `20260708T093856Z_matrix_low__t1cA`
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
   - Four `*_qa_report.{json,md}` files.
@@ -216,6 +298,7 @@ The R19 warnings remain from the intentionally deferred `render/pipeline.py` spl
 - The successful 3-way used `run-matrix --no-bootstrap` after bootstrap-time Modrinth SSL EOF failures. This stayed on the CLI path, used `--game-version 26.2`, and used already bootstrapped instances from the same 4090 workspace.
 - Captured run manifests record `git.source = sync_commit` and `git.commit = e76782b...` because render-host sync excludes `.git`. The compare reports were regenerated after commit `3fa0850` so their markdown/JSON include top-level position mean.
 - `matrix_night_complementary` has one low median brightness warning. This matches the intentional night profile; there were no black-border or FPS warnings.
+- T1c Step 2 B/C/D were not run because A, with both debug skips enabled, already failed the route-reference gate. This follows the PLAN.md stop condition for A off-route.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
@@ -224,4 +307,5 @@ The R19 warnings remain from the intentionally deferred `render/pipeline.py` spl
 - T1b ordering in `launch_profile`: `join/re_apply_state`, capture start, position probe start, first sample wait, then replay release.
 - `qa-compare` position failure semantics: both run dirs with `positions.jsonl` produce max/mean by `idx`; max over `2.0` blocks marks FAIL in the report header.
 - `.sync_commit` provenance for rsync-without-git render hosts.
+- T1c A failure interpretation: both hidden skips are active in the formal run, but route-reference still fails with max deviation `31.127` blocks and y drop to `51.0`.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
