@@ -20,7 +20,7 @@
    **双方共同义务**：
    - 后台常驻自己的 listener：`scripts/collab_wait.sh planner`（planner 侧）/ `scripts/collab_wait.sh coder`（coder 侧）。进程退出=收到消息=被唤醒。
    - 交接固定三步：**写文档 → push → `scripts/collab_notify.sh <对方角色> "一句话指引"`**。消息只是指针（如 "T1g done, 见 report §T1g"），正式内容一律在 repo 文档里。
-   - 被唤醒后：读信箱打印的指引 → `git pull` → 读对应文档 → 干活 → 交接 → **重启自己的 listener**（这步最容易忘）。
+   - 被唤醒后：读信箱打印的指引 → 直接读对应文档（**同机同工作树，无需 pull**——planner 的改动经其 worktree 提交后由 planner merge 进本分支，落盘即可见；push 仅为 GitHub 备份）→ 干活 → 交接 → **重启自己的 listener**（这步最容易忘）。
 
    **内容落点约定**：planner 的下一步计划永远写在本文件（PLAN.md）当前 iteration 小节；验收结论写 `docs/iterations/ITER-NN-review*.md`。coder 的完成汇报写 `docs/iterations/ITER-NN-report.md`。信号里不携带正文。
 
