@@ -303,6 +303,9 @@ if server_port is not None:
 4. 渲染机上优先 XTEST backend（避免 xdotool 每步 spawn 子进程的抖动），补全 keycode 表。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
 6. 数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。
+5a. **程序化自动漫游（ITER-03 主体候选）**：新 strategy 类型 `roam`——seeded RNG 采样目标点序列 + 现有 A* 寻路 + waypoint_actions 随机驻留/观察，批量生成 N 条互异路线（每条一个 seed，完全确定性可重放）；障碍格从 6a 的 scene.yml 派生。验收靠现有路线基准门（P3–P9 修复即其地基）。
+5b. **录制→轨迹转换管线**：捕获一段真人/智能体的输入流转成 trajectory JSON 再逐 profile 重放——接入 Baritone/VPT/MineRL 的通用入口（ITER-04 起）。
+5c. **材质/光影矩阵扩容**：18 asset sets → 25+（更多 shader 变体与高分辨率材质，纯 YAML 工作）；扩容批次前置校验：全量 bootstrap + 每 profile 10s smoke + qa-run 抽帧留档。
 6a. **场景单一来源统一**：`_scene_commands` 与 A* blocked 配置目前双维护（P7 教训），ITER-03 统一为 `configs/scene.yml`（方块清单 → server 生成 fill/setblock 命令 + actions 派生障碍格），杜绝手工同步。
 6b. **仿真/渲染加速（deferred，ITER-04+，方案由 planner 设计，coder 勿自行引入）**：目标是超实时出片。硬性要求：**加速采集的渲染结果必须与实时采集等价可互换**（同一世界/轨迹/资源下逐帧内容一致或统计上不可区分，QA 工具可验证）。候选主路线 ReplayMod 离线渲染（record-once-render-N，顺带获得完美 N-way 对齐），spike 需验证：MC 版本兼容、Iris 光影渲染、HUD 保留方案、实测速度倍率、与实时采集的等价性对比。tick-rate 加速路线因 correctness 风险已排除。在此之前，采集管线里禁止引入任何时间缩放。
 7. workspace 镜像目录改成 git clone/worktree（planner 处理）。
