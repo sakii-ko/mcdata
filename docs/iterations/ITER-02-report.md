@@ -15,6 +15,8 @@ Branch: `iter/02-gpu-collection`
 - T1c Step 0 diagnosis: `744a1b33b2f68331cd1c57bd2cf7e12416a2bfb8` `[docs] record T1c step 0 timeline diagnosis`
 - T1c route-reference gate: `2c7872f5f3ce6efc591be7676b29a7e3d289a345` `[qa] add T1c route reference gate`
 - T1c debug isolation flags: `a22a9b80ef0f1c3fe5c5f17b678308dc085c28cd` `[fix] add T1c debug isolation flags`
+- T1c replay key cleanup: `80e7edd5a88c696f39fd455aac9526382a7ed963` `[fix] release replay keys on teardown`
+- T1c bootstrap CLI compatibility: `14776362deba5f11f85d4d47a5831ffd01bd40b8` `[fix] pass game version through bootstrap cli`
 
 ## Validation Commands
 
@@ -272,6 +274,129 @@ size: 132M
 
 Step 2 conclusion: A disables both suspected T1b additions (`re_apply_state` repeat and replay first-sample gate) while leaving only the initial join state, capture, probe sampling, and replay itself. A still failed the route-reference gate badly, so I stopped before B/C/D as prescribed by PLAN.md. This means the off-route failure is not explained solely by either added mechanism from T1b Step 0; planner review is needed before choosing the Step 3 fix path.
 
+## T1c Step 3
+
+Implemented the replay cleanup fix in `80e7edd5a88c696f39fd455aac9526382a7ed963`:
+
+- `replay_trajectory` now accepts `stop_event` and breaks out of event sleeps in <=0.25s chunks when stop is requested.
+- Replay keeps a `held` key set via `_update_held`; `finally` releases any still-held key and writes a replay-log control record `released_keys`.
+- XTEST replay startup queries the X server keymap for movement keys (`w/a/s/d/space/left_shift`), releases inherited pressed keys, and logs `inherited_stuck_keys` when present.
+- xdotool replay startup cannot query key state, so it unconditionally sends keyup for the same movement-key set.
+- `launch_profile` now creates a replay stop event, passes it to the replay thread, and sets it as the first teardown action before joining replay for up to 5s and only then terminating capture/game/server processes.
+- `QUIET_CAPTURE_OPTIONS` now writes `rawMouseInput:true`.
+- Unit coverage added for `_update_held`, interrupted replay key release, rawMouseInput, and bootstrap CLI game-version passthrough.
+
+While executing Step 3.5, the prescribed command exposed a small CLI gap: `bootstrap_profile` already accepted `game_version`, but `mcdata bootstrap` did not expose `--game-version`. I fixed that in `14776362deba5f11f85d4d47a5831ffd01bd40b8` so the planner-specified verification command is runnable.
+
+Validation:
+
+```text
+bash scripts/dev_check.sh
+WARN  R19: render/pipeline.py has 839 lines (>600) -- justify in report
+WARN  R19: render/pipeline.py:169 function launch_profile spans 245 lines (>80)
+check_standards: 0 failure(s), 2 warning(s)
+All checks passed!
+...............................................................          [100%]
+63 passed in 2.39s
+```
+
+## T1c Step 3.5
+
+4090 sync and bootstrap:
+
+```text
+scripts/sync_to_remote.sh 4090 /home/lyf/mcdata
+ssh 4090 'cd /home/lyf/mcdata && cat .sync_commit'
+14776362deba5f11f85d4d47a5831ffd01bd40b8
+
+ssh 4090 'cd /home/lyf/mcdata && export PYTHONPATH=src DISPLAY=:77 && \
+  python3 -m mcdata.cli bootstrap --profile matrix_low --game-version 26.2 && \
+  rg "^rawMouseInput:true$" .mcdata/instances/matrix_low/options.txt'
+rawMouseInput:true
+```
+
+Started Step 3.5 exactly as specified: no discard run, first default 60s validation run `t1cval1` with pointer probe sidecar:
+
+```text
+python3 scripts/pointer_probe.py runs/pointer_probe_t1cval1.jsonl 95 &
+python3 -m mcdata.cli run --profile matrix_low --with-server --replay-actions --capture \
+  --strategy ground_astar_loop --duration 60 --game-version 26.2 --lane t1cval1
+python3 -m mcdata.cli qa-run runs/20260708T102445Z_matrix_low__t1cval1 --frames 12 \
+  --out-dir runs/20260708T102445Z_matrix_low__t1cval1/qa
+```
+
+Run dir: `runs/remote_4090/20260708T102445Z_matrix_low__t1cval1`.
+
+Pipeline/replay evidence:
+
+```text
+join/player_joined
+join/apply_join_state
+warmup/end
+join/re_apply_state
+capture/start
+position_probe/first_sample count=1
+replay/released
+capture/stop returncode=0
+replay/thread_joined alive=false
+position_probe/positions_written count=13
+teardown/manifest_written
+```
+
+`replay_log.jsonl` had no `inherited_stuck_keys` or `released_keys` control records for this run; the replay thread finished normally before teardown. Manifest recorded `git.commit=14776362deba5f11f85d4d47a5831ffd01bd40b8`, `git.source=sync_commit`, `dirty=false`.
+
+The first validation run still failed the route-reference gate:
+
+```text
+route_reference: FAIL
+route_max_deviation_blocks: 25.895
+route_mean_deviation_blocks: 16.601
+route_threshold_blocks: 3.0
+route_y_range: 63.0..66.0
+route_y_out_of_range_count: 4
+video: 60.0s, 24.0fps, 1280x720
+```
+
+Route samples:
+
+| idx | t_rel | observed `(x,y,z)` | ideal `(x,z)` | deviation | y in range |
+|---:|---:|---|---|---:|---|
+| 1 | 4.797 | `(1.882,64.000,-10.833)` | `(6.272,-12.000)` | 4.542 | yes |
+| 2 | 9.797 | `(3.707,64.000,-8.979)` | `(12.000,-3.822)` | 9.765 | yes |
+| 3 | 14.797 | `(1.886,64.000,-7.078)` | `(4.000,0.366)` | 7.738 | yes |
+| 4 | 19.797 | `(4.700,64.000,-0.495)` | `(8.273,10.000)` | 11.087 | yes |
+| 5 | 24.798 | `(-0.320,64.000,-2.779)` | `(3.538,10.000)` | 13.349 | yes |
+| 6 | 29.798 | `(-4.541,64.000,-6.906)` | `(-6.650,12.000)` | 19.023 | yes |
+| 7 | 34.798 | `(-2.722,64.000,-13.381)` | `(-9.162,8.000)` | 22.330 | yes |
+| 8 | 39.798 | `(5.044,64.000,-20.519)` | `(-4.000,-0.745)` | 21.744 | yes |
+| 9 | 44.799 | `(0.612,59.167,-27.549)` | `(-12.000,-4.933)` | 25.895 | no |
+| 10 | 49.799 | `(4.997,56.667,-32.904)` | `(-7.160,-14.000)` | 22.476 | no |
+| 11 | 54.799 | `(9.822,54.167,-32.140)` | `(0.000,-14.000)` | 20.629 | no |
+| 12 | 59.799 | `(9.822,51.667,-32.140)` | `(0.000,-14.000)` | 20.629 | no |
+
+Pointer probe, aligned to `replay/released` through `capture/stop`:
+
+```text
+samples_total: 315
+gameplay_samples: 93
+edge_samples: 89
+edge_parking_ratio: 0.957
+first_gameplay: px=640, py=360, focus="Minecraft* 26.2 - Multiplayer (3rd-party Server)"
+first_edge_samples: (0,3), (0,2), (0,2), (0,2), (0,0)
+```
+
+Step 3.5 conclusion: the first no-discard default validation run failed, so I stopped as PLAN.md requires. The scripted second run `t1cval2` had already started after `qa-run`; I interrupted it immediately, killed the orphaned server/client processes, and pulled its partial run dir only as evidence (`runs/remote_4090/20260708T102710Z_matrix_low__t1cval2`). I did not proceed to Step 4 and did not add any new mechanism beyond the prescribed Step 3 fix.
+
+Pull and purge:
+
+```text
+scripts/pull_runs_from_remote.sh 4090 /home/lyf/mcdata/runs --purge
+verify: OK
+purge: done
+local copy: /home/chijw/workspace/projs/mcdata/runs/remote_4090
+size: 172M
+```
+
 ## Artifacts
 
 - Full pulled runs, ignored by git: `runs/remote_4090/`
@@ -280,6 +405,10 @@ Step 2 conclusion: A disables both suspected T1b additions (`re_apply_state` rep
   - T1c A isolation evidence:
     - Discard: `20260708T093746Z_matrix_low__t1cA`
     - Formal FAIL: `20260708T093856Z_matrix_low__t1cA`
+  - T1c Step 3.5 evidence:
+    - Formal FAIL: `20260708T102445Z_matrix_low__t1cval1`
+    - Interrupted partial second run: `20260708T102710Z_matrix_low__t1cval2`
+    - Pointer probe: `pointer_probe_t1cval1.jsonl`, `pointer_probe_t1cval1_meta.json`, `pointer_probe_t1cval1.log`
   - Older ITER-02 local pull artifacts remain in the ignored directory; review should use the exact passing run dirs listed in this report.
 - Committed QA samples: `docs/qa_samples/iter02_4090_3way/`
   - Four `*_qa_report.{json,md}` files.
@@ -299,6 +428,7 @@ Step 2 conclusion: A disables both suspected T1b additions (`re_apply_state` rep
 - Captured run manifests record `git.source = sync_commit` and `git.commit = e76782b...` because render-host sync excludes `.git`. The compare reports were regenerated after commit `3fa0850` so their markdown/JSON include top-level position mean.
 - `matrix_night_complementary` has one low median brightness warning. This matches the intentional night profile; there were no black-border or FPS warnings.
 - T1c Step 2 B/C/D were not run because A, with both debug skips enabled, already failed the route-reference gate. This follows the PLAN.md stop condition for A off-route.
+- T1c Step 3.5 failed on the first default 60s no-discard run despite replay key cleanup, normal replay thread completion, and no inherited-stuck-key replay log record. I stopped before Step 4 per PLAN.md.
 - `scripts/check_standards.py` still warns about `render/pipeline.py` size and `launch_profile` length. I left the larger pipeline refactor out of T1b/T2 because the plan required scoped fixes and checker rules were not changed.
 - T3 was not run; it depends on the user-provided 8-card container. T2 code is ready for per-GPU shard launches.
 
@@ -308,4 +438,5 @@ Step 2 conclusion: A disables both suspected T1b additions (`re_apply_state` rep
 - `qa-compare` position failure semantics: both run dirs with `positions.jsonl` produce max/mean by `idx`; max over `2.0` blocks marks FAIL in the report header.
 - `.sync_commit` provenance for rsync-without-git render hosts.
 - T1c A failure interpretation: both hidden skips are active in the formal run, but route-reference still fails with max deviation `31.127` blocks and y drop to `51.0`.
+- T1c Step 3.5 failure interpretation: key-state cleanup behaved as designed (`thread_joined alive=false`, no inherited/released replay-control records), but route-reference still failed and pointer edge parking was 95.7% during gameplay.
 - T2 lane semantics remain unchanged: run dir suffix `__gpuN`, isolated server/world directory, per-lane matrix trajectory, and manifest top-level `lane`.
