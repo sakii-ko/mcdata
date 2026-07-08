@@ -12,6 +12,8 @@ from mcdata.qa.frames import extract_frames_at, uniform_timestamps
 from mcdata.qa.metrics import black_border_metrics, brightness_percentiles, zero_mean_ncc
 from mcdata.qa.probe import summarize_probe
 
+_BILINEAR = getattr(getattr(Image, "Resampling", Image), "BILINEAR")
+
 
 def resolve_video(input_path: Path) -> tuple[Path, Path]:
     if input_path.is_dir():
@@ -89,7 +91,7 @@ def write_compare_report(
     rows = []
     for index, timestamp in enumerate(timestamps):
         thumbs = [
-            image.convert("L").resize((64, 36), Image.Resampling.BILINEAR)
+            image.convert("L").resize((64, 36), _BILINEAR)
             for image in [frames_at_time[index] for frames_at_time in extracted]
         ]
         pair_scores = []
@@ -192,7 +194,7 @@ def _write_contact_sheet(path: Path, images: list[Image.Image], timestamps: list
     sheet = Image.new("RGB", (cols * thumb_w, rows * (thumb_h + 20)), "white")
     draw = ImageDraw.Draw(sheet)
     for idx, image in enumerate(images):
-        thumb = image.resize((thumb_w, thumb_h), Image.Resampling.BILINEAR)
+        thumb = image.resize((thumb_w, thumb_h), _BILINEAR)
         x = (idx % cols) * thumb_w
         y = (idx // cols) * (thumb_h + 20)
         sheet.paste(thumb, (x, y))
@@ -213,7 +215,7 @@ def _write_compare_sheet(
     draw = ImageDraw.Draw(sheet)
     for row, timestamp in enumerate(timestamps):
         for col, frames in enumerate(extracted):
-            thumb = frames[row].resize((thumb_w, thumb_h), Image.Resampling.BILINEAR)
+            thumb = frames[row].resize((thumb_w, thumb_h), _BILINEAR)
             x = col * thumb_w
             y = row * (thumb_h + label_h)
             sheet.paste(thumb, (x, y))
