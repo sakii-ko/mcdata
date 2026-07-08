@@ -1,12 +1,28 @@
 {
   "inputs": [
-    "runs/20260708T062243Z_matrix_low",
-    "runs/20260708T062500Z_matrix_textured"
+    "runs/20260708T082056Z_matrix_low",
+    "runs/20260708T082306Z_matrix_textured"
   ],
   "outputs": {
-    "contact_sheet": "runs/iter02_qa_compare/low_vs_textured/qa_compare_contact_sheet.jpg",
-    "json": "runs/iter02_qa_compare/low_vs_textured/qa_compare_report.json",
-    "markdown": "runs/iter02_qa_compare/low_vs_textured/qa_compare_report.md"
+    "contact_sheet": "runs/qa_compare_t1b2_low_vs_textured/qa_compare_contact_sheet.jpg",
+    "json": "runs/qa_compare_t1b2_low_vs_textured/qa_compare_report.json",
+    "markdown": "runs/qa_compare_t1b2_low_vs_textured/qa_compare_report.md"
+  },
+  "position_alignment": {
+    "max_distance_blocks": 0.4207457471600689,
+    "mean_distance_blocks": 0.2568341589031301,
+    "pairs": [
+      {
+        "count": 13,
+        "left": "runs/20260708T082056Z_matrix_low",
+        "max_distance_blocks": 0.4207457471600689,
+        "mean_distance_blocks": 0.2568341589031301,
+        "passed": true,
+        "right": "runs/20260708T082306Z_matrix_textured"
+      }
+    ],
+    "passed": true,
+    "threshold_blocks": 2.0
   },
   "probe": [
     {
@@ -16,15 +32,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1966270",
+          "bit_rate": "1982286",
           "duration": "60.000000",
-          "filename": "runs/20260708T062243Z_matrix_low/capture.mp4",
+          "filename": "runs/20260708T082056Z_matrix_low/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "14747026",
+          "size": "14867148",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -36,7 +52,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1964002",
+            "bit_rate": "1980018",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -95,15 +111,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1252615",
+          "bit_rate": "1108710",
           "duration": "60.000000",
-          "filename": "runs/20260708T062500Z_matrix_textured/capture.mp4",
+          "filename": "runs/20260708T082306Z_matrix_textured/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "9394615",
+          "size": "8315326",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -115,7 +131,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1250272",
+            "bit_rate": "1106408",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -172,9 +188,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.6972194314002991,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.6416860222816467,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 4.615
@@ -182,9 +198,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.625322163105011,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.5474079251289368,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 9.231
@@ -192,9 +208,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.4981051981449127,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.6886469125747681,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 13.846
@@ -202,9 +218,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.9174073934555054,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.7136223316192627,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 18.462
@@ -212,9 +228,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.05473886430263519,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.48586371541023254,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 23.077
@@ -222,9 +238,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.018413120880723,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.3429547846317291,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 27.692
@@ -232,9 +248,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": -0.18289899826049805,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.933008074760437,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 32.308
@@ -242,9 +258,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": -0.026706764474511147,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.8761182427406311,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 36.923
@@ -252,9 +268,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.3975728452205658,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.868316650390625,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 41.538
@@ -262,9 +278,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.8511999845504761,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.7688857316970825,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 46.154
@@ -272,9 +288,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.6602142453193665,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.7449350953102112,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 50.769
@@ -282,9 +298,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062243Z_matrix_low",
-          "ncc": 0.695213258266449,
-          "right": "runs/20260708T062500Z_matrix_textured"
+          "left": "runs/20260708T082056Z_matrix_low",
+          "ncc": 0.7540683746337891,
+          "right": "runs/20260708T082306Z_matrix_textured"
         }
       ],
       "timestamp_sec": 55.385
@@ -305,7 +321,7 @@
     55.385
   ],
   "videos": [
-    "runs/20260708T062243Z_matrix_low/capture.mp4",
-    "runs/20260708T062500Z_matrix_textured/capture.mp4"
+    "runs/20260708T082056Z_matrix_low/capture.mp4",
+    "runs/20260708T082306Z_matrix_textured/capture.mp4"
   ]
 }

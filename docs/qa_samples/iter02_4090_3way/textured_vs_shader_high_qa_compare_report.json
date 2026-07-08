@@ -1,12 +1,28 @@
 {
   "inputs": [
-    "runs/20260708T062500Z_matrix_textured",
-    "runs/20260708T062705Z_matrix_shader_high"
+    "runs/20260708T082306Z_matrix_textured",
+    "runs/20260708T082510Z_matrix_shader_high"
   ],
   "outputs": {
-    "contact_sheet": "runs/iter02_qa_compare/textured_vs_shader_high/qa_compare_contact_sheet.jpg",
-    "json": "runs/iter02_qa_compare/textured_vs_shader_high/qa_compare_report.json",
-    "markdown": "runs/iter02_qa_compare/textured_vs_shader_high/qa_compare_report.md"
+    "contact_sheet": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_contact_sheet.jpg",
+    "json": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_report.json",
+    "markdown": "runs/qa_compare_t1b2_textured_vs_shader_high/qa_compare_report.md"
+  },
+  "position_alignment": {
+    "max_distance_blocks": 0.358211764079412,
+    "mean_distance_blocks": 0.2645079782966662,
+    "pairs": [
+      {
+        "count": 13,
+        "left": "runs/20260708T082306Z_matrix_textured",
+        "max_distance_blocks": 0.358211764079412,
+        "mean_distance_blocks": 0.2645079782966662,
+        "passed": true,
+        "right": "runs/20260708T082510Z_matrix_shader_high"
+      }
+    ],
+    "passed": true,
+    "threshold_blocks": 2.0
   },
   "probe": [
     {
@@ -16,15 +32,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1252615",
+          "bit_rate": "1108710",
           "duration": "60.000000",
-          "filename": "runs/20260708T062500Z_matrix_textured/capture.mp4",
+          "filename": "runs/20260708T082306Z_matrix_textured/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "9394615",
+          "size": "8315326",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -36,7 +52,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1250272",
+            "bit_rate": "1106408",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -95,15 +111,15 @@
       "height": 720,
       "raw": {
         "format": {
-          "bit_rate": "1374731",
+          "bit_rate": "1232894",
           "duration": "60.000000",
-          "filename": "runs/20260708T062705Z_matrix_shader_high/capture.mp4",
+          "filename": "runs/20260708T082510Z_matrix_shader_high/capture.mp4",
           "format_long_name": "QuickTime / MOV",
           "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
           "nb_programs": 0,
           "nb_streams": 1,
           "probe_score": 100,
-          "size": "10310484",
+          "size": "9246708",
           "start_time": "0.000000",
           "tags": {
             "compatible_brands": "isomiso2avc1mp41",
@@ -115,7 +131,7 @@
         "streams": [
           {
             "avg_frame_rate": "24/1",
-            "bit_rate": "1372424",
+            "bit_rate": "1230659",
             "bits_per_raw_sample": "8",
             "chroma_location": "left",
             "closed_captions": 0,
@@ -172,9 +188,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9263927936553955,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.9144136309623718,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 4.615
@@ -182,9 +198,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9224660396575928,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.924133837223053,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 9.231
@@ -192,9 +208,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9301729798316956,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.6207466125488281,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 13.846
@@ -202,9 +218,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9540151357650757,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.8491171598434448,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 18.462
@@ -212,9 +228,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9592058062553406,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.6010640859603882,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 23.077
@@ -222,9 +238,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9262746572494507,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.5913705825805664,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 27.692
@@ -232,9 +248,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.9256222248077393,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.5930410623550415,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 32.308
@@ -242,9 +258,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.8448033928871155,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.46806269884109497,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 36.923
@@ -252,9 +268,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.6129383444786072,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.5144413709640503,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 41.538
@@ -262,9 +278,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.4797879159450531,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.40505915880203247,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 46.154
@@ -272,9 +288,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.4245269298553467,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.44209909439086914,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 50.769
@@ -282,9 +298,9 @@
     {
       "pairs": [
         {
-          "left": "runs/20260708T062500Z_matrix_textured",
-          "ncc": 0.4471588432788849,
-          "right": "runs/20260708T062705Z_matrix_shader_high"
+          "left": "runs/20260708T082306Z_matrix_textured",
+          "ncc": 0.4402067959308624,
+          "right": "runs/20260708T082510Z_matrix_shader_high"
         }
       ],
       "timestamp_sec": 55.385
@@ -305,7 +321,7 @@
     55.385
   ],
   "videos": [
-    "runs/20260708T062500Z_matrix_textured/capture.mp4",
-    "runs/20260708T062705Z_matrix_shader_high/capture.mp4"
+    "runs/20260708T082306Z_matrix_textured/capture.mp4",
+    "runs/20260708T082510Z_matrix_shader_high/capture.mp4"
   ]
 }
