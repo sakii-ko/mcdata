@@ -68,7 +68,8 @@ strategies:
       - [-12, 10]
       - [-12, -12]
       - [0, -14]
-    bounds: [-14, 14, -14, 14]
+    bounds: [-16, 16, -14, 14]
+    obstacle_clearance: 1
     blocked_rects:
       - [-14, -2, -5, 7]
       - [5, -2, 14, 7]

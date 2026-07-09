@@ -112,11 +112,11 @@ def test_roam_goals_have_minimum_adjacent_distance() -> None:
         assert all(_manhattan(first, second) >= spec["min_goal_dist"] for first, second in zip(points, points[1:])), name
 
 
-def test_roam_routes_keep_configured_obstacle_clearance() -> None:
+def test_walk_routes_keep_configured_obstacle_clearance() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     scene_obstacles = _scene_obstacles()
     for name, spec in strategies.items():
-        if spec.get("type") != "roam":
+        if not spec.get("obstacle_clearance"):
             continue
         trajectory = _build_configured(name, spec)
         route = [(point["x"], point["z"]) for point in trajectory["route"]]

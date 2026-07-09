@@ -114,7 +114,10 @@ def _random(spec: dict[str, Any]) -> dict[str, Any]:
 def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     start = _point(spec.get("start", [0, -14]))
     goals = [_point(point) for point in spec.get("goals", [[10, -8], [10, 10], [-10, 10], [-10, -8], [0, -14]])]
-    route = _astar_route(start, goals, bounds=_walk_bounds(spec), blocked=_walk_blocked(spec))
+    bounds = _walk_bounds(spec)
+    clearance = int(spec.get("obstacle_clearance", 0))
+    blocked = _expand_blocked(_walk_blocked(spec), bounds=bounds, clearance=clearance)
+    route = _astar_route(start, goals, bounds=bounds, blocked=blocked)
     event_spec = dict(spec)
     event_spec["goals"] = goals
     events, duration = _walk_events(route, event_spec)
@@ -133,13 +136,10 @@ def _roam(spec: dict[str, Any]) -> dict[str, Any]:
     rng = random.Random(seed)
     start = _point(spec.get("start", [0, -14]))
     bounds = _walk_bounds(spec)
-    obstacle_clearance = int(spec.get("obstacle_clearance", 0))
-    if obstacle_clearance < 0:
-        raise RuntimeError("roam obstacle_clearance must not be negative")
     blocked = _expand_blocked(
         _walk_blocked(spec),
         bounds=bounds,
-        clearance=obstacle_clearance,
+        clearance=int(spec.get("obstacle_clearance", 0)),
     )
     num_goals = int(spec.get("num_goals", 8))
     min_goal_dist = int(spec.get("min_goal_dist", 6))
@@ -285,6 +285,8 @@ def _expand_blocked(
     bounds: tuple[int, int, int, int],
     clearance: int,
 ) -> set[tuple[int, int]]:
+    if clearance < 0:
+        raise RuntimeError("obstacle_clearance must not be negative")
     if clearance == 0:
         return set(blocked)
     min_x, max_x, min_z, max_z = bounds
