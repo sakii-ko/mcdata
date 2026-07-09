@@ -9,6 +9,7 @@ from rich.console import Console
 from mcdata.actions import generate_strategy
 from mcdata.actions.viz import load_trajectory, render_trajectory_map
 from mcdata.config import load_yaml
+from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
@@ -212,6 +213,63 @@ def qa_compare(
     """Compare aligned frames across two or more run dirs/videos."""
     report = write_compare_report(inputs, frames=frames, out_dir=out_dir)
     console.print(f"Wrote QA compare report: {report['outputs']['markdown']}")
+
+
+@app.command("dataset-index")
+def dataset_index(
+    dataset_root: Path = typer.Argument(...),
+    expected_profiles: str = typer.Option(..., "--expected-profiles"),
+    primary_profile: str = typer.Option(..., "--primary-profile"),
+    strict_compare_report: Path = typer.Option(..., "--strict-compare-report"),
+    diagnostic_compare_report: Optional[Path] = typer.Option(
+        None, "--diagnostic-compare-report"
+    ),
+    visual_review: Optional[Path] = typer.Option(None, "--visual-review"),
+    expected_width: int = typer.Option(1280, "--expected-width"),
+    expected_height: int = typer.Option(720, "--expected-height"),
+    expected_fps: float = typer.Option(24.0, "--expected-fps"),
+    expected_duration: float = typer.Option(60.0, "--expected-duration"),
+) -> None:
+    """Build a fail-closed, checksummed index for an accepted run collection."""
+    profiles = [item.strip() for item in expected_profiles.split(",") if item.strip()]
+    if not profiles:
+        raise typer.BadParameter("--expected-profiles must contain at least one profile")
+    diagnostic_reports = [diagnostic_compare_report] if diagnostic_compare_report else []
+    try:
+        index = write_dataset_index(
+            dataset_root,
+            expected_profiles=profiles,
+            primary_profile=primary_profile,
+            strict_compare_report=strict_compare_report,
+            diagnostic_compare_reports=diagnostic_reports,
+            visual_review=visual_review,
+            expected_width=expected_width,
+            expected_height=expected_height,
+            expected_fps=expected_fps,
+            expected_duration=expected_duration,
+        )
+    except DatasetValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(
+        f"Wrote dataset index: {dataset_root.resolve() / 'dataset_index.json'} "
+        f"({index['status']}, {index['dataset_id']})"
+    )
+
+
+@app.command("dataset-collect-logs")
+def dataset_collect_logs(
+    dataset_root: Path = typer.Argument(...),
+    expected_profiles: str = typer.Option(..., "--expected-profiles"),
+) -> None:
+    """Copy per-profile client logs into run dirs for portable runtime auditing."""
+    profiles = [item.strip() for item in expected_profiles.split(",") if item.strip()]
+    if not profiles:
+        raise typer.BadParameter("--expected-profiles must contain at least one profile")
+    try:
+        outputs = collect_runtime_logs(dataset_root, expected_profiles=profiles)
+    except DatasetValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(f"Collected {len(outputs)} client runtime logs under {dataset_root.resolve()}")
 
 
 @app.command("remote-command")

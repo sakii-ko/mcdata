@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -14,6 +15,30 @@ from mcdata.qa.probe import summarize_probe
 from mcdata.qa.route import compare_position_alignment, route_reference_report
 
 _BILINEAR = getattr(getattr(Image, "Resampling", Image), "BILINEAR")
+_COMPARE_THUMB_SIZE = (240, 135)
+
+
+def _file_evidence(path: Path) -> dict[str, Any]:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return {"path": str(path), "sha256": digest.hexdigest(), "size_bytes": path.stat().st_size}
+
+
+def _run_evidence(input_path: Path, video: Path, run_dir: Path) -> dict[str, Any]:
+    evidence = {"video": _file_evidence(video)}
+    if not input_path.is_dir():
+        return evidence
+    for key, filename in (
+        ("manifest", "manifest.json"),
+        ("trajectory", "trajectory.json"),
+        ("positions", "positions.jsonl"),
+    ):
+        path = run_dir / filename
+        if path.is_file() and not path.is_symlink():
+            evidence[key] = _file_evidence(path)
+    return evidence
 
 
 def resolve_video(input_path: Path) -> tuple[Path, Path]:
@@ -62,6 +87,7 @@ def write_run_report(
     report = {
         "input": str(input_path),
         "video": str(video),
+        "evidence": _run_evidence(input_path, video, default_out_dir),
         "probe": probe,
         "expected": expected,
         "route_reference": route_reference,
@@ -91,7 +117,13 @@ def write_compare_report(
     probes = [summarize_probe(video) for video in videos]
     duration = min(float(probe.get("duration_sec") or 0) for probe in probes)
     timestamps = uniform_timestamps(duration, frames)
-    extracted = [extract_frames_at(video, timestamps) for video in videos]
+    extracted = [
+        [
+            image.resize(_COMPARE_THUMB_SIZE, _BILINEAR)
+            for image in extract_frames_at(video, timestamps)
+        ]
+        for video in videos
+    ]
 
     rows = []
     for index, timestamp in enumerate(timestamps):
@@ -118,6 +150,13 @@ def write_compare_report(
     report = {
         "inputs": [str(path) for path in inputs],
         "videos": [str(video) for video in videos],
+        "evidence": [
+            {
+                "input": str(input_path),
+                **_run_evidence(input_path, video, resolve_video(input_path)[1]),
+            }
+            for input_path, video in zip(inputs, videos)
+        ],
         "probe": probes,
         "timestamps_sec": timestamps,
         "rows": rows,
@@ -266,7 +305,7 @@ def _write_compare_sheet(
     extracted: list[list[Image.Image]],
     timestamps: list[float],
 ) -> None:
-    thumb_w, thumb_h = 240, 135
+    thumb_w, thumb_h = _COMPARE_THUMB_SIZE
     label_h = 20
     cols = len(extracted)
     rows = len(timestamps)
