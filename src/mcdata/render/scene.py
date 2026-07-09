@@ -40,6 +40,8 @@ def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
         return
     state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
     commands = [*_time_weather_commands(state)]
+    if state.get("clear_inventory"):
+        commands.append("clear @a")
     if state.get("pregrant_recipes"):
         commands.append("recipe give @a *")
     player = state.get("player", {}) if isinstance(state.get("player"), dict) else {}

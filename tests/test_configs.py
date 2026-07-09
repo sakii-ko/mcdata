@@ -67,6 +67,7 @@ def test_matrix_world_states_freeze_scene_and_suppress_recipe_toasts() -> None:
         state = load_profile(ROOT / "configs", name)["world_state"]
         assert state["gamerules"]["random_tick_speed"] == 0, name
         assert state["clear_dropped_items"] is True, name
+        assert state["clear_inventory"] is True, name
         assert state["pregrant_recipes"] is True, name
 
 

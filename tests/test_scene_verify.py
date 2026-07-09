@@ -60,7 +60,13 @@ def test_apply_world_state_freezes_ticks_and_clears_stale_item_entities() -> Non
             "time": "noon",
             "weather": "clear",
             "weather_duration_sec": 60,
-            "scene": {"enabled": False},
+            "scene": {
+                "enabled": True,
+                "origin": [0, 64, 0],
+                "entries": [
+                    {"kind": "setblock", "block": "minecraft:stone", "at": [1, 0, 2]}
+                ],
+            },
             "clear_dropped_items": True,
         }
     }
@@ -71,6 +77,7 @@ def test_apply_world_state_freezes_ticks_and_clears_stale_item_entities() -> Non
         "gamerule random_tick_speed 0",
         "time set noon",
         "weather clear 60",
+        "setblock 1 64 2 minecraft:stone",
         "kill @e[type=minecraft:item]",
     ]
 
@@ -80,6 +87,7 @@ def test_apply_join_state_pregrants_recipes_before_capture_warmup() -> None:
     profile = {
         "world_state": {
             "time": "midnight",
+            "clear_inventory": True,
             "pregrant_recipes": True,
             "player": {"x": 1, "y": 64, "z": -2, "yaw": 90, "pitch": 18},
         }
@@ -89,6 +97,7 @@ def test_apply_join_state_pregrants_recipes_before_capture_warmup() -> None:
 
     assert proc.stdin.getvalue().splitlines() == [
         "time set midnight",
+        "clear @a",
         "recipe give @a *",
         "tp @a 1 64 -2 90 18",
     ]

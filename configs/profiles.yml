@@ -24,6 +24,7 @@ defaults:
     weather: "clear"
     weather_duration_sec: 999999
     clear_dropped_items: true
+    clear_inventory: true
     pregrant_recipes: true
     player:
       x: 0
