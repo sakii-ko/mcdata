@@ -5,6 +5,8 @@ Branch: `iter/03-roaming-scene`
 ## Commits
 
 - T0 scene.yml source of truth: `13272a3e6c2b04c35d497f8cb63368933a18176e` `[impl] add scene.yml source of truth`
+- T1 deterministic roam trajectories: `f0a9bb9448c757d39cd54ec5cada87febf9d12d0` `[impl] add deterministic roam trajectories`
+- T1 physical obstacle clearance: `b9c95346ce52b63fae8583825c0f33acc6222956` `[fix] keep roam routes clear of obstacles`
 
 ## T0 — scene.yml Source Of Truth
 
@@ -83,3 +85,73 @@ The pull script completed a zero-transfer verification pass; remote runs were th
 - Whether `walk_obstacle: true` on the below-surface water pool is the right explicit representation for "not solid, but intentionally blocked for route planning" until ITER-03+ scene semantics are expanded.
 - `_profile_with_scene()` injects scene.yml entries into profile world state at run/bootstrap planning time; profiles can still override `enabled` and `origin`, but entries remain sourced from `scene.yml`.
 - T0 should be behavior-preserving: scene command golden, trajectory golden, and l40s validation all pass without committed trajectory/viz changes.
+
+## T1 — Deterministic Programmatic Roaming
+
+Implemented the `roam` strategy with an explicit `random.Random(seed)`, reachable-goal
+sampling, a 100-attempt rejection limit, A* concatenation, sampled pause/look actions,
+and shared `_walk_events(route, spec)` event generation with `astar_walk`. Added
+`roam_a` through `roam_f` for seeds 101–106.
+
+The generated trajectory records both the route and sampled goals. All six strategies
+have byte-level golden JSON files and reviewed maps under `docs/trajectories/roam/`.
+The visualization command now includes obstacles derived from `scene.yml`, so the maps
+directly show the route/obstacle contract instead of relying only on unit tests.
+
+### Physical-clearance finding and fix
+
+The first L40S `roam_a` run exposed a real collision that integer-grid tests could not:
+the path passed directly beside the beacon at `(11, -10)`. Player-center offset and
+sub-block movement error caused the eight-block `(12, -9) -> (4, -9)` span to collide,
+leaving all later positions roughly eight blocks east of the reference route.
+
+The rejected run was
+`20260709T181359Z_matrix_low__t1roam_a_l40s` at commit `f0a9bb9`:
+
+- route reference: FAIL;
+- maximum/mean deviation: 8.728 / 7.015 blocks;
+- video checks still passed at 1280x720, 24 fps, 1440 frames, with no black border.
+
+The general fix is configured `obstacle_clearance: 1` for roam. The roam builder expands the
+derived/configured obstacle set by one grid cell for goal sampling and A*, without
+changing the calibrated existing `astar_walk` routes. A contract test now asserts every
+roam route maintains the configured Chebyshev clearance. All six goldens and maps were
+regenerated and reviewed after this change.
+
+### Local validation
+
+```text
+scripts/dev_check.sh
+```
+
+Key output after the clearance fix:
+
+```text
+WARN  R19: render/pipeline.py has 1357 lines (>600) -- justify in report
+check_standards: 0 failure(s), 1 warning(s)
+All checks passed!
+93 passed in 8.11s
+```
+
+The six route maps are 34–39 KB each, show the scene-derived obstacle grid, and were
+reviewed as a 3x2 montage. Routes are distinct across all six seeds and do not enter the
+configured one-cell clearance envelope.
+
+### L40S validation
+
+Both accepted runs used `matrix_low`, `DISPLAY=:77`, Minecraft 26.2, a 60-second
+capture, and manifest commit `b9c95346ce52b63fae8583825c0f33acc6222956` with
+`git.source=sync_commit` and `dirty=false`.
+
+| run | route | max dev | mean dev | max yaw | yaw samples | skipped yaw | warnings | video |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| `20260709T182143Z_matrix_low__t1roam_a_clear_l40s` | PASS | 1.082 | 0.628 | 0.000 | 7 | 5 | 0 | 1280x720 / 24 fps / 1440 frames |
+| `20260709T182420Z_matrix_low__t1roam_d_clear_l40s` | PASS | 0.933 | 0.748 | 0.000 | 6 | 6 | 0 | 1280x720 / 24 fps / 1440 frames |
+
+Both contact sheets were inspected: HUD is retained; there are no black borders,
+toast/chat overlays, stuck views, or scene-loading frames; water, glass, lights, lava,
+and the background markers are visible across the samples.
+
+Artifacts were pulled with a zero-transfer second rsync verification to
+`runs/remote_l40s/`, including the rejected diagnostic run. After confirming no active
+pipeline process, the remote runs directory was purged.
