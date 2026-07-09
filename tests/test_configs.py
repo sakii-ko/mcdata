@@ -2,7 +2,7 @@ from pathlib import Path
 import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS
-from mcdata.config import load_yaml
+from mcdata.config import load_profile, load_yaml
 from mcdata.render.scene import _scene_commands
 from mcdata.scene_model import load_scene, scene_commands, scene_mapping
 
@@ -56,6 +56,18 @@ def test_matrix_profiles_share_world_and_server_port() -> None:
         "render_matrix_base"
     }
     assert {profile.get("server_port") for profile in matrix_profiles.values()} == {25570}
+
+
+def test_matrix_world_states_freeze_scene_and_suppress_recipe_toasts() -> None:
+    names = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
+
+    for name in names:
+        if not name.startswith("matrix_"):
+            continue
+        state = load_profile(ROOT / "configs", name)["world_state"]
+        assert state["gamerules"]["random_tick_speed"] == 0, name
+        assert state["clear_dropped_items"] is True, name
+        assert state["pregrant_recipes"] is True, name
 
 
 def test_iter03_supported_expansion_combinations() -> None:

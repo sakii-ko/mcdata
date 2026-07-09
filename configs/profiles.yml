@@ -23,6 +23,8 @@ defaults:
     time: "noon"
     weather: "clear"
     weather_duration_sec: 999999
+    clear_dropped_items: true
+    pregrant_recipes: true
     player:
       x: 0
       y: 64
@@ -32,6 +34,7 @@ defaults:
     gamerules:
       command_block_output: false
       keep_inventory: true
+      random_tick_speed: 0
       send_command_feedback: false
       show_death_messages: false
     scene:
