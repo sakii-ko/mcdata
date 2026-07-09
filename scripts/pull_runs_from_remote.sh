@@ -43,9 +43,16 @@ fi
 echo "verify: OK"
 
 if [[ "$PURGE" -eq 1 ]]; then
-  if ssh "$HOST" "pgrep -f 'mcdata.cli|portablemc|x11grab' >/dev/null 2>&1"; then
+  active_re='[m]cdata[.]cli|(^|/)[m]cdata( |$)|[m]atrix_shard[.]sh|[p]ortablemc|[f]fmpeg|[x]11grab|[m]inecraft_server[.]|[n]et[.]minecraft[.]client[.]main[.]Main|[K]notClient'
+  if ssh "$HOST" "pgrep -f -- '$active_re' >/dev/null"; then
     echo "error: mcdata pipeline appears active on $HOST; refusing to purge." >&2
     exit 1
+  else
+    active_check_rc=$?
+    if [[ "$active_check_rc" -ne 1 ]]; then
+      echo "error: active-process check failed on $HOST (rc=$active_check_rc); refusing to purge." >&2
+      exit 1
+    fi
   fi
   echo "purge: removing pulled content from $HOST:$REMOTE_DIR"
   ssh "$HOST" "find '$REMOTE_DIR' -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
