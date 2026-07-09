@@ -43,6 +43,7 @@ from mcdata.render.server import (
     wait_for_player_join,
 )
 from mcdata.runlog import RunLogger
+from mcdata.scene_model import load_scene, scene_mapping
 from mcdata.settings import CaptureSettings
 
 console = Console()
@@ -166,7 +167,7 @@ def bootstrap_profile(
 ) -> dict[str, Any]:
     paths = ProjectPaths.from_root(root)
     profile = _profile_with_overrides(
-        load_profile(paths.configs, profile_name),
+        _profile_with_scene(paths.configs, profile_name),
         server_port=server_port,
     )
     game_version = game_version or resolve_game_version(profile)
@@ -354,7 +355,7 @@ def _plan_run(
 ) -> RunPlan:
     paths = ProjectPaths.from_root(root)
     profile = _profile_with_overrides(
-        load_profile(paths.configs, profile_name),
+        _profile_with_scene(paths.configs, profile_name),
         server_port=options.server_port,
     )
     game_version = options.game_version or resolve_game_version(profile)
@@ -1323,6 +1324,19 @@ def _profile_with_overrides(
     if server_port is None:
         return profile
     return {**profile, "server_port": int(server_port)}
+
+
+def _profile_with_scene(config_dir: Path, profile_name: str) -> dict[str, Any]:
+    profile = load_profile(config_dir, profile_name)
+    scene_spec = load_scene(config_dir)
+    world_state = dict(profile.get("world_state", {}) or {})
+    scene = dict(world_state.get("scene", {}) or {})
+    base_scene = scene_mapping(scene_spec)
+    scene.setdefault("enabled", True)
+    scene.setdefault("origin", base_scene["origin"])
+    scene["entries"] = base_scene["entries"]
+    world_state["scene"] = scene
+    return {**profile, "world_state": world_state}
 
 
 def _run_dir(output_dir: Path, profile: str, *, lane: str | None = None) -> Path:

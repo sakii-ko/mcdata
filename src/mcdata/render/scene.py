@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from mcdata.scene_model import parse_scene, scene_commands
+
 SCENE_FAILURE_PATTERNS = (
     "Too many blocks",
     "Cannot place",
@@ -135,35 +137,7 @@ def _tp_command(target: str, player: dict[str, Any]) -> str:
 def _scene_commands(scene: dict[str, Any]) -> list[str]:
     if not scene.get("enabled", True):
         return []
-    origin = scene.get("origin", [0, 64, 0])
-    ox, oy, oz = (int(origin[0]), int(origin[1]), int(origin[2]))
-    return [
-        f"forceload add {ox - 32} {oz - 32} {ox + 32} {oz + 32}",
-        f"fill {ox - 18} {oy} {oz - 18} {ox + 18} {oy + 22} {oz + 18} minecraft:air",
-        f"fill {ox - 18} {oy + 23} {oz - 18} {ox + 18} {oy + 28} {oz + 18} minecraft:air",
-        f"fill {ox - 24} {oy - 4} {oz - 24} {ox + 24} {oy - 2} {oz + 24} minecraft:dirt",
-        f"fill {ox - 24} {oy - 1} {oz - 24} {ox + 24} {oy - 1} {oz + 24} minecraft:grass_block",
-        f"fill {ox - 15} {oy - 1} {oz - 15} {ox + 15} {oy - 1} {oz + 15} minecraft:smooth_stone",
-        f"fill {ox - 14} {oy - 1} {oz - 2} {ox - 5} {oy - 1} {oz + 7} minecraft:water",
-        f"fill {ox - 14} {oy - 2} {oz - 2} {ox - 5} {oy - 2} {oz + 7} minecraft:blue_concrete",
-        f"fill {ox + 5} {oy} {oz - 2} {ox + 14} {oy} {oz + 7} minecraft:glass",
-        f"fill {ox + 5} {oy - 1} {oz - 2} {ox + 14} {oy - 1} {oz + 7} minecraft:white_concrete",
-        f"fill {ox - 2} {oy} {oz + 9} {ox + 2} {oy + 3} {oz + 9} minecraft:oak_leaves",
-        f"fill {ox - 4} {oy} {oz + 14} {ox + 4} {oy + 4} {oz + 14} minecraft:white_concrete",
-        f"setblock {ox - 10} {oy} {oz - 10} minecraft:torch",
-        f"setblock {ox - 7} {oy} {oz - 10} minecraft:lantern",
-        f"setblock {ox - 4} {oy} {oz - 10} minecraft:redstone_torch",
-        f"setblock {ox - 1} {oy} {oz - 10} minecraft:redstone_lamp[lit=true]",
-        f"fill {ox + 1} {oy} {oz - 11} {ox + 3} {oy} {oz - 9} minecraft:glass",
-        f"setblock {ox + 2} {oy} {oz - 10} minecraft:lava",
-        f"setblock {ox + 5} {oy} {oz - 10} minecraft:sea_lantern",
-        f"setblock {ox + 8} {oy} {oz - 10} minecraft:glowstone",
-        f"setblock {ox + 11} {oy} {oz - 10} minecraft:beacon",
-        f"setblock {ox - 14} {oy} {oz + 12} minecraft:oak_log",
-        f"setblock {ox - 14} {oy + 1} {oz + 12} minecraft:oak_leaves",
-        f"setblock {ox + 14} {oy} {oz + 12} minecraft:polished_deepslate",
-        f"setblock {ox + 14} {oy + 1} {oz + 12} minecraft:glass",
-    ]
+    return scene_commands(parse_scene(scene))
 
 
 def _bool_or_value(value: Any) -> str:

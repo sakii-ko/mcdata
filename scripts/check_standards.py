@@ -37,6 +37,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "doctor": set(),
     "config": set(),
     "paths": set(),
+    "scene_model": {"config"},
     "net": set(),
     "mojang": {"net"},
     "modrinth": {"net"},
@@ -45,10 +46,10 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "runlog": {"paths"},
     "settings": {"config", "paths"},
     "schemas": set(),
-    "actions": {"config", "paths"},
+    "actions": {"config", "paths", "scene_model"},
     "actions.replay": set(),  # replay must stay dependency-free (runtime input backend)
     "render": {
-        "config", "paths", "packs", "mojang", "modrinth", "net",
+        "config", "paths", "packs", "mojang", "modrinth", "net", "scene_model",
         "manifest", "runlog", "settings", "actions.replay", "qa.probe", "render",
     },  # "render" target covers render-internal modules: pipeline/server/scene/probe/options.
     "qa": {"paths", "qa"},

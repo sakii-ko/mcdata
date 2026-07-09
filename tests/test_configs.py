@@ -4,8 +4,37 @@ import ast
 from mcdata.actions.strategies import STRATEGY_BUILDERS
 from mcdata.config import load_yaml
 from mcdata.render.scene import _scene_commands
+from mcdata.scene_model import load_scene, scene_commands, scene_mapping
 
 ROOT = Path(__file__).resolve().parents[1]
+
+EXPECTED_SCENE_COMMANDS = [
+    "forceload add -32 -32 32 32",
+    "fill -18 64 -18 18 86 18 minecraft:air",
+    "fill -18 87 -18 18 92 18 minecraft:air",
+    "fill -24 60 -24 24 62 24 minecraft:dirt",
+    "fill -24 63 -24 24 63 24 minecraft:grass_block",
+    "fill -15 63 -15 15 63 15 minecraft:smooth_stone",
+    "fill -14 63 -2 -5 63 7 minecraft:water",
+    "fill -14 62 -2 -5 62 7 minecraft:blue_concrete",
+    "fill 5 64 -2 14 64 7 minecraft:glass",
+    "fill 5 63 -2 14 63 7 minecraft:white_concrete",
+    "fill -2 64 9 2 67 9 minecraft:oak_leaves",
+    "fill -4 64 14 4 68 14 minecraft:white_concrete",
+    "setblock -10 64 -10 minecraft:torch",
+    "setblock -7 64 -10 minecraft:lantern",
+    "setblock -4 64 -10 minecraft:redstone_torch",
+    "setblock -1 64 -10 minecraft:redstone_lamp[lit=true]",
+    "fill 1 64 -11 3 64 -9 minecraft:glass",
+    "setblock 2 64 -10 minecraft:lava",
+    "setblock 5 64 -10 minecraft:sea_lantern",
+    "setblock 8 64 -10 minecraft:glowstone",
+    "setblock 11 64 -10 minecraft:beacon",
+    "setblock -14 64 12 minecraft:oak_log",
+    "setblock -14 65 12 minecraft:oak_leaves",
+    "setblock 14 64 12 minecraft:polished_deepslate",
+    "setblock 14 65 12 minecraft:glass",
+]
 
 
 def test_profile_asset_sets_exist() -> None:
@@ -37,7 +66,7 @@ def test_action_strategy_types_are_registered() -> None:
 
 
 def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
-    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+    commands = _configured_scene_commands()
 
     glass = "fill 1 64 -11 3 64 -9 minecraft:glass"
     lava = "setblock 2 64 -10 minecraft:lava"
@@ -48,7 +77,7 @@ def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
 
 
 def test_scene_air_clear_is_split_under_fill_limit() -> None:
-    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+    commands = _configured_scene_commands()
 
     assert "fill -18 64 -18 18 92 18 minecraft:air" not in commands
     assert "fill -18 64 -18 18 86 18 minecraft:air" in commands
@@ -59,11 +88,22 @@ def test_scene_air_clear_is_split_under_fill_limit() -> None:
 
 
 def test_scene_pool_is_below_walk_surface() -> None:
-    commands = _scene_commands({"enabled": True, "origin": [0, 64, 0]})
+    commands = _configured_scene_commands()
 
     assert "fill -14 64 -2 -5 64 7 minecraft:water" not in commands
     assert "fill -14 63 -2 -5 63 7 minecraft:water" in commands
     assert "fill -14 62 -2 -5 62 7 minecraft:blue_concrete" in commands
+
+
+def test_scene_yml_commands_match_current_server_commands() -> None:
+    spec = load_scene(ROOT / "configs")
+
+    assert scene_commands(spec) == EXPECTED_SCENE_COMMANDS
+    assert _scene_commands(scene_mapping(spec)) == EXPECTED_SCENE_COMMANDS
+
+
+def _configured_scene_commands() -> list[str]:
+    return scene_commands(load_scene(ROOT / "configs"))
 
 
 def test_qa_package_does_not_import_render_or_actions() -> None:

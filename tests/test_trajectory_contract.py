@@ -4,20 +4,9 @@ from typing import Any
 
 from mcdata.actions.strategies import build_trajectory
 from mcdata.config import load_yaml
+from mcdata.scene_model import load_scene, walk_obstacles
 
 ROOT = Path(__file__).resolve().parents[1]
-
-# Mirrored from render.scene._scene_commands at origin [0, 64, 0].
-# Keep this list in sync with y=64/65 scene cells until ITER-03 scene.yml
-# makes server scene generation and A* blocking share one source.
-SCENE_OCCUPIED_XZ = (
-    {(x, z) for x in range(5, 15) for z in range(-2, 8)}
-    | {(x, 9) for x in range(-2, 3)}
-    | {(x, 14) for x in range(-4, 5)}
-    | {(-10, -10), (-7, -10), (-4, -10), (-1, -10), (5, -10), (8, -10), (11, -10)}
-    | {(x, z) for x in range(1, 4) for z in range(-11, -8)}
-    | {(-14, 12), (14, 12)}
-)
 
 
 def _configured_strategy_specs() -> Iterator[tuple[str, dict[str, Any]]]:
@@ -29,8 +18,8 @@ def _configured_strategy_specs() -> Iterator[tuple[str, dict[str, Any]]]:
 
 def test_configured_trajectories_are_deterministic_and_ordered() -> None:
     for name, spec in _configured_strategy_specs():
-        first = build_trajectory(name, spec)
-        second = build_trajectory(name, spec)
+        first = _build_configured(name, spec)
+        second = _build_configured(name, spec)
 
         assert first == second
         events = first.get("events", [])
@@ -39,7 +28,7 @@ def test_configured_trajectories_are_deterministic_and_ordered() -> None:
 
 def test_configured_key_events_are_paired() -> None:
     for name, spec in _configured_strategy_specs():
-        trajectory = build_trajectory(name, spec)
+        trajectory = _build_configured(name, spec)
         pressed: dict[str, int] = {}
         for event in trajectory.get("events", []):
             key = event.get("key")
@@ -56,7 +45,7 @@ def test_configured_key_events_are_paired() -> None:
 
 def test_ground_astar_loop_route_stays_inside_walkable_area() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["ground_astar_loop"]
-    trajectory = build_trajectory("ground_astar_loop", spec)
+    trajectory = _build_configured("ground_astar_loop", spec)
     _assert_route_stays_inside_walkable_area(trajectory, spec)
 
 
@@ -65,32 +54,43 @@ def test_astar_loop_routes_stay_inside_walkable_area() -> None:
     for name, spec in strategies.items():
         if spec.get("type") != "astar_walk":
             continue
-        trajectory = build_trajectory(name, spec)
+        trajectory = _build_configured(name, spec)
         _assert_route_stays_inside_walkable_area(trajectory, spec)
 
 
 def test_astar_blocking_covers_scene_occupied_cells() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    scene_obstacles = _scene_obstacles()
     for name, spec in strategies.items():
         if spec.get("type") != "astar_walk":
             continue
         covered = _covered_cells(spec)
-        assert not (SCENE_OCCUPIED_XZ - covered), name
+        assert not (scene_obstacles - covered), name
 
 
 def test_astar_routes_avoid_scene_occupied_cells() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    scene_obstacles = _scene_obstacles()
     for name, spec in strategies.items():
         if spec.get("type") != "astar_walk":
             continue
-        trajectory = build_trajectory(name, spec)
+        trajectory = _build_configured(name, spec)
         route = {(point["x"], point["z"]) for point in trajectory["route"]}
-        assert not (route & SCENE_OCCUPIED_XZ), name
+        assert not (route & scene_obstacles), name
+
+
+def test_configured_blocking_matches_derived_scene_obstacles() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    scene_obstacles = _scene_obstacles()
+    for name, spec in strategies.items():
+        if spec.get("type") != "astar_walk":
+            continue
+        assert _covered_cells(spec) == scene_obstacles, name
 
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["light_closeup_tour"]
-    trajectory = build_trajectory("light_closeup_tour", spec)
+    trajectory = _build_configured("light_closeup_tour", spec)
 
     pause_events = [event for event in trajectory["events"] if event.get("pause") is True]
     look_events = [
@@ -161,3 +161,11 @@ def _covered_cells(spec: dict[str, Any]) -> set[tuple[int, int]]:
             for z in range(rect_min_z, rect_max_z + 1)
         )
     return covered
+
+
+def _scene_obstacles() -> set[tuple[int, int]]:
+    return walk_obstacles(load_scene(ROOT / "configs"))
+
+
+def _build_configured(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+    return build_trajectory(name, dict(spec), scene_obstacles=_scene_obstacles())

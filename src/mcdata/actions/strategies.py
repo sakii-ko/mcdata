@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mcdata.config import load_yaml
+from mcdata.scene_model import load_scene, walk_obstacles
 
 StrategyBuilder = Callable[[str, dict[str, Any]], dict[str, Any]]
 
@@ -16,14 +17,22 @@ def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
     if name not in strategies:
         known = ", ".join(sorted(strategies))
         raise RuntimeError(f"Unknown strategy '{name}'. Known strategies: {known}")
-    trajectory = build_trajectory(name, dict(strategies[name]))
+    scene_obstacles = walk_obstacles(load_scene(config_dir))
+    trajectory = build_trajectory(name, dict(strategies[name]), scene_obstacles=scene_obstacles)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(trajectory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return trajectory
 
 
-def build_trajectory(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+def build_trajectory(
+    name: str,
+    spec: dict[str, Any],
+    *,
+    scene_obstacles: set[tuple[int, int]] | None = None,
+) -> dict[str, Any]:
     spec = dict(spec)
+    if scene_obstacles is not None:
+        spec["_scene_obstacles"] = sorted(scene_obstacles)
     kind = spec.get("type")
     builder = STRATEGY_BUILDERS.get(str(kind))
     if builder is None:
@@ -106,6 +115,7 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     start = _point(spec.get("start", [0, -14]))
     goals = [_point(point) for point in spec.get("goals", [[10, -8], [10, 10], [-10, 10], [-10, -8], [0, -14]])]
     blocked = {_point(point) for point in spec.get("blocked", [])}
+    blocked.update(_point(point) for point in spec.get("_scene_obstacles", []) or [])
     for rect in spec.get("blocked_rects", []) or []:
         blocked.update(_points_in_rect(rect))
     bounds = spec.get("bounds", [-14, 14, -14, 14])

@@ -128,6 +128,7 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
 
     monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
     monkeypatch.setenv("MCDATA_MAIN_DIR", str(tmp_path / "launcher"))
+    _write_empty_scene_config(tmp_path)
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "load_asset_config", lambda _configs: {})
     monkeypatch.setattr(pipeline, "resolve_game_version", lambda _profile: "26.2")
@@ -152,3 +153,12 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
     assert manifest["server_port"] == 25604
     assert manifest["lane"] == "gpu4"
     assert manifest["server_dir"].endswith("servers/render_matrix_base__gpu4")
+
+
+def _write_empty_scene_config(root: Path) -> None:
+    config_dir = root / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "scene.yml").write_text(
+        "scene:\n  origin: [0, 64, 0]\n  entries: []\n",
+        encoding="utf-8",
+    )

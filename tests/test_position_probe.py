@@ -202,6 +202,7 @@ def _patch_capture_pipeline(tmp_path: Path, monkeypatch, events: list[tuple[str,
     monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
     monkeypatch.setenv("MCDATA_OUTPUT_DIR", str(tmp_path / "runs"))
     (tmp_path / "instances" / "matrix_low").mkdir(parents=True)
+    _write_empty_scene_config(tmp_path)
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "_start_replay_thread", lambda *args, **kwargs: None)
     monkeypatch.setattr(pipeline, "start_server", lambda *args, **kwargs: FakeProc())
@@ -238,3 +239,12 @@ def _patch_capture_pipeline(tmp_path: Path, monkeypatch, events: list[tuple[str,
     monkeypatch.setattr(pipeline, "_env_manifest", lambda *, display: {"hostname": "host", "display": display})
     monkeypatch.setattr(pipeline, "_git_manifest", lambda _root: {"commit": "abc", "dirty": False})
     monkeypatch.setattr(pipeline.subprocess, "Popen", lambda *args, **kwargs: FakeProc())
+
+
+def _write_empty_scene_config(root: Path) -> None:
+    config_dir = root / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "scene.yml").write_text(
+        "scene:\n  origin: [0, 64, 0]\n  entries: []\n",
+        encoding="utf-8",
+    )
