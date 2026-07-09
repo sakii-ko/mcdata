@@ -9,6 +9,7 @@ from mcdata.dataset_support.comparisons import cohorts, comparisons, manual_revi
 from mcdata.dataset_support.core import (
     DatasetValidationError,
     collect_runtime_logs as _collect_runtime_logs,
+    require_hash,
     validate_index_schema,
     value_sha256,
     write_dataset_outputs,
@@ -62,6 +63,7 @@ def _build_index(
     episodes: list[dict[str, Any]],
     manifests: list[dict[str, Any]],
     expected: list[str],
+    generator_commit: str,
     primary_profile: str,
     strict_compare_report: Path,
     diagnostic_compare_reports: Iterable[Path],
@@ -86,6 +88,7 @@ def _build_index(
     review = manual_review(root, visual_review.resolve() if visual_review else None, set(expected))
     index = {
         "schema_version": SCHEMA_VERSION,
+        "generator": {"name": "mcdata.dataset-index", "git_commit": generator_commit},
         "status": "accepted" if review is not None else "automated_pass",
         "primary_cohort_id": primary_cohort_id,
         "invariants": invariants,
@@ -113,6 +116,7 @@ def write_dataset_index(
     *,
     expected_profiles: Sequence[str],
     primary_profile: str,
+    generator_commit: str,
     strict_compare_report: Path,
     diagnostic_compare_reports: Iterable[Path] = (),
     visual_review: Path | None = None,
@@ -131,6 +135,7 @@ def write_dataset_index(
         raise DatasetValidationError("Expected profiles must be a non-empty unique list")
     if primary_profile not in expected:
         raise DatasetValidationError("Primary profile is not in the expected profile set")
+    generator_commit = require_hash(generator_commit, 40, "dataset-index generator commit")
     if not diagnostic_reports:
         raise DatasetValidationError("At least one all-dataset diagnostic comparison is required")
     episodes, manifests = load_episodes(
@@ -146,6 +151,7 @@ def write_dataset_index(
         episodes=episodes,
         manifests=manifests,
         expected=expected,
+        generator_commit=generator_commit,
         primary_profile=primary_profile,
         strict_compare_report=strict_compare_report,
         diagnostic_compare_reports=diagnostic_reports,

@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "schema_version",
+    "generator",
     "dataset_id",
     "status",
     "primary_cohort_id",
@@ -17,6 +18,14 @@
   ],
   "properties": {
     "schema_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "required": ["name", "git_commit"],
+      "properties": {
+        "name": {"const": "mcdata.dataset-index"},
+        "git_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
     "dataset_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "status": {"enum": ["automated_pass", "accepted"]},
     "primary_cohort_id": {"type": "string", "pattern": "^cohort-[0-9a-f]{16}$"},

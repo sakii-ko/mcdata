@@ -9,6 +9,8 @@ from jsonschema import validate
 
 from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
 
+GENERATOR_COMMIT = "f" * 40
+
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -255,6 +257,7 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
         tmp_path,
         expected_profiles=profiles,
         primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
         strict_compare_report=strict,
         diagnostic_compare_reports=(path for path in [diagnostic]),
         visual_review=review,
@@ -265,6 +268,7 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
         tmp_path,
         expected_profiles=list(reversed(profiles)),
         primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
         strict_compare_report=strict,
         diagnostic_compare_reports=[diagnostic],
         visual_review=review,
@@ -296,6 +300,7 @@ def test_dataset_without_manual_review_is_only_automated_pass(tmp_path: Path) ->
         tmp_path,
         expected_profiles=profiles,
         primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
         strict_compare_report=strict,
         diagnostic_compare_reports=[diagnostic],
     )
@@ -316,8 +321,9 @@ def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -335,8 +341,9 @@ def test_dataset_rejects_missing_resource_provenance(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -355,8 +362,9 @@ def test_dataset_rejects_runtime_resolution_mismatch(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -370,8 +378,9 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -386,8 +395,9 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
         write_dataset_index(
             tmp_path / "partial",
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -402,8 +412,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -412,8 +423,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             expected_fps=float("nan"),
         )
@@ -424,8 +436,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path / "symlink",
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -462,8 +475,9 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -477,8 +491,9 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-            primary_profile="matrix_low",
-            strict_compare_report=strict,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
