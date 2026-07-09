@@ -7,6 +7,7 @@ Branch: `iter/03-roaming-scene`
 - T0 scene.yml source of truth: `13272a3e6c2b04c35d497f8cb63368933a18176e` `[impl] add scene.yml source of truth`
 - T1 deterministic roam trajectories: `f0a9bb9448c757d39cd54ec5cada87febf9d12d0` `[impl] add deterministic roam trajectories`
 - T1 physical obstacle clearance: `b9c95346ce52b63fae8583825c0f33acc6222956` `[fix] keep roam routes clear of obstacles`
+- T2 supported render-set expansion: `791e43cc9b3503df2b2ec39e55c6f22222b87b51` `[impl] add supported ITER-03 render sets`
 
 ## T0 — scene.yml Source Of Truth
 
@@ -155,3 +156,81 @@ and the background markers are visible across the samples.
 Artifacts were pulled with a zero-transfer second rsync verification to
 `runs/remote_l40s/`, including the rejected diagnostic run. After confirming no active
 pipeline process, the remote runs directory was purged.
+
+## T2 — Minecraft 26.2 Render-set Expansion
+
+Queried every PLAN-listed slug through the Modrinth version API with the exact
+`game_versions=["26.2"]` filter. Per the task contract, no replacement projects and no
+unmarked "probably compatible" shader releases were used.
+
+Supported combinations:
+
+| asset set | resolved components | result |
+|---|---|---|
+| `euphoria_complementary` | Euphoria Patches `1.9.3-r5.8.1-fabric`; Complementary Reimagined `r5.8.1` | added |
+| `solas_patrix` | Solas `3.7`; Patrix `89` / `Patrix_26.2_32x_basic.zip` | added |
+
+Euphoria Patches is a Fabric mod rather than a shader archive, so the profile installs
+`euphoria-patches` as a mod while the asset set selects Complementary Reimagined. The
+runtime log confirmed both the patch injection and active shaderpack.
+
+Skipped combinations:
+
+| requested asset set | unavailable 26.2 slug |
+|---|---|
+| `photon_faithful` | `photon-shader` |
+| `rethinking_voxels_hd` | `rethinking-voxels` |
+| `super_duper_vanilla` | `super-duper-vanilla` |
+| `nostalgia_faithful` | `nostalgia-shader` |
+| `kappa_hd` | `kappa-shader` |
+
+For each skipped slug, `latest_project_version(..., game_version="26.2")` returned no
+versions. The resulting repository totals are therefore 20 asset sets, 23 profiles, and
+19 `matrix_` profiles, rather than the maximum 25 / 28 / 24 if all seven candidates had
+been available.
+
+### Local validation
+
+`tests/test_configs.py` now locks the Euphoria mod/shader relationship and the
+Solas/Patrix resource/shader relationship. The existing cross-reference tests cover both
+new profiles automatically.
+
+```text
+scripts/dev_check.sh
+```
+
+Key output:
+
+```text
+WARN  R19: render/pipeline.py has 1357 lines (>600) -- justify in report
+check_standards: 0 failure(s), 1 warning(s)
+All checks passed!
+94 passed in 10.54s
+```
+
+### L40S bootstrap and smoke validation
+
+Both profiles were bootstrapped and then captured for 10 seconds with
+`ground_astar_loop`, Minecraft 26.2, and `DISPLAY=:77`. Manifests record commit
+`791e43cc9b3503df2b2ec39e55c6f22222b87b51`, `git.source=sync_commit`, and
+`dirty=false`.
+
+| run | route | max dev | mean dev | max yaw | warnings | video |
+|---|---|---:|---:|---:|---:|---|
+| `20260709T183439Z_matrix_euphoria_complementary__t2_euphoria_l40s` | PASS | 0.659 | 0.635 | 0.000 | 0 | 1280x720 / 24 fps / 240 frames |
+| `20260709T183726Z_matrix_solas_patrix__t2_solas_patrix_l40s` | PASS | 0.664 | 0.635 | 0.000 | 0 | 1280x720 / 24 fps / 240 frames |
+
+Runtime load evidence:
+
+- Euphoria: `EuphoriaPatches was successfully installed`, `Added Euphoria Patches defines to Iris`, and `Using shaderpack: ComplementaryReimagined_r5.8.1.zip`.
+- Solas/Patrix: `Using shaderpack: Solas Shader V3.7.zip` and ResourceManager entry `file/Patrix_26.2_32x_basic.zip`.
+
+Representative frames were visually inspected and committed at:
+
+- `docs/qa_samples/iter03_expansion/matrix_euphoria_complementary.jpg` (52 KB);
+- `docs/qa_samples/iter03_expansion/matrix_solas_patrix.jpg` (62 KB).
+
+Both retain HUD, have no black border or toast overlay, and visibly show the expected
+shader/material treatment. Full runs and QA reports were pulled to `runs/remote_l40s/`
+with a zero-transfer verification pass; the remote runs directory was purged after the
+active-process check.
