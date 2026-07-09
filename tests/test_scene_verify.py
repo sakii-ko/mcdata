@@ -3,6 +3,9 @@ from pathlib import Path
 import pytest
 
 from mcdata.render.scene import expected_scene_fill_count, verify_scene_commands
+from mcdata.scene_model import load_scene, scene_mapping
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_verify_scene_commands_accepts_matching_receipts(tmp_path: Path) -> None:
@@ -37,6 +40,6 @@ def test_verify_scene_commands_raises_on_missing_receipt(tmp_path: Path) -> None
 
 
 def test_expected_scene_fill_count_excludes_forceload() -> None:
-    profile = {"world_state": {"scene": {"enabled": True, "origin": [0, 64, 0]}}}
+    profile = {"world_state": {"scene": scene_mapping(load_scene(ROOT / "configs"))}}
 
     assert expected_scene_fill_count(profile) == 24

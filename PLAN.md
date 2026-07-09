@@ -59,9 +59,11 @@ review 通过并 merge（merge commit `b10a4ec`，tag `iter-01-done`）。任务
 
 T1 链条根治 P3–P10 八层根因，四路对齐 0.216–0.475 格；T2 多实例并行化就绪；T4 架构清账完成。明细见 `docs/iterations/ITER-02-report.md` / `ITER-02-review*.md`。**T3（8 卡全矩阵）为运行型任务：用户提供容器后随时从 main 执行，优先级高于 ITER-03 一切任务**（流程：每卡 `l40s_container_gpu_display.sh install/start/verify` → 串行 bootstrap → `matrix_shard.sh <gpu> <profiles>` 分片并行 → qa → CephFS 归档 + 回传）。
 
-## ITER-03：程序化漫游 + 场景单一来源 + 矩阵扩容（当前 iteration）
+## ITER-03：程序化漫游 + 场景单一来源 + 矩阵扩容 —— ✅ 已完成（2026-07-10）
 
 分支名：`iter/03-roaming-scene`（从 main 切）。顺序 T0 → T1 → T2。**8 卡容器到位即中断当前任务，先执行 ITER-02 T3。**
+
+T0 scene.yml 单一来源、T1 六条确定性 roam 路线和 T2 26.2 可用矩阵扩容均已完成；本地 94 项测试通过，L40S 验收与可视化目检通过。七个 T2 候选中五个没有 Modrinth 26.2 版本，按约定跳过，最终为 20 asset sets / 19 matrix profiles。明细见 `docs/iterations/ITER-03-report.md` 与 `ITER-03-review.md`。
 
 ### T0 — scene.yml 场景单一来源（消灭 P7 双维护）
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mcdata.config import load_yaml
+from mcdata.scene_model import load_scene, walk_obstacles
 
 StrategyBuilder = Callable[[str, dict[str, Any]], dict[str, Any]]
 
@@ -16,14 +17,22 @@ def generate_strategy(config_dir: Path, name: str, out: Path) -> dict[str, Any]:
     if name not in strategies:
         known = ", ".join(sorted(strategies))
         raise RuntimeError(f"Unknown strategy '{name}'. Known strategies: {known}")
-    trajectory = build_trajectory(name, dict(strategies[name]))
+    scene_obstacles = walk_obstacles(load_scene(config_dir))
+    trajectory = build_trajectory(name, dict(strategies[name]), scene_obstacles=scene_obstacles)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(trajectory, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return trajectory
 
 
-def build_trajectory(name: str, spec: dict[str, Any]) -> dict[str, Any]:
+def build_trajectory(
+    name: str,
+    spec: dict[str, Any],
+    *,
+    scene_obstacles: set[tuple[int, int]] | None = None,
+) -> dict[str, Any]:
     spec = dict(spec)
+    if scene_obstacles is not None:
+        spec["_scene_obstacles"] = sorted(scene_obstacles)
     kind = spec.get("type")
     builder = STRATEGY_BUILDERS.get(str(kind))
     if builder is None:
@@ -105,11 +114,93 @@ def _random(spec: dict[str, Any]) -> dict[str, Any]:
 def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     start = _point(spec.get("start", [0, -14]))
     goals = [_point(point) for point in spec.get("goals", [[10, -8], [10, 10], [-10, 10], [-10, -8], [0, -14]])]
-    blocked = {_point(point) for point in spec.get("blocked", [])}
-    for rect in spec.get("blocked_rects", []) or []:
-        blocked.update(_points_in_rect(rect))
-    bounds = spec.get("bounds", [-14, 14, -14, 14])
-    min_x, max_x, min_z, max_z = (int(bounds[0]), int(bounds[1]), int(bounds[2]), int(bounds[3]))
+    route = _astar_route(start, goals, bounds=_walk_bounds(spec), blocked=_walk_blocked(spec))
+    event_spec = dict(spec)
+    event_spec["goals"] = goals
+    events, duration = _walk_events(route, event_spec)
+    return {
+        "type": "astar_walk",
+        "duration_sec": round(duration, 3),
+        "route": [{"x": x, "z": z} for x, z in route],
+        "events": events,
+    }
+
+
+def _roam(spec: dict[str, Any]) -> dict[str, Any]:
+    if "seed" not in spec:
+        raise RuntimeError("roam strategy requires an explicit seed")
+    seed = int(spec["seed"])
+    rng = random.Random(seed)
+    start = _point(spec.get("start", [0, -14]))
+    bounds = _walk_bounds(spec)
+    obstacle_clearance = int(spec.get("obstacle_clearance", 0))
+    if obstacle_clearance < 0:
+        raise RuntimeError("roam obstacle_clearance must not be negative")
+    blocked = _expand_blocked(
+        _walk_blocked(spec),
+        bounds=bounds,
+        clearance=obstacle_clearance,
+    )
+    num_goals = int(spec.get("num_goals", 8))
+    min_goal_dist = int(spec.get("min_goal_dist", 6))
+    if num_goals < 1:
+        raise RuntimeError("roam num_goals must be at least 1")
+    if min_goal_dist < 1:
+        raise RuntimeError("roam min_goal_dist must be at least 1")
+    if not _inside_bounds(start, bounds) or start in blocked:
+        raise RuntimeError(f"roam start {start} is not walkable inside bounds {bounds}")
+
+    min_x, max_x, min_z, max_z = bounds
+    walkable = [
+        (x, z)
+        for x in range(min_x, max_x + 1)
+        for z in range(min_z, max_z + 1)
+        if (x, z) not in blocked
+    ]
+    route = [start]
+    goals: list[tuple[int, int]] = []
+    cursor = start
+    for goal_number in range(1, num_goals + 1):
+        selection: tuple[tuple[int, int], list[tuple[int, int]]] | None = None
+        for _ in range(100):
+            candidate = rng.choice(walkable)
+            if candidate in goals or _manhattan_distance(cursor, candidate) < min_goal_dist:
+                continue
+            try:
+                segment = _astar(cursor, candidate, bounds=bounds, blocked=blocked)
+            except RuntimeError:
+                # An unreachable random candidate is an expected rejection, not a strategy failure.
+                continue
+            selection = candidate, segment
+            break
+        if selection is None:
+            raise RuntimeError(
+                f"roam could not sample reachable goal {goal_number}/{num_goals} "
+                f"at least {min_goal_dist} blocks from {cursor} after 100 attempts"
+            )
+        goal, segment = selection
+        goals.append(goal)
+        route.extend(segment[1:])
+        cursor = goal
+
+    event_spec = dict(spec)
+    event_spec["goals"] = goals
+    event_spec["waypoint_actions"] = _sample_roam_actions(goals, spec, rng)
+    events, duration = _walk_events(route, event_spec)
+    return {
+        "type": "roam",
+        "seed": seed,
+        "duration_sec": round(duration, 3),
+        "goals": [{"x": x, "z": z} for x, z in goals],
+        "route": [{"x": x, "z": z} for x, z in route],
+        "events": events,
+    }
+
+
+def _walk_events(
+    route: list[tuple[int, int]],
+    spec: dict[str, Any],
+) -> tuple[list[dict[str, Any]], float]:
     turn_px_per_degree = float(spec.get("turn_px_per_degree", 6.0))
     seconds_per_block = float(spec.get("seconds_per_block", 0.32))
     walk_startup_comp_sec = float(spec.get("walk_startup_comp_sec", 0.0))
@@ -117,16 +208,8 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     initial_pause_sec = float(spec.get("initial_pause_sec", 1.0))
     scan_pause_sec = float(spec.get("scan_pause_sec", 0.25))
     waypoint_actions = _waypoint_actions(spec)
-
-    route = [start]
-    cursor = start
-    goal_indices: dict[tuple[int, int], list[int]] = {}
-    for goal in goals:
-        segment = _astar(cursor, goal, bounds=(min_x, max_x, min_z, max_z), blocked=blocked)
-        route.extend(segment[1:])
-        goal_indices.setdefault(goal, []).append(len(route) - 1)
-        cursor = goal
-
+    goals = [_point(point) for point in spec.get("goals", [])]
+    goal_indices = _route_goal_indices(route, goals)
     events: list[dict[str, Any]] = []
     t = initial_pause_sec
     heading = 0
@@ -161,13 +244,112 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
             waypoint_actions=waypoint_actions,
             scan_pause_sec=scan_pause_sec,
         )
+    return events, t
 
+
+def _astar_route(
+    start: tuple[int, int],
+    goals: list[tuple[int, int]],
+    *,
+    bounds: tuple[int, int, int, int],
+    blocked: set[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    route = [start]
+    cursor = start
+    for goal in goals:
+        segment = _astar(cursor, goal, bounds=bounds, blocked=blocked)
+        route.extend(segment[1:])
+        cursor = goal
+    return route
+
+
+def _walk_bounds(spec: dict[str, Any]) -> tuple[int, int, int, int]:
+    bounds = spec.get("bounds", [-14, 14, -14, 14])
+    min_x, max_x, min_z, max_z = (int(bounds[0]), int(bounds[1]), int(bounds[2]), int(bounds[3]))
+    if min_x > max_x or min_z > max_z:
+        raise RuntimeError(f"Invalid walk bounds: {(min_x, max_x, min_z, max_z)}")
+    return min_x, max_x, min_z, max_z
+
+
+def _walk_blocked(spec: dict[str, Any]) -> set[tuple[int, int]]:
+    blocked = {_point(point) for point in spec.get("blocked", [])}
+    blocked.update(_point(point) for point in spec.get("_scene_obstacles", []) or [])
+    for rect in spec.get("blocked_rects", []) or []:
+        blocked.update(_points_in_rect(rect))
+    return blocked
+
+
+def _expand_blocked(
+    blocked: set[tuple[int, int]],
+    *,
+    bounds: tuple[int, int, int, int],
+    clearance: int,
+) -> set[tuple[int, int]]:
+    if clearance == 0:
+        return set(blocked)
+    min_x, max_x, min_z, max_z = bounds
     return {
-        "type": "astar_walk",
-        "duration_sec": round(t, 3),
-        "route": [{"x": x, "z": z} for x, z in route],
-        "events": events,
+        (x + dx, z + dz)
+        for x, z in blocked
+        for dx in range(-clearance, clearance + 1)
+        for dz in range(-clearance, clearance + 1)
+        if min_x <= x + dx <= max_x and min_z <= z + dz <= max_z
     }
+
+
+def _inside_bounds(point: tuple[int, int], bounds: tuple[int, int, int, int]) -> bool:
+    min_x, max_x, min_z, max_z = bounds
+    return min_x <= point[0] <= max_x and min_z <= point[1] <= max_z
+
+
+def _manhattan_distance(first: tuple[int, int], second: tuple[int, int]) -> int:
+    return abs(first[0] - second[0]) + abs(first[1] - second[1])
+
+
+def _sample_roam_actions(
+    goals: list[tuple[int, int]],
+    spec: dict[str, Any],
+    rng: random.Random,
+) -> list[dict[str, Any]]:
+    pause_prob = float(spec.get("pause_prob", 0.3))
+    if pause_prob < 0 or pause_prob > 1:
+        raise RuntimeError("roam pause_prob must be between 0 and 1")
+    pause_range = spec.get("pause_sec_range", [1.0, 3.0])
+    pause_min, pause_max = float(pause_range[0]), float(pause_range[1])
+    if pause_min < 0 or pause_min > pause_max:
+        raise RuntimeError(f"Invalid roam pause_sec_range: {[pause_min, pause_max]}")
+    look_choices = [int(value) for value in spec.get("look_dy_px_choices", [20, 40])]
+    if pause_prob > 0 and not look_choices:
+        raise RuntimeError("roam look_dy_px_choices must not be empty when pauses are enabled")
+
+    actions: list[dict[str, Any]] = []
+    for goal in goals:
+        if rng.random() >= pause_prob:
+            continue
+        actions.append(
+            {
+                "at": [goal[0], goal[1]],
+                "pause_sec": round(rng.uniform(pause_min, pause_max), 3),
+                "look_dy_px": rng.choice(look_choices),
+            }
+        )
+    return actions
+
+
+def _route_goal_indices(
+    route: list[tuple[int, int]],
+    goals: list[tuple[int, int]],
+) -> dict[tuple[int, int], list[int]]:
+    result: dict[tuple[int, int], list[int]] = {}
+    search_from = 0
+    for goal in goals:
+        try:
+            route_index = route.index(goal, search_from)
+        except ValueError as exc:
+            raise RuntimeError(f"Walk route does not contain configured goal {goal}") from exc
+        result.setdefault(goal, []).append(route_index)
+        search_from = route_index
+    return result
 
 
 def _look_scan(spec: dict[str, Any]) -> dict[str, Any]:
@@ -406,6 +588,7 @@ def _shortest_turn(current: float, desired: float) -> float:
 STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "scripted": _from_spec(_scripted),
     "astar_walk": _from_spec(_astar_walk),
+    "roam": _from_spec(_roam),
     "scene_probe": _from_spec(_scene_probe),
     "look_scan": _from_spec(_look_scan),
     "grid_patrol": _from_spec(_grid_patrol),

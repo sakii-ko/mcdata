@@ -420,3 +420,40 @@ profiles:
     height: 720
     server_port: 25570
     world_profile: "render_matrix_base"
+
+  matrix_euphoria_complementary:
+    description: "Expansion: Euphoria Patches with Complementary Reimagined."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - euphoria-patches
+    asset_set: "euphoria_complementary"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+
+  matrix_solas_patrix:
+    description: "Expansion: Solas shader with Patrix 32x LabPBR materials."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+    asset_set: "solas_patrix"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"

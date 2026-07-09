@@ -4,7 +4,7 @@
 
 > **协作入口（2026-07-08 起）**：当前的执行计划在根目录 `PLAN.md`（planner 维护，coder 按其执行）；架构分层、依赖规则、数据契约与 git 约定在 `docs/ARCHITECTURE.md`；代码规范在 `docs/CODE_STANDARDS.md`。本文档保留为长期交接背景，iteration 级别的进展看 `docs/iterations/`。
 >
-> **状态快照（2026-07-08）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。ITER-02 已完成（tag `iter-02-done`，2026-07-09）：P3–P10 八层根因根治，四路对齐 0.216–0.475 格，多实例并行化与架构清账就绪。当前 iteration 为 ITER-03（程序化漫游 + scene.yml 单一来源 + 矩阵扩容 18→25），8 卡容器到位即优先执行 ITER-02 T3 全矩阵。见 PLAN.md。
+> **状态快照（2026-07-10）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。ITER-02 已完成（tag `iter-02-done`，2026-07-09）：P3–P10 八层根因根治，四路对齐 0.216–0.475 格，多实例并行化与架构清账就绪。ITER-03 的 scene.yml 单一来源、六条确定性 roam 路线和两组可用的 26.2 渲染扩容均已在 L40S 验证；其余五个计划 slug 因没有 26.2 版本按约定跳过，实际扩容为 18→20 asset sets。8 卡容器到位即优先执行 ITER-02 T3 全矩阵。见 PLAN.md。
 
 ## 任务目标
 
@@ -37,8 +37,8 @@
 - 可以在玩家进服、场景/天气/时间应用、warmup 完成后再开始录制，避免录到加载过程。
 - 可以生成并回放 action trajectory，目前主线策略是地面 A* 规划路线。
 - 可以通过 `run-matrix` 对同一世界、同一 action 轨迹运行多个渲染 profile。
-- 已经扩展到 21 个 profile，其中 17 个 `matrix_` profile 用于渲染矩阵。
-- 已经配置 18 个 asset set，覆盖 vanilla、高清材质、emissive、connected glass、多种 shader/water/reflection 组合。
+- 已经扩展到 23 个 profile，其中 19 个 `matrix_` profile 用于渲染矩阵。
+- 已经配置 20 个 asset set，覆盖 vanilla、高清材质、emissive、connected glass、多种 shader/water/reflection 组合。
 - 已经添加 headless NVIDIA Xorg 探针、root/systemd 服务模板、L40S 容器模板。
 - 已经添加规划式 `/tmp` 清理脚本，并把本机新生成大文件默认迁到大盘临时目录。
 
@@ -82,6 +82,8 @@
 - `walk_grid`: 网格巡逻。
 - `random_walk`: 随机游走。
 - `ground_astar_loop`: 当前主线策略，地面 A* 规划路线。
+- `water_edge_loop` / `glass_edge_loop` / `light_closeup_tour`: 面向场景特征的标定巡游路线。
+- `roam_a`…`roam_f`: seed 101–106 的确定性程序化漫游，随机采样可达目标并保持一格物理避障净空。
 - `rl_placeholder`: 为后续外部 RL / agent policy 预留的 hook。
 
 `ground_astar_loop` 是根据用户反馈重点实现的。它不再让玩家漂浮在空中，而是在 y=64 的地面岛上真实行走。配置如下：
@@ -93,15 +95,17 @@
   - `[-14, -2, -5, 7]`: 水面测试区。
   - `[5, -2, 14, 7]`: 玻璃测试区。
 - blocked: 光源/测试方块点位，避免路径撞上火把、灯、熔岩等。
-- `turn_px_per_degree: 6.0`
-- `seconds_per_block: 0.32`
+- `turn_px_per_degree: 6.6667`
+- `seconds_per_block: 0.231630565`
+- `walk_startup_comp_sec: 0.000889052`
 - `look_pitch_px: 30`
 
 实现细节：
 
-- `_astar_walk` 会把 `blocked_rects` 展开成 blocked grid points。
+- `_astar_walk` 会把配置障碍和 `scene.yml` 派生障碍合并；`roam` 还按配置扩展物理避障净空。
 - `_astar` 在 2D x/z 网格上做 Manhattan A*。
 - `_route_segments` 会把连续同方向移动合并，避免每走一格都重新按键。
+- `_walk_events` 由固定 A* 路线与 roam 共用，保证相同的行走/转向标定语义。
 - 转向用鼠标相对移动模拟，180 度转向会拆成两次 90 度，降低突兀程度。
 - 输出 trajectory JSON，包含 `route` 和 `events`。
 
@@ -253,7 +257,7 @@ NoChatReports 是为了解决右上角 “Chat messages can't be verified” 一
 - 其他 mod 允许 release/beta。
 - `download_file` 支持 retry、`.tmp` 临时文件、每 32MB 进度输出，失败会清理 `.tmp`。
 
-当前 asset sets 共 18 个：
+当前 asset sets 共 20 个：
 
 - `vanilla`
 - `faithful_bsl`
@@ -273,6 +277,8 @@ NoChatReports 是为了解决右上角 “Chat messages can't be verified” 一
 - `realiscraft_bsl`
 - `glowing_ores_unbound`
 - `connected_glass_bsl`
+- `euphoria_complementary`
+- `solas_patrix`
 
 覆盖的 shader packs：
 
@@ -307,7 +313,7 @@ NoChatReports 是为了解决右上角 “Chat messages can't be verified” 一
 
 ## Profile 矩阵
 
-`configs/profiles.yml` 当前 profile 总数 21。主线矩阵 profile 共 17 个：
+`configs/profiles.yml` 当前 profile 总数 23。主线矩阵 profile 共 19 个：
 
 - `matrix_low`: vanilla resources，无 shader，低质量 baseline。
 - `matrix_textured`: Faithful 32x + BSL。
@@ -326,6 +332,8 @@ NoChatReports 是为了解决右上角 “Chat messages can't be verified” 一
 - `matrix_realiscraft_bsl`
 - `matrix_glowing_ores_unbound`
 - `matrix_connected_glass_bsl`
+- `matrix_euphoria_complementary`
+- `matrix_solas_patrix`
 
 注意：这些 profile 通过 `world_profile: render_matrix_base` 共享 server/world。这样不同渲染质量下，世界底层内容和 action 一致。默认 `run-matrix` 只跑前三个 profile，但可以通过 `--profiles` 显式传入更多。
 
@@ -342,7 +350,7 @@ PYTHONPATH=src python3 -m mcdata.cli run-matrix \
 运行全部矩阵时可以传：
 
 ```bash
-PROFILES=matrix_low,matrix_textured,matrix_shader_high,matrix_night_complementary,matrix_default_hd_bsl,matrix_default_hd128_bliss,matrix_dramatic_solas,matrix_faithful_sildurs,matrix_emissive_makeup,matrix_patrix_unbound,matrix_better_leaves_solas,matrix_default3d_miniature,matrix_simplista_unbound,matrix_stylista_bliss,matrix_realiscraft_bsl,matrix_glowing_ores_unbound,matrix_connected_glass_bsl
+PROFILES=matrix_low,matrix_textured,matrix_shader_high,matrix_night_complementary,matrix_default_hd_bsl,matrix_default_hd128_bliss,matrix_dramatic_solas,matrix_faithful_sildurs,matrix_emissive_makeup,matrix_patrix_unbound,matrix_better_leaves_solas,matrix_default3d_miniature,matrix_simplista_unbound,matrix_stylista_bliss,matrix_realiscraft_bsl,matrix_glowing_ores_unbound,matrix_connected_glass_bsl,matrix_euphoria_complementary,matrix_solas_patrix
 source scripts/mcdata_env.sh
 PYTHONPATH=src python3 -m mcdata.cli run-matrix --profiles "$PROFILES" --strategy ground_astar_loop --duration 60
 ```
@@ -699,7 +707,7 @@ PYTHONPATH=src python3 -m mcdata.cli run-matrix \
    - 三个 profile 中 action 和世界内容对齐。
    - shader profile 有水反、光照、emissive 差异。
 
-4. 扩展全 17 个 matrix profile 采集。
+4. 扩展全 19 个 matrix profile 采集。
 
 5. 接入更强 action 策略。
    - 短期可新增更多 scripted/A* route，覆盖水边、玻璃边、光源近景、夜晚场景。
@@ -712,4 +720,4 @@ PYTHONPATH=src python3 -m mcdata.cli run-matrix \
 
 如果只做一件事：先解决 NVIDIA-backed display。代码链路、资源矩阵、action、录制控制都已经基本可用；当前真正阻塞最终高质量采集的是 4090 当前用户权限不足，无法启动或访问真 GPU OpenGL display。
 
-解决 display 后，直接按 `run-matrix` 跑 3-way，再扩到 17 profile 全矩阵。
+解决 display 后，直接按 `run-matrix` 跑 3-way，再扩到 19 profile 全矩阵。

@@ -232,3 +232,14 @@ asset_sets:
       - fusion-connected-glass
       - mt-ct-d
     shaderpack: bsl-shaders
+
+  euphoria_complementary:
+    description: "Euphoria Patches mod plus Complementary Reimagined for extended shader features."
+    resourcepacks: []
+    shaderpack: complementary-reimagined
+
+  solas_patrix:
+    description: "Solas shader plus Patrix 32x for stylized lighting over LabPBR materials."
+    resourcepacks:
+      - patrix-32x
+    shaderpack: solas-shader

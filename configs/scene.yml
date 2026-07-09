@@ -1,0 +1,27 @@
+scene:
+  origin: [0, 64, 0]
+  entries:
+    - {kind: forceload, from: [-32, 0, -32], to: [32, 0, 32]}
+    - {kind: fill, block: "minecraft:air", from: [-18, 0, -18], to: [18, 28, 18], split_axis: y}
+    - {kind: fill, block: "minecraft:dirt", from: [-24, -4, -24], to: [24, -2, 24]}
+    - {kind: fill, block: "minecraft:grass_block", from: [-24, -1, -24], to: [24, -1, 24]}
+    - {kind: fill, block: "minecraft:smooth_stone", from: [-15, -1, -15], to: [15, -1, 15]}
+    - {kind: fill, block: "minecraft:water", from: [-14, -1, -2], to: [-5, -1, 7], region: water_pool, walk_obstacle: true}
+    - {kind: fill, block: "minecraft:blue_concrete", from: [-14, -2, -2], to: [-5, -2, 7], region: water_pool_floor}
+    - {kind: fill, block: "minecraft:glass", from: [5, 0, -2], to: [14, 0, 7], region: glass_platform}
+    - {kind: fill, block: "minecraft:white_concrete", from: [5, -1, -2], to: [14, -1, 7]}
+    - {kind: fill, block: "minecraft:oak_leaves", from: [-2, 0, 9], to: [2, 3, 9], region: leaf_wall}
+    - {kind: fill, block: "minecraft:white_concrete", from: [-4, 0, 14], to: [4, 4, 14], region: white_wall}
+    - {kind: setblock, block: "minecraft:torch", at: [-10, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:lantern", at: [-7, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:redstone_torch", at: [-4, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:redstone_lamp[lit=true]", at: [-1, 0, -10], region: light_row}
+    - {kind: fill, block: "minecraft:glass", from: [1, 0, -11], to: [3, 0, -9], region: lava_containment}
+    - {kind: setblock, block: "minecraft:lava", at: [2, 0, -10], region: lava_source}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [5, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:glowstone", at: [8, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:beacon", at: [11, 0, -10], region: light_row}
+    - {kind: setblock, block: "minecraft:oak_log", at: [-14, 0, 12], region: corner_marker}
+    - {kind: setblock, block: "minecraft:oak_leaves", at: [-14, 1, 12], region: corner_marker}
+    - {kind: setblock, block: "minecraft:polished_deepslate", at: [14, 0, 12], region: corner_marker}
+    - {kind: setblock, block: "minecraft:glass", at: [14, 1, 12], region: corner_marker}

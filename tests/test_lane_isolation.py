@@ -70,6 +70,7 @@ def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monk
     monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
     monkeypatch.setenv("MCDATA_OUTPUT_DIR", str(tmp_path / "runs"))
     (tmp_path / "instances" / "matrix_low").mkdir(parents=True)
+    _write_empty_scene_config(tmp_path)
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "resolve_game_version", lambda _profile: "26.2")
     monkeypatch.setattr(pipeline, "_resource_manifest", lambda _work_dir, _profile: {
@@ -209,6 +210,7 @@ print(json.dumps({
     env = os.environ.copy()
     src = str(Path(__file__).resolve().parents[1] / "src")
     env["PYTHONPATH"] = src + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    _write_empty_scene_config(tmp_path)
 
     procs = [
         subprocess.Popen(
@@ -238,3 +240,12 @@ print(json.dumps({
     assert by_lane["gpu1"]["server_port"] == 25601
     assert by_lane["gpu1"]["display"] == ":78"
     assert by_lane["gpu0"]["run_dir"] != by_lane["gpu1"]["run_dir"]
+
+
+def _write_empty_scene_config(root: Path) -> None:
+    config_dir = root / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "scene.yml").write_text(
+        "scene:\n  origin: [0, 64, 0]\n  entries: []\n",
+        encoding="utf-8",
+    )

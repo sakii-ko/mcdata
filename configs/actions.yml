@@ -316,6 +316,114 @@ strategies:
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
 
+  roam_a:
+    type: "roam"
+    seed: 101
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  roam_b:
+    type: "roam"
+    seed: 102
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  roam_c:
+    type: "roam"
+    seed: 103
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  roam_d:
+    type: "roam"
+    seed: 104
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  roam_e:
+    type: "roam"
+    seed: 105
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
+  roam_f:
+    type: "roam"
+    seed: 106
+    start: [0, -14]
+    bounds: [-14, 14, -14, 14]
+    num_goals: 8
+    min_goal_dist: 6
+    obstacle_clearance: 1
+    pause_prob: 0.3
+    pause_sec_range: [1.0, 3.0]
+    look_dy_px_choices: [20, 40]
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
   walk_grid:
     type: "grid_patrol"
     loops: 5

@@ -97,6 +97,7 @@ def _remove_stale_mods(mods_dir: Path, *, slug: str, keep: str) -> None:
         "entitytexturefeatures": ["entity_texture_features-", "entitytexturefeatures-"],
         "continuity": ["continuity-"],
         "lambdynamiclights": ["lambdynamiclights-"],
+        "euphoria-patches": ["EuphoriaPatcher-", "euphoria-patches-"],
     }.get(slug, [f"{slug}-"])
     for path in mods_dir.glob("*.jar"):
         if path.name == keep:

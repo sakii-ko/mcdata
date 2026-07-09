@@ -49,11 +49,11 @@
 
 | 模块 | 允许 import | 明确禁止 |
 |---|---|---|
-| `mcdata.actions`（strategies/viz） | config, paths | render、qa（策略不知道渲染的存在） |
+| `mcdata.actions`（strategies/viz） | config, paths, scene_model | render、qa（策略不知道渲染的存在） |
 | `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
-| `mcdata.render` | config, paths, packs, net, mojang, modrinth, manifest, runlog, settings, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
+| `mcdata.render` | config, paths, packs, net, mojang, modrinth, manifest, runlog, settings, scene_model, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
-| `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | paths（settings 另可 config） | render、actions、qa（被依赖方，不反向依赖） |
+| `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.cli` | 所有模块 | —（但只做参数解析和调用，不写业务逻辑） |
 

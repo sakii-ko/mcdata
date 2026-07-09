@@ -27,7 +27,8 @@ def render_trajectory_map(
         ax.plot(xs, zs, color="#1f77b4", linewidth=2.2, marker="o", markersize=2.4)
         ax.scatter([xs[0]], [zs[0]], color="#2ca02c", s=80, zorder=4, label="start")
         ax.scatter([xs[-1]], [zs[-1]], color="#d62728", s=80, zorder=4, label="end")
-    goals = [_point(point) for point in (spec or {}).get("goals", [])]
+    goal_values = trajectory.get("goals") or (spec or {}).get("goals", [])
+    goals = [_point(point) for point in goal_values]
     for idx, (x, z) in enumerate(goals, 1):
         ax.text(x + 0.2, z + 0.2, str(idx), fontsize=9, color="#111111", weight="bold")
     ax.set_aspect("equal", adjustable="box")
@@ -78,7 +79,23 @@ def _draw_spec(ax: Any, spec: dict[str, Any], *, rectangle_cls: Any) -> None:
         xs = [point[0] for point in blocked]
         zs = [point[1] for point in blocked]
         ax.scatter(xs, zs, marker="x", color="#d62728", s=55, label="blocked")
+    scene_obstacles = [_point(point) for point in spec.get("_scene_obstacles", [])]
+    if scene_obstacles:
+        xs = [point[0] for point in scene_obstacles]
+        zs = [point[1] for point in scene_obstacles]
+        ax.scatter(
+            xs,
+            zs,
+            marker="s",
+            color="#d62728",
+            alpha=0.18,
+            s=48,
+            linewidths=0,
+            label="scene obstacle",
+        )
 
 
 def _point(value: Any) -> tuple[int, int]:
+    if isinstance(value, dict):
+        return int(value["x"]), int(value["z"])
     return int(value[0]), int(value[1])
