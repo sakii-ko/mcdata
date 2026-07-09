@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+import json
 from pathlib import Path
 from typing import Any
 
@@ -49,10 +50,10 @@ def test_ground_astar_loop_route_stays_inside_walkable_area() -> None:
     _assert_route_stays_inside_walkable_area(trajectory, spec)
 
 
-def test_astar_loop_routes_stay_inside_walkable_area() -> None:
+def test_walk_routes_stay_inside_configured_bounds() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     for name, spec in strategies.items():
-        if spec.get("type") != "astar_walk":
+        if spec.get("type") not in {"astar_walk", "roam"}:
             continue
         trajectory = _build_configured(name, spec)
         _assert_route_stays_inside_walkable_area(trajectory, spec)
@@ -68,11 +69,11 @@ def test_astar_blocking_covers_scene_occupied_cells() -> None:
         assert not (scene_obstacles - covered), name
 
 
-def test_astar_routes_avoid_scene_occupied_cells() -> None:
+def test_walk_routes_avoid_scene_occupied_cells() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     scene_obstacles = _scene_obstacles()
     for name, spec in strategies.items():
-        if spec.get("type") != "astar_walk":
+        if spec.get("type") not in {"astar_walk", "roam"}:
             continue
         trajectory = _build_configured(name, spec)
         route = {(point["x"], point["z"]) for point in trajectory["route"]}
@@ -86,6 +87,41 @@ def test_configured_blocking_matches_derived_scene_obstacles() -> None:
         if spec.get("type") != "astar_walk":
             continue
         assert _covered_cells(spec) == scene_obstacles, name
+
+
+def test_roam_trajectories_are_byte_deterministic() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") != "roam":
+            continue
+        first = json.dumps(_build_configured(name, spec), indent=2, sort_keys=True) + "\n"
+        second = json.dumps(_build_configured(name, spec), indent=2, sort_keys=True) + "\n"
+        assert first == second, name
+
+
+def test_roam_goals_have_minimum_adjacent_distance() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") != "roam":
+            continue
+        trajectory = _build_configured(name, spec)
+        goals = [(point["x"], point["z"]) for point in trajectory["goals"]]
+        points = [tuple(spec["start"]), *goals]
+
+        assert len(goals) == spec["num_goals"], name
+        assert all(_manhattan(first, second) >= spec["min_goal_dist"] for first, second in zip(points, points[1:])), name
+
+
+def test_different_roam_seeds_produce_distinct_routes() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    routes = {
+        name: tuple((point["x"], point["z"]) for point in _build_configured(name, spec)["route"])
+        for name, spec in strategies.items()
+        if spec.get("type") == "roam"
+    }
+
+    assert len(routes) == 6
+    assert len(set(routes.values())) == len(routes)
 
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:
@@ -169,3 +205,7 @@ def _scene_obstacles() -> set[tuple[int, int]]:
 
 def _build_configured(name: str, spec: dict[str, Any]) -> dict[str, Any]:
     return build_trajectory(name, dict(spec), scene_obstacles=_scene_obstacles())
+
+
+def _manhattan(first: tuple[int, int], second: tuple[int, int]) -> int:
+    return abs(first[0] - second[0]) + abs(first[1] - second[1])

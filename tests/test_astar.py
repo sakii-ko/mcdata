@@ -53,3 +53,30 @@ def test_astar_walk_adds_startup_compensation_to_forward_holds() -> None:
         {"t": 0.0, "key": "w", "action": "down"},
         {"t": 1.25, "key": "w", "action": "up"},
     ]
+
+
+def test_roam_requires_explicit_seed() -> None:
+    with pytest.raises(RuntimeError, match="requires an explicit seed"):
+        build_trajectory(
+            "unit_roam",
+            {
+                "type": "roam",
+                "start": [0, 0],
+                "bounds": [0, 2, 0, 2],
+            },
+        )
+
+
+def test_roam_raises_after_goal_sampling_limit() -> None:
+    with pytest.raises(RuntimeError, match="after 100 attempts"):
+        build_trajectory(
+            "unit_roam",
+            {
+                "type": "roam",
+                "seed": 7,
+                "start": [0, 0],
+                "bounds": [0, 1, 0, 1],
+                "num_goals": 1,
+                "min_goal_dist": 3,
+            },
+        )

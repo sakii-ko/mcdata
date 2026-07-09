@@ -19,6 +19,7 @@ from mcdata.render.pipeline import (
     remote_tmux_command,
     run_matrix_profiles,
 )
+from mcdata.scene_model import load_scene, walk_obstacles
 from mcdata.settings import apply_display_override
 
 app = typer.Typer(no_args_is_help=True)
@@ -123,11 +124,13 @@ def viz_trajectory(
     """Render a top-down trajectory map."""
     spec = None
     if spec_strategy:
-        strategies = load_yaml(root.resolve() / "configs" / "actions.yml").get("strategies", {})
+        config_dir = root.resolve() / "configs"
+        strategies = load_yaml(config_dir / "actions.yml").get("strategies", {})
         if spec_strategy not in strategies:
             known = ", ".join(sorted(strategies))
             raise typer.BadParameter(f"Unknown strategy '{spec_strategy}'. Known strategies: {known}")
         spec = dict(strategies[spec_strategy])
+        spec["_scene_obstacles"] = sorted(walk_obstacles(load_scene(config_dir)))
     render_trajectory_map(load_trajectory(traj), spec=spec, out=out)
     console.print(f"Wrote trajectory map: {out}")
 
