@@ -80,6 +80,7 @@ def test_apply_join_state_pregrants_recipes_before_capture_warmup() -> None:
     profile = {
         "world_state": {
             "time": "midnight",
+            "clear_inventory": True,
             "pregrant_recipes": True,
             "player": {"x": 1, "y": 64, "z": -2, "yaw": 90, "pitch": 18},
         }
@@ -89,6 +90,7 @@ def test_apply_join_state_pregrants_recipes_before_capture_warmup() -> None:
 
     assert proc.stdin.getvalue().splitlines() == [
         "time set midnight",
+        "clear @a",
         "recipe give @a *",
         "tp @a 1 64 -2 90 18",
     ]
