@@ -12,10 +12,12 @@ import sys
 import threading
 import time
 import hashlib
-from dataclasses import asdict, dataclass, field
+import fcntl
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from rich.console import Console
 
@@ -23,14 +25,19 @@ from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
 from mcdata.modrinth import project_versions
-from mcdata.packs import install_asset_set, install_mods
+from mcdata.packs import install_asset_set, install_mods, load_resourcepack_sources
 from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
+from mcdata.resourcepacks import discover_target_resource_format, materialize_resourcepacks
 from mcdata.render.options import write_iris_config, write_options
 from mcdata.render.probe import (
     start_position_probe,
     wait_for_position_sample,
     write_positions_jsonl,
+)
+from mcdata.render.resourcepack_gate import (
+    ResourcePackRuntimeError,
+    validate_resourcepack_runtime,
 )
 from mcdata.render.scene import (
     apply_join_state,
@@ -80,6 +87,7 @@ class RunPlan:
     capture_settings: CaptureSettings
     run_trajectory_path: Path | None
     trajectory_info: dict[str, Any] | None
+    resources: dict[str, Any]
     metadata: dict[str, Any]
     cmd: list[str]
     dry_run: bool
@@ -106,6 +114,7 @@ class RunState:
     position_probe_sent_at: list[float] = field(default_factory=list)
     replay_start_mono: float | None = None
     capture_cmd: list[str] | None = None
+    resourcepack_runtime: dict[str, object] | None = None
     error: str | None = None
 
 
@@ -157,7 +166,39 @@ def portablemc_version(profile: dict[str, Any], game_version: str) -> str:
     raise RuntimeError(f"Unsupported loader: {loader}")
 
 
+@contextmanager
+def _profile_instance_lock(paths: ProjectPaths, profile_name: str) -> Iterator[None]:
+    lock_dir = paths.work_base / ".locks"
+    lock_dir.mkdir(parents=True, exist_ok=True)
+    lock_name = hashlib.sha256(profile_name.encode("utf-8")).hexdigest() + ".lock"
+    with (lock_dir / lock_name).open("a+b") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
 def bootstrap_profile(
+    root: Path,
+    profile_name: str,
+    *,
+    game_version: str | None = None,
+    server_port: int | None = None,
+    lane: str | None = None,
+) -> dict[str, Any]:
+    paths = ProjectPaths.from_root(root)
+    with _profile_instance_lock(paths, profile_name):
+        return _bootstrap_profile_unlocked(
+            root,
+            profile_name,
+            game_version=game_version,
+            server_port=server_port,
+            lane=lane,
+        )
+
+
+def _bootstrap_profile_unlocked(
     root: Path,
     profile_name: str,
     *,
@@ -184,11 +225,18 @@ def bootstrap_profile(
         mods = install_mods(work_dir, game_version=game_version, slugs=list(profile.get("mods", [])))
 
     asset_config = load_asset_config(paths.configs)
-    resourcepacks, shaderpack = install_asset_set(
+    source_resourcepacks, shaderpack = install_asset_set(
         work_dir,
         game_version=game_version,
         asset_config=asset_config,
         asset_set_name=str(profile.get("asset_set", "vanilla")),
+    )
+    resourcepacks, resourcepack_resolution = _install_client_and_materialize_resourcepacks(
+        paths,
+        work_dir,
+        profile=profile,
+        game_version=game_version,
+        expected_sources=source_resourcepacks,
     )
 
     write_options(
@@ -207,6 +255,7 @@ def bootstrap_profile(
             "asset_set": profile.get("asset_set", "vanilla"),
             "mods": mods,
             "resourcepacks": resourcepacks,
+            "resourcepack_resolution": resourcepack_resolution,
             "shaderpack": shaderpack,
             "server_dir": str(server_root / server_profile_name(profile, profile_name=profile_name, lane=lane)),
             "server_port": profile.get("server_port", 25565),
@@ -214,7 +263,17 @@ def bootstrap_profile(
             "generated_at": datetime.now(timezone.utc).isoformat(),
         },
     )
+    return {"profile": profile, "game_version": game_version, "work_dir": str(work_dir)}
 
+
+def _install_client_and_materialize_resourcepacks(
+    paths: ProjectPaths,
+    work_dir: Path,
+    *,
+    profile: dict[str, Any],
+    game_version: str,
+    expected_sources: list[str],
+) -> tuple[list[str], dict[str, Any]]:
     install_cmd = portablemc_base(paths, work_dir) + [
         "start",
         "--dry",
@@ -228,7 +287,22 @@ def bootstrap_profile(
     ]
     console.print("Installing launcher assets with PortableMC dry run...")
     subprocess.run(install_cmd, cwd=paths.root, check=True)
-    return {"profile": profile, "game_version": game_version, "work_dir": str(work_dir)}
+    target = discover_target_resource_format(paths.main_dir, game_version)
+    source_manifest = load_resourcepack_sources(work_dir)
+    if source_manifest.get("target_game_version") != game_version:
+        raise RuntimeError("Resource-pack source manifest targets a different Minecraft version")
+    sources = list(source_manifest.get("resourcepacks", []))
+    source_names = [source.get("filename") for source in sources if isinstance(source, dict)]
+    if source_names != expected_sources or len(source_names) != len(sources):
+        raise RuntimeError("Resource-pack source manifest does not match installed selection")
+    effective_names, resolution = materialize_resourcepacks(
+        work_dir,
+        sources=sources,
+        target=target,
+        game_version=game_version,
+    )
+    (work_dir / ".mcdata" / "resourcepack-runtime.json").unlink(missing_ok=True)
+    return effective_names, resolution
 
 
 def launch_profile(
@@ -264,11 +338,24 @@ def launch_profile(
         debug_no_reapply=debug_no_reapply,
         debug_no_replay_gate=debug_no_replay_gate,
     )
-    plan = _plan_run(
-        root,
-        profile_name,
-        options=options,
-    )
+    paths = ProjectPaths.from_root(root)
+    with _profile_instance_lock(paths, profile_name):
+        plan = _plan_run(
+            root,
+            profile_name,
+            options=options,
+        )
+        return _execute_run_plan(_refresh_run_resources(plan))
+
+
+def _refresh_run_resources(plan: RunPlan) -> RunPlan:
+    resources = _resource_manifest(plan.work_dir, plan.profile)
+    resources["resourcepack_runtime"] = None
+    _verify_resourcepack_manifest_consistency(resources)
+    return replace(plan, resources=resources)
+
+
+def _execute_run_plan(plan: RunPlan) -> dict[str, Any]:
     console.print("Launch command:")
     console.print(" ".join(shlex.quote(part) for part in plan.cmd))
     state = RunState()
@@ -411,6 +498,7 @@ def _plan_run(
         capture_settings=capture_settings,
         run_trajectory_path=run_trajectory_path,
         trajectory_info=trajectory_info,
+        resources={},
         metadata=metadata,
         cmd=cmd,
         dry_run=options.dry_run,
@@ -434,7 +522,7 @@ def _bootstrap_missing_work_dir(
 ) -> None:
     if work_dir.exists():
         return
-    bootstrap_profile(
+    _bootstrap_profile_unlocked(
         root,
         profile_name,
         game_version=game_version,
@@ -490,6 +578,7 @@ def _make_run_plan(
     capture_settings: CaptureSettings,
     run_trajectory_path: Path | None,
     trajectory_info: dict[str, Any] | None,
+    resources: dict[str, Any],
     metadata: dict[str, Any],
     cmd: list[str],
     dry_run: bool,
@@ -513,6 +602,7 @@ def _make_run_plan(
         capture_settings=capture_settings,
         run_trajectory_path=run_trajectory_path,
         trajectory_info=trajectory_info,
+        resources=resources,
         metadata=metadata,
         cmd=cmd,
         dry_run=dry_run,
@@ -628,6 +718,7 @@ def _join_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     apply_join_state(state.server_proc, plan.profile)
     runlog.log("join", "apply_join_state")
     _warmup_after_join(plan, state, runlog)
+    _verify_joined_resourcepacks(plan, state, runlog)
     if plan.capture:
         _prepare_joined_capture(plan, state, runlog)
 
@@ -644,6 +735,26 @@ def _warmup_after_join(plan: RunPlan, state: RunState, runlog: RunLogger) -> Non
     runlog.log("warmup", "start", seconds=plan.capture_settings.ready_delay_sec)
     _wait_or_raise_if_exited(state.game_proc, plan.capture_settings.ready_delay_sec)
     runlog.log("warmup", "end")
+
+
+def _verify_joined_resourcepacks(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    runtime_path = plan.work_dir / ".mcdata" / "resourcepack-runtime.json"
+    resolution = plan.resources["resourcepack_resolution"]
+    expected_filenames = [pack["filename"] for pack in resolution["packs"]]
+    try:
+        record = validate_resourcepack_runtime(
+            plan.work_dir,
+            expected_filenames=expected_filenames,
+            timeout_sec=10.0,
+        )
+    except ResourcePackRuntimeError as exc:
+        state.resourcepack_runtime = exc.record.to_dict()
+        _write_json(runtime_path, state.resourcepack_runtime)
+        runlog.log("resourcepacks", "runtime_fail", **state.resourcepack_runtime)
+        raise
+    state.resourcepack_runtime = record.to_dict()
+    _write_json(runtime_path, state.resourcepack_runtime)
+    runlog.log("resourcepacks", "runtime_pass", **state.resourcepack_runtime)
 
 
 def _prepare_joined_capture(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
@@ -785,12 +896,14 @@ def _write_position_log(plan: RunPlan, state: RunState, runlog: RunLogger) -> No
 
 
 def _write_run_manifest_for_plan(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+    resources = dict(plan.resources)
+    resources["resourcepack_runtime"] = state.resourcepack_runtime
     manifest = build_run_manifest(
         run_id=plan.run_dir.name,
         profile_name=plan.profile_name,
         profile=plan.profile,
         mc_version=plan.game_version,
-        resources=_resource_manifest(plan.work_dir, plan.profile),
+        resources=resources,
         trajectory=plan.trajectory_info,
         capture=_capture_manifest(
             enabled=plan.capture,
@@ -1164,8 +1277,61 @@ def _resource_manifest(work_dir: Path, profile: dict[str, Any]) -> dict[str, Any
         "asset_set": str(profile.get("asset_set", "vanilla")),
         "mods": _file_manifest_list(work_dir / "mods", suffixes={".jar"}),
         "resourcepacks": _file_manifest_list(work_dir / "resourcepacks", suffixes={".zip"}),
+        "resourcepack_resolution": _read_optional_json(
+            work_dir / ".mcdata" / "resourcepack-resolution.json"
+        ),
+        "resourcepack_runtime": _read_optional_json(
+            work_dir / ".mcdata" / "resourcepack-runtime.json"
+        ),
         "shaderpacks": _file_manifest_list(work_dir / "shaderpacks", suffixes={".zip"}),
     }
+
+
+def _verify_resourcepack_manifest_consistency(resources: dict[str, Any]) -> None:
+    resolution = resources.get("resourcepack_resolution")
+    actual = resources.get("resourcepacks")
+    if not isinstance(resolution, dict) or not isinstance(resolution.get("packs"), list):
+        raise RuntimeError("Resource-pack resolution provenance is missing or invalid")
+    if not isinstance(actual, list):
+        raise RuntimeError("Effective resource-pack file manifest is invalid")
+
+    expected_by_name: dict[str, str] = {}
+    for pack in resolution["packs"]:
+        if not isinstance(pack, dict):
+            raise RuntimeError("Resource-pack resolution contains a non-object pack record")
+        filename = pack.get("filename")
+        effective_sha256 = pack.get("effective_sha256")
+        if not isinstance(filename, str) or not isinstance(effective_sha256, str):
+            raise RuntimeError("Resource-pack resolution record lacks filename/effective SHA-256")
+        if filename in expected_by_name:
+            raise RuntimeError(f"Duplicate resource-pack resolution record: {filename}")
+        expected_by_name[filename] = effective_sha256
+
+    actual_by_name: dict[str, str] = {}
+    for pack in actual:
+        if not isinstance(pack, dict):
+            raise RuntimeError("Effective resource-pack manifest contains a non-object record")
+        filename = pack.get("filename")
+        sha256 = pack.get("sha256")
+        if not isinstance(filename, str) or not isinstance(sha256, str):
+            raise RuntimeError("Effective resource-pack manifest record lacks filename/SHA-256")
+        if filename in actual_by_name:
+            raise RuntimeError(f"Duplicate effective resource-pack file: {filename}")
+        actual_by_name[filename] = sha256
+
+    if actual_by_name != expected_by_name:
+        raise RuntimeError(
+            "Effective resource-pack files do not match bootstrap resolution provenance"
+        )
+
+
+def _read_optional_json(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Expected JSON object in {path}")
+    return data
 
 
 def _file_manifest_list(path: Path, *, suffixes: set[str]) -> list[dict[str, Any]]:

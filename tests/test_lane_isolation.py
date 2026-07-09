@@ -77,6 +77,8 @@ def test_parallel_dry_run_lanes_write_independent_manifests(tmp_path: Path, monk
         "asset_set": _profile.get("asset_set", "vanilla"),
         "mods": [],
         "resourcepacks": [],
+        "resourcepack_resolution": {"packs": []},
+        "resourcepack_runtime": None,
         "shaderpacks": [],
     })
     monkeypatch.setattr(pipeline, "_env_manifest", lambda *, display: {
@@ -167,6 +169,8 @@ pipeline._resource_manifest = lambda _work_dir, _profile: {
     "asset_set": _profile.get("asset_set", "vanilla"),
     "mods": [],
     "resourcepacks": [],
+    "resourcepack_resolution": {"packs": []},
+    "resourcepack_runtime": None,
     "shaderpacks": [],
 }
 pipeline._env_manifest = lambda *, display: {

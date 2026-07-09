@@ -14,6 +14,9 @@ class VersionFile:
     filename: str
     url: str
     primary: bool
+    sha512: str | None = None
+    sha1: str | None = None
+    size: int | None = None
 
 
 @dataclass(frozen=True)
@@ -80,6 +83,9 @@ def _parse_version(slug: str, item: dict) -> ProjectVersion:
             filename=str(f["filename"]),
             url=str(f["url"]),
             primary=bool(f.get("primary", False)),
+            sha512=_optional_hash(f, "sha512"),
+            sha1=_optional_hash(f, "sha1"),
+            size=int(f["size"]) if isinstance(f.get("size"), int) else None,
         )
         for f in item.get("files", [])
     ]
@@ -91,3 +97,11 @@ def _parse_version(slug: str, item: dict) -> ProjectVersion:
         loaders=[str(v) for v in item.get("loaders", [])],
         files=files,
     )
+
+
+def _optional_hash(file_data: dict, algorithm: str) -> str | None:
+    hashes = file_data.get("hashes")
+    if not isinstance(hashes, dict):
+        return None
+    value = hashes.get(algorithm)
+    return str(value) if isinstance(value, str) and value else None

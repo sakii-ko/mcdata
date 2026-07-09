@@ -97,9 +97,10 @@ def test_capture_reapplies_state_and_writes_positions(tmp_path: Path, monkeypatc
         probe_interval=1.25,
     )
 
-    assert events[:4] == [
+    assert events[:5] == [
         ("join", None),
         ("apply_join_state", None),
+        ("resourcepacks_verified", None),
         ("apply_join_state", None),
         ("prepare_view", None),
     ]
@@ -199,6 +200,10 @@ def _patch_capture_pipeline(tmp_path: Path, monkeypatch, events: list[tuple[str,
         def set(self) -> None:
             events.append(("probe_stop", None))
 
+    class FakeResourcePackRecord:
+        def to_dict(self) -> dict[str, object]:
+            return {"status": "pass", "expected_file_packs": [], "actual_file_packs": []}
+
     monkeypatch.setenv("MCDATA_WORK_DIR", str(tmp_path / "instances"))
     monkeypatch.setenv("MCDATA_OUTPUT_DIR", str(tmp_path / "runs"))
     (tmp_path / "instances" / "matrix_low").mkdir(parents=True)
@@ -210,6 +215,12 @@ def _patch_capture_pipeline(tmp_path: Path, monkeypatch, events: list[tuple[str,
     monkeypatch.setattr(pipeline, "verify_scene_commands", lambda *args, **kwargs: 2)
     monkeypatch.setattr(pipeline, "wait_for_player_join", lambda *args, **kwargs: events.append(("join", None)))
     monkeypatch.setattr(pipeline, "apply_join_state", lambda _proc, _profile: events.append(("apply_join_state", None)))
+    monkeypatch.setattr(
+        pipeline,
+        "validate_resourcepack_runtime",
+        lambda *_args, **_kwargs: events.append(("resourcepacks_verified", None))
+        or FakeResourcePackRecord(),
+    )
     monkeypatch.setattr(pipeline, "_prepare_capture_view", lambda _settings: events.append(("prepare_view", None)))
     monkeypatch.setattr(pipeline, "_minecraft_window_geometry", lambda window_name="Minecraft": (12, 34, 320, 180))
     monkeypatch.setattr(pipeline, "_start_capture", lambda *args, **kwargs: (FakeProc(), ["ffmpeg"]))
@@ -234,6 +245,8 @@ def _patch_capture_pipeline(tmp_path: Path, monkeypatch, events: list[tuple[str,
         "asset_set": "vanilla",
         "mods": [],
         "resourcepacks": [],
+        "resourcepack_resolution": {"packs": []},
+        "resourcepack_runtime": None,
         "shaderpacks": [],
     })
     monkeypatch.setattr(pipeline, "_env_manifest", lambda *, display: {"hostname": "host", "display": display})
