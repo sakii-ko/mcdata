@@ -44,6 +44,8 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "packs": {"net", "paths", "modrinth", "config"},
     "resourcepack_format": set(),
     "resourcepacks": {"resourcepack_format"},
+    "dataset": {"dataset_support"},
+    "dataset_support": {"dataset_support"},
     "manifest": {"paths"},
     "runlog": {"paths"},
     "settings": {"config", "paths"},

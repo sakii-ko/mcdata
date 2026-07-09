@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/dataset_index.schema.json",
+  "title": "mcdata dataset index",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "status",
+    "primary_cohort_id",
+    "invariants",
+    "cohorts",
+    "episodes",
+    "comparisons",
+    "manual_review",
+    "checksum_manifest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "dataset_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "status": {"enum": ["automated_pass", "accepted"]},
+    "primary_cohort_id": {"type": "string", "pattern": "^cohort-[0-9a-f]{16}$"},
+    "checksum_manifest": {"const": "SHA256SUMS"},
+    "invariants": {
+      "type": "object",
+      "required": [
+        "mc_version",
+        "git_commit",
+        "trajectory_sha256",
+        "trajectory_event_count",
+        "trajectory_duration_sec",
+        "world_seed",
+        "world_profile",
+        "resourcepack_target",
+        "capture"
+      ],
+      "properties": {
+        "mc_version": {"type": "string"},
+        "git_commit": {"type": "string", "minLength": 1},
+        "trajectory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "trajectory_event_count": {"type": "integer", "minimum": 1},
+        "trajectory_duration_sec": {"type": "number", "exclusiveMinimum": 0},
+        "world_seed": {"type": ["integer", "string"]},
+        "world_profile": {"type": "string"},
+        "resourcepack_target": {"$ref": "#/$defs/resourcepackTarget"},
+        "capture": {"$ref": "#/$defs/captureFacts"}
+      }
+    },
+    "cohorts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "cohort_id",
+          "role",
+          "world_state_sha256",
+          "world_state",
+          "episode_ids",
+          "profile_names"
+        ],
+        "properties": {
+          "cohort_id": {"type": "string", "pattern": "^cohort-[0-9a-f]{16}$"},
+          "role": {"enum": ["strict_rendering_matrix", "world_state_variant"]},
+          "world_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "world_state": {"type": "object"},
+          "episode_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "profile_names": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+        }
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "episode_id",
+          "run_id",
+          "cohort_id",
+          "profile_name",
+          "asset_set",
+          "run_dir",
+          "manifest",
+          "video",
+          "trajectory",
+          "positions",
+          "qa",
+          "client_log",
+          "shader_runtime",
+          "resourcepack_runtime_status",
+          "mods",
+          "resourcepacks",
+          "shaderpacks",
+          "resourcepack_resolution",
+          "accepted"
+        ],
+        "properties": {
+          "episode_id": {"type": "string"},
+          "run_id": {"type": "string"},
+          "cohort_id": {"type": "string"},
+          "profile_name": {"type": "string"},
+          "asset_set": {"type": "string"},
+          "run_dir": {"type": "string"},
+          "manifest": {
+            "allOf": [
+              {"$ref": "#/$defs/artifact"},
+              {"type": "object", "required": ["schema_version"], "properties": {"schema_version": {"const": 2}}}
+            ]
+          },
+          "video": {
+            "allOf": [
+              {"$ref": "#/$defs/artifact"},
+              {"$ref": "#/$defs/captureFacts"}
+            ]
+          },
+          "trajectory": {
+            "allOf": [
+              {"$ref": "#/$defs/artifact"},
+              {
+                "type": "object",
+                "required": ["event_count", "duration_sec"],
+                "properties": {
+                  "event_count": {"type": "integer", "minimum": 1},
+                  "duration_sec": {"type": "number", "exclusiveMinimum": 0}
+                }
+              }
+            ]
+          },
+          "positions": {"$ref": "#/$defs/artifact"},
+          "qa": {
+            "allOf": [
+              {"$ref": "#/$defs/artifact"},
+              {
+                "type": "object",
+                "required": [
+                  "passed",
+                  "warnings",
+                  "route_max_deviation_blocks",
+                  "route_mean_deviation_blocks"
+                ],
+                "properties": {
+                  "passed": {"const": true},
+                  "warnings": {"type": "array", "maxItems": 0},
+                  "route_max_deviation_blocks": {"type": "number", "minimum": 0},
+                  "route_mean_deviation_blocks": {"type": "number", "minimum": 0}
+                }
+              }
+            ]
+          },
+          "client_log": {"$ref": "#/$defs/artifact"},
+          "shader_runtime": {
+            "type": "object",
+            "required": ["status", "expected_shaderpack", "observed_shaderpacks", "evidence_line"],
+            "properties": {
+              "status": {"const": "pass"},
+              "expected_shaderpack": {"type": ["string", "null"]},
+              "observed_shaderpacks": {"type": "array", "items": {"type": "string"}},
+              "evidence_line": {"type": "string", "minLength": 1}
+            }
+          },
+          "resourcepack_runtime_status": {"const": "pass"},
+          "mods": {"type": "array", "items": {"$ref": "#/$defs/resource"}},
+          "resourcepacks": {"type": "array", "items": {"$ref": "#/$defs/resource"}},
+          "shaderpacks": {"type": "array", "items": {"$ref": "#/$defs/resource"}},
+          "resourcepack_resolution": {"$ref": "#/$defs/resourcepackResolution"},
+          "accepted": {"const": true}
+        }
+      }
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "allOf": [
+          {"$ref": "#/$defs/artifact"},
+          {
+            "type": "object",
+            "required": ["role", "member_episode_ids", "position_alignment"],
+            "properties": {
+              "role": {"enum": ["cohort_gate", "all_dataset_diagnostic"]},
+              "member_episode_ids": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string"}
+              },
+              "position_alignment": {
+                "type": "object",
+                "required": [
+                  "passed",
+                  "threshold_blocks",
+                  "max_distance_blocks",
+                  "mean_distance_blocks"
+                ],
+                "properties": {
+                  "passed": {"const": true},
+                  "threshold_blocks": {"type": "number", "exclusiveMinimum": 0, "maximum": 2},
+                  "max_distance_blocks": {"type": "number", "minimum": 0},
+                  "mean_distance_blocks": {"type": "number", "minimum": 0}
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "manual_review": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "allOf": [
+            {"$ref": "#/$defs/artifact"},
+            {
+              "type": "object",
+              "required": ["status", "reviewed_profiles", "evidence", "notes"],
+              "properties": {
+                "status": {"const": "pass"},
+                "reviewed_profiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {"type": "string"}
+                },
+                "evidence": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {"$ref": "#/$defs/artifact"}
+                },
+                "notes": {"type": "array", "items": {"type": "string"}}
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "captureFacts": {
+      "type": "object",
+      "required": ["width", "height", "fps", "duration_sec", "frame_count"],
+      "properties": {
+        "width": {"type": "integer", "minimum": 1},
+        "height": {"type": "integer", "minimum": 1},
+        "fps": {"type": "number", "exclusiveMinimum": 0},
+        "duration_sec": {"type": "number", "exclusiveMinimum": 0},
+        "frame_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": ["filename", "sha256", "size_bytes"],
+      "properties": {
+        "filename": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "resourcepackTarget": {
+      "type": "object",
+      "required": ["resource_major", "resource_minor", "source_jar_sha256"],
+      "properties": {
+        "resource_major": {"type": "integer", "minimum": 0},
+        "resource_minor": {"type": "integer", "minimum": 0},
+        "source_jar_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "resourcepackResolution": {
+      "type": "object",
+      "required": ["schema_version", "game_version", "normalizer_version", "target", "packs"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "game_version": {"type": "string", "minLength": 1},
+        "normalizer_version": {"type": "string", "minLength": 1},
+        "target": {"$ref": "#/$defs/resourcepackTarget"},
+        "packs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "filename",
+              "project",
+              "version",
+              "download_url",
+              "expected_size",
+              "normalized",
+              "source_sha256",
+              "source_sha512",
+              "upstream_sha512",
+              "effective_sha256",
+              "before",
+              "after"
+            ],
+            "properties": {
+              "filename": {"type": "string", "minLength": 1},
+              "project": {"type": "string", "minLength": 1},
+              "version": {"type": "string", "minLength": 1},
+              "download_url": {"type": "string", "pattern": "^https://"},
+              "expected_size": {"type": "integer", "minimum": 1},
+              "normalized": {"type": "boolean"},
+              "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "source_sha512": {"type": "string", "pattern": "^[0-9a-f]{128}$"},
+              "upstream_sha512": {"type": "string", "pattern": "^[0-9a-f]{128}$"},
+              "effective_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "before": {"type": "object"},
+              "after": {"type": "object"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

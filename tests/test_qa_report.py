@@ -1,6 +1,9 @@
 import importlib
+import hashlib
 import json
 from pathlib import Path
+
+from PIL import Image
 
 from mcdata.qa import report
 from mcdata.qa import route
@@ -167,6 +170,64 @@ def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
     assert "- route_missing_yaw_count: `1`" in text
     assert "- route_skipped_yaw_count: `3`" in text
     assert "- route_y_out_of_range_count: `1`" in text
+
+
+def test_compare_report_binds_artifact_hashes_and_downscales_frames(
+    tmp_path: Path, monkeypatch
+) -> None:
+    inputs = []
+    for name in ("left", "right"):
+        run = tmp_path / name
+        run.mkdir()
+        for filename, content in (
+            ("capture.mp4", b"video" + name.encode()),
+            ("manifest.json", b"{}\n"),
+            ("trajectory.json", b"{}\n"),
+            ("positions.jsonl", b'{"idx": 0}\n'),
+        ):
+            (run / filename).write_bytes(content)
+        inputs.append(run)
+    monkeypatch.setattr(
+        report,
+        "summarize_probe",
+        lambda _path: {"duration_sec": 1.0, "width": 1280, "height": 720, "fps": 24.0},
+    )
+    monkeypatch.setattr(report, "uniform_timestamps", lambda _duration, _frames: [0.5])
+    monkeypatch.setattr(
+        report,
+        "extract_frames_at",
+        lambda _video, _timestamps: [Image.new("RGB", (1280, 720), "green")],
+    )
+    monkeypatch.setattr(
+        report,
+        "compare_position_alignment",
+        lambda _inputs: {
+            "passed": True,
+            "threshold_blocks": 2.0,
+            "max_distance_blocks": 0.0,
+            "mean_distance_blocks": 0.0,
+            "pairs": [],
+        },
+    )
+    observed_sizes = []
+    monkeypatch.setattr(
+        report,
+        "_write_compare_sheet",
+        lambda _path, extracted, _timestamps: observed_sizes.extend(
+            image.size for frames in extracted for image in frames
+        ),
+    )
+
+    result = report.write_compare_report(inputs, frames=1, out_dir=tmp_path / "compare")
+
+    assert observed_sizes == [(240, 135), (240, 135)]
+    assert len(result["evidence"]) == 2
+    for item, run in zip(result["evidence"], inputs):
+        assert item["input"] == str(run)
+        assert set(item) == {"input", "video", "manifest", "trajectory", "positions"}
+        assert item["video"]["sha256"] == hashlib.sha256(
+            (run / "capture.mp4").read_bytes()
+        ).hexdigest()
 
 
 def _positions(tmp_path: Path, name: str, values: list[tuple[float, float, float]]) -> Path:

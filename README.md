@@ -44,21 +44,28 @@ mcdata run-matrix \
   --duration 60
 ```
 
-The matrix profiles share `world_profile: render_matrix_base`, so the dedicated server world,
-seed, scene setup, weather, time, player spawn pose, and replayed action JSON stay fixed while
-only the render stack changes. The baseline uses vanilla resources, the textured pass uses
+All 19 matrix profiles share `world_profile: render_matrix_base`, seed, scene, player reset, and
+replayed action JSON. The 18 daytime profiles additionally share the exact complete world-state,
+so only their render stack changes. `matrix_night_complementary` deliberately changes time to
+midnight, so it is a separate controlled world-state variant rather than part of the strict
+rendering-only cohort. The baseline uses vanilla resources, the textured pass uses
 Faithful 32x with BSL, and the high pass uses Faithful/Fresh Animations with Complementary
 Reimagined. The default `ground_astar_loop` strategy plans a deterministic A* route over the
 ground around water, glass, foliage, lava, torches, redstone lights, sea lanterns, glowstone, and
 a beacon so shader water/reflection/emission differences are visible in a real walking capture.
+It uses one-cell obstacle clearance and currently contains 117 grid cells / 60 events over
+38.937 seconds. Matrix world setup also disables random block ticks, removes stale dropped items,
+clears persisted player inventory, and grants recipes before the 15-second warmup so scene/HUD
+state remains stable and recipe notifications are gone before capture.
 
 Additional render profiles are available for broader material/shader coverage:
 `matrix_night_complementary`, `matrix_default_hd_bsl`, `matrix_default_hd128_bliss`,
 `matrix_dramatic_solas`, `matrix_faithful_sildurs`, `matrix_emissive_makeup`,
 `matrix_patrix_unbound`, `matrix_better_leaves_solas`, `matrix_default3d_miniature`,
 `matrix_simplista_unbound`, `matrix_stylista_bliss`, `matrix_realiscraft_bsl`,
-`matrix_glowing_ores_unbound`, and `matrix_connected_glass_bsl`.
-Night profiles keep the same ground route and use brighter client-side options so the frame is
+`matrix_glowing_ores_unbound`, `matrix_connected_glass_bsl`,
+`matrix_euphoria_complementary`, and `matrix_solas_patrix`.
+The night profile keeps the same ground route and uses brighter client-side options so the frame is
 not black while still exercising night/moon/emissive lighting.
 
 For a persistent remote 4090 run:
@@ -98,6 +105,24 @@ Generated files are kept out of source control:
 runs/
   <timestamp>/       # capture outputs and metadata
 ```
+
+After per-run QA, strict-cohort comparison, and manual visual review, build a deterministic
+batch index and checksum manifest:
+
+```bash
+mcdata dataset-index runs/accepted_full19 \
+  --expected-profiles "$ALL_19_MATRIX_PROFILES" \
+  --primary-profile matrix_low \
+  --strict-compare-report runs/accepted_full19/qa_compare_noon18/qa_compare_report.json \
+  --diagnostic-compare-report runs/accepted_full19/qa_compare_all19/qa_compare_report.json \
+  --visual-review runs/accepted_full19/visual_review/review.json
+sha256sum -c runs/accepted_full19/SHA256SUMS
+```
+
+The index automatically groups the 18 identical noon world states into the strict rendering
+matrix and keeps the midnight run as a controlled variant. It is marked `accepted` only when the
+expected profile set, manifests, actual artifact hashes, 60-second 1280×720/24fps captures,
+resource-pack runtime gates, route/alignment QA, and explicit visual review all pass.
 
 ## Notes
 

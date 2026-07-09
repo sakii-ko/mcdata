@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Minecraft rendering data collection pipeline."
 requires-python = ">=3.11"
 dependencies = [
+  "jsonschema>=4.0",
   "portablemc>=4.4.1",
   "pyyaml>=6.0.2",
   "requests>=2.32.0",
@@ -18,7 +19,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8",
-  "jsonschema",
   "ruff",
 ]
 qa = [
