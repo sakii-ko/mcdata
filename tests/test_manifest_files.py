@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 import subprocess
 
+import pytest
+
 from mcdata.render import pipeline
 from mcdata.render.pipeline import _copy_trajectory
 
@@ -112,6 +114,53 @@ def test_git_manifest_falls_back_to_sync_commit(tmp_path: Path, monkeypatch) -> 
     assert manifest["dirty"] is False
 
 
+def test_resource_manifest_includes_resolution_and_runtime_evidence(tmp_path: Path) -> None:
+    metadata_dir = tmp_path / ".mcdata"
+    metadata_dir.mkdir()
+    resolution = {
+        "target": {"resource_major": 88, "resource_minor": 0},
+        "packs": [
+            {
+                "filename": "effective.zip",
+                "source_sha256": "source-sha",
+                "effective_sha256": "effective-sha",
+            }
+        ],
+    }
+    runtime = {
+        "status": "pass",
+        "expected_file_packs": ["file/effective.zip"],
+        "actual_file_packs": ["file/effective.zip"],
+    }
+    (metadata_dir / "resourcepack-resolution.json").write_text(
+        json.dumps(resolution), encoding="utf-8"
+    )
+    (metadata_dir / "resourcepack-runtime.json").write_text(
+        json.dumps(runtime), encoding="utf-8"
+    )
+    resourcepack_dir = tmp_path / "resourcepacks"
+    resourcepack_dir.mkdir()
+    (resourcepack_dir / "effective.zip").write_bytes(b"effective")
+
+    manifest = pipeline._resource_manifest(tmp_path, {"asset_set": "example"})
+
+    assert manifest["resourcepack_resolution"] == resolution
+    assert manifest["resourcepack_runtime"] == runtime
+    assert manifest["resourcepacks"][0]["filename"] == "effective.zip"
+
+
+def test_resource_manifest_consistency_rejects_effective_sha_mismatch() -> None:
+    resources = {
+        "resourcepack_resolution": {
+            "packs": [{"filename": "effective.zip", "effective_sha256": "expected"}]
+        },
+        "resourcepacks": [{"filename": "effective.zip", "sha256": "actual"}],
+    }
+
+    with pytest.raises(RuntimeError, match="do not match bootstrap resolution"):
+        pipeline._verify_resourcepack_manifest_consistency(resources)
+
+
 def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, monkeypatch) -> None:
     profile = {
         "loader": "vanilla",
@@ -133,6 +182,22 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
     monkeypatch.setattr(pipeline, "load_asset_config", lambda _configs: {})
     monkeypatch.setattr(pipeline, "resolve_game_version", lambda _profile: "26.2")
     monkeypatch.setattr(pipeline, "install_asset_set", lambda *_args, **_kwargs: ([], None))
+    monkeypatch.setattr(pipeline, "discover_target_resource_format", lambda *_args: object())
+    monkeypatch.setattr(
+        pipeline,
+        "load_resourcepack_sources",
+        lambda _work_dir: {"target_game_version": "26.2", "resourcepacks": []},
+    )
+    resourcepack_resolution = {
+        "schema_version": 1,
+        "target": {"resource_major": 88, "resource_minor": 0},
+        "packs": [],
+    }
+    monkeypatch.setattr(
+        pipeline,
+        "materialize_resourcepacks",
+        lambda *_args, **_kwargs: ([], resourcepack_resolution),
+    )
 
     def fake_run(_cmd, **_kwargs):
         return subprocess.CompletedProcess(_cmd, 0)
@@ -153,6 +218,7 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
     assert manifest["server_port"] == 25604
     assert manifest["lane"] == "gpu4"
     assert manifest["server_dir"].endswith("servers/render_matrix_base__gpu4")
+    assert manifest["resourcepack_resolution"] == resourcepack_resolution
 
 
 def _write_empty_scene_config(root: Path) -> None:
