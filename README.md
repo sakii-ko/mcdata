@@ -113,6 +113,7 @@ batch index and checksum manifest:
 mcdata dataset-index runs/accepted_full19 \
   --expected-profiles "$ALL_19_MATRIX_PROFILES" \
   --primary-profile matrix_low \
+  --generator-commit "$(git rev-parse HEAD)" \
   --strict-compare-report runs/accepted_full19/qa_compare_noon18/qa_compare_report.json \
   --diagnostic-compare-report runs/accepted_full19/qa_compare_all19/qa_compare_report.json \
   --visual-review runs/accepted_full19/visual_review/review.json

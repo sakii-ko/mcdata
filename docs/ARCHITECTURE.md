@@ -113,7 +113,8 @@ compare、资源包 runtime gate 与人工视觉 review；任何 profile 缺失/
 
 产物 `dataset_index.json` 遵循 `src/mcdata/schemas/dataset_index.schema.json`；所有路径均为
 相对 dataset 根目录的 POSIX 路径，`dataset_id` 由不含自身 ID 的规范化索引内容计算，输出
-不写当前时间且稳定排序。缺少显式 `visual_review/review.json` 时状态最多是
+不写当前时间且稳定排序；`generator.git_commit` 单独记录索引器代码版本，不与 run manifest
+里的 capture commit 混淆。缺少显式 `visual_review/review.json` 时状态最多是
 `automated_pass`；只有自动闸门和人工 review 都通过才是 `accepted`。同目录的
 `SHA256SUMS` 覆盖索引及批次内全部普通文件，用于回传后逐字节复验。
 
