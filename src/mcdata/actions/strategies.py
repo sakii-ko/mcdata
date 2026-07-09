@@ -133,7 +133,14 @@ def _roam(spec: dict[str, Any]) -> dict[str, Any]:
     rng = random.Random(seed)
     start = _point(spec.get("start", [0, -14]))
     bounds = _walk_bounds(spec)
-    blocked = _walk_blocked(spec)
+    obstacle_clearance = int(spec.get("obstacle_clearance", 0))
+    if obstacle_clearance < 0:
+        raise RuntimeError("roam obstacle_clearance must not be negative")
+    blocked = _expand_blocked(
+        _walk_blocked(spec),
+        bounds=bounds,
+        clearance=obstacle_clearance,
+    )
     num_goals = int(spec.get("num_goals", 8))
     min_goal_dist = int(spec.get("min_goal_dist", 6))
     if num_goals < 1:
@@ -270,6 +277,24 @@ def _walk_blocked(spec: dict[str, Any]) -> set[tuple[int, int]]:
     for rect in spec.get("blocked_rects", []) or []:
         blocked.update(_points_in_rect(rect))
     return blocked
+
+
+def _expand_blocked(
+    blocked: set[tuple[int, int]],
+    *,
+    bounds: tuple[int, int, int, int],
+    clearance: int,
+) -> set[tuple[int, int]]:
+    if clearance == 0:
+        return set(blocked)
+    min_x, max_x, min_z, max_z = bounds
+    return {
+        (x + dx, z + dz)
+        for x, z in blocked
+        for dx in range(-clearance, clearance + 1)
+        for dz in range(-clearance, clearance + 1)
+        if min_x <= x + dx <= max_x and min_z <= z + dz <= max_z
+    }
 
 
 def _inside_bounds(point: tuple[int, int], bounds: tuple[int, int, int, int]) -> bool:
