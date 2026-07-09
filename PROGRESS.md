@@ -2,9 +2,21 @@
 
 本文档记录当前 `mcdata` 仓库的任务目标、已经完成的实现、验证结果、远端机器状态、已知阻塞点和后续接手建议。目标是让后续同事不用翻完整对话，也能直接上手继续推进 Minecraft 渲染数据采集。
 
-> **协作入口（2026-07-08 起）**：当前的执行计划在根目录 `PLAN.md`（planner 维护，coder 按其执行）；架构分层、依赖规则、数据契约与 git 约定在 `docs/ARCHITECTURE.md`；代码规范在 `docs/CODE_STANDARDS.md`。本文档保留为长期交接背景，iteration 级别的进展看 `docs/iterations/`。
+> **执行入口**：当前计划与验收契约在根目录 `PLAN.md`；自 2026-07-10 起由同一执行者
+> 直接负责计划、实现、测试、真 GPU/视觉 QA 和 merge。架构与数据契约见
+> `docs/ARCHITECTURE.md`，代码规范见 `docs/CODE_STANDARDS.md`，运行报告见 `docs/iterations/`。
 >
-> **状态快照（2026-07-10）**：ITER-01（测试基建 / run manifest / 结构化日志 / 离线 QA 工具 / 路线可视化）已 merge（tag `iter-01-done`）。4090 与 L40S 单卡的 GPU-backed display 均已打通并各自完成真 GPU smoke run；数据回传管线（`scripts/pull_runs_from_remote.sh`）已演练，4090 历史 runs 已全部回传 local NAS 并清空。ITER-02 已完成（tag `iter-02-done`，2026-07-09）：P3–P10 八层根因根治，四路对齐 0.216–0.475 格，多实例并行化与架构清账就绪。ITER-03 的 scene.yml 单一来源、六条确定性 roam 路线和两组可用的 26.2 渲染扩容均已在 L40S 验证；其余五个计划 slug 因没有 26.2 版本按约定跳过，实际扩容为 18→20 asset sets。8 卡容器到位即优先执行 ITER-02 T3 全矩阵。见 PLAN.md。
+> **状态快照（2026-07-10）**：项目北极星数据集已完成。L40S 从 clean main commit
+> `dbca539` 串行采集全部 19 个 matrix profile；18 个 noon profile 构成严格 rendering-only
+> cohort，`matrix_night_complementary` 是单独 midnight variant。19/19 视频均为
+> 1280×720 / 24fps / 60 秒 / 1440 帧，单路 QA 零 warning；strict 18-way 的 153 对位置
+> 对齐最大/平均偏差 1.989/0.518 格，全 19-way 的 171 对诊断为 1.989/0.531 格。25 个
+> resource pack（其中 14 个确定性规范化）全部通过实际 ResourceManager 集合/顺序闸门，
+> 18 个 shader profile 的 client log 均证明精确 shader ZIP 已启用；人工 visual review 通过。
+> accepted archive 已回传 local NAS，并由 schema-validated `dataset_index.json` 与
+> `SHA256SUMS` 固化（dataset ID `sha256:3e99daab…d1dc9`，路径
+> `runs/remote_l40s/accepted_full19_dbca539/`）。实现/拒收批次根因/验收证据见
+> `docs/iterations/ITER-02-t3-report.md`。
 
 ## 任务目标
 
@@ -90,11 +102,12 @@
 
 - start: `[0, -14]`
 - goals: 绕场景一圈后回到起点。
-- bounds: `[-14, 14, -14, 14]`
+- bounds: `[-16, 16, -14, 14]`
 - blocked_rects:
   - `[-14, -2, -5, 7]`: 水面测试区。
   - `[5, -2, 14, 7]`: 玻璃测试区。
 - blocked: 光源/测试方块点位，避免路径撞上火把、灯、熔岩等。
+- `obstacle_clearance: 1`
 - `turn_px_per_degree: 6.6667`
 - `seconds_per_block: 0.231630565`
 - `walk_startup_comp_sec: 0.000889052`
@@ -102,7 +115,8 @@
 
 实现细节：
 
-- `_astar_walk` 会把配置障碍和 `scene.yml` 派生障碍合并；`roam` 还按配置扩展物理避障净空。
+- `_astar_walk` 与 `roam` 都会把配置障碍和 `scene.yml` 派生障碍合并，并在配置了
+  `obstacle_clearance` 时按 Chebyshev 距离扩展物理避障净空；当前 ground/roam 路线均使用一格净空。
 - `_astar` 在 2D x/z 网格上做 Manhattan A*。
 - `_route_segments` 会把连续同方向移动合并，避免每走一格都重新按键。
 - `_walk_events` 由固定 A* 路线与 roam 共用，保证相同的行走/转向标定语义。
@@ -122,7 +136,9 @@ source scripts/mcdata_env.sh
 PYTHONPATH=src python3 -m mcdata.cli make-trajectory ground_astar_loop --root . --out "$MCDATA_OUTPUT_DIR/trajectories/ground_astar_loop.json"
 ```
 
-已验证 `ground_astar_loop` 会生成 46 个事件，路线约 133 个 grid cells，并能在地面岛稳定游走。
+当前 `ground_astar_loop` 生成 117 个 grid cells、60 个事件，`duration_sec=38.937`；trajectory
+JSON sha256 为 `9d48b980e8c37d01e22f2bcd5ac79155e13f4d7c9cf37608ff4a336aef2ff169`。
+路线使用一格物理避障净空，并已在 L40S 真 GPU 上通过针对性碰撞复验。
 
 ## 渲染管线实现
 
@@ -142,7 +158,8 @@ PYTHONPATH=src python3 -m mcdata.cli make-trajectory ground_astar_loop --root . 
    - 可选启动本地 Minecraft dedicated server。
    - 启动 Minecraft client 并自动连接 `127.0.0.1:<server_port>`。
    - 等 server log 出现 `<username> joined the game`。
-   - 调用 `apply_join_state` 应用天气/时间/玩家传送。
+   - 调用 `apply_join_state` 应用天气/时间、清空持久 inventory、预授 recipes 并传送玩家；
+     warmup 后、capture 前再幂等应用一次，锁定最终 HUD/玩家状态。
    - warmup `capture_ready_delay_sec` 秒。
    - 聚焦窗口，按需隐藏 HUD。当前默认 `MCDATA_HIDE_HUD=0`，即保留 HUD/物品栏。
    - 之后再启动 ffmpeg x11grab 录制，避免录到加载流程。
@@ -183,6 +200,9 @@ world_state:
   time: "noon"
   weather: "clear"
   weather_duration_sec: 999999
+  clear_dropped_items: true
+  clear_inventory: true
+  pregrant_recipes: true
   player:
     x: 0
     y: 64
@@ -192,6 +212,7 @@ world_state:
   gamerules:
     command_block_output: false
     keep_inventory: true
+    random_tick_speed: 0
     send_command_feedback: false
     show_death_messages: false
   scene:
@@ -335,7 +356,14 @@ NoChatReports 是为了解决右上角 “Chat messages can't be verified” 一
 - `matrix_euphoria_complementary`
 - `matrix_solas_patrix`
 
-注意：这些 profile 通过 `world_profile: render_matrix_base` 共享 server/world。这样不同渲染质量下，世界底层内容和 action 一致。默认 `run-matrix` 只跑前三个 profile，但可以通过 `--profiles` 显式传入更多。
+注意：19 个 profile 通过 `world_profile: render_matrix_base` 共享 server/world、seed、scene 和
+action。其中 18 个继承 noon，构成严格同 world-state cohort；`matrix_night_complementary`
+显式覆盖为 midnight，应作为独立夜间 variant 分析。默认 `run-matrix` 只跑前三个 profile，
+但可以通过 `--profiles` 显式传入更多。
+
+矩阵 world-state 还统一设置 `random_tick_speed: 0`、清理历史 item entity、清空持久玩家
+inventory，并在 15 秒 warmup 前授予全部 recipes。这些控制用于固定场景/HUD 初态并杜绝
+树叶随机衰减产生掉落物和 recipe toast；它们均进入每个 run 的 manifest。
 
 示例：
 
@@ -420,18 +448,10 @@ lyf
 - 8 张 RTX 4090。
 - Driver: 550.67。
 
-远端当前显示状态：
-
-- 曾有 `Xvfb :99`，但它是 Mesa `llvmpipe` 软件渲染，只能做 automation/window/capture smoke test，不能验证真实 shader/water/reflection 性能。
-- `DISPLAY=:0` 存在 lightdm/root Xorg，但当前用户没有 Xauthority，`glxinfo` 报 `Authorization required`。
-- 当前用户 `lyf` 没有免密 sudo。
-- 当前用户 `lyf` 不在 `video` / `render` 组。
-- `/etc/X11/Xwrapper.config` 是 `allowed_users=console`。
-- 普通 SSH 用户启动 headless NVIDIA Xorg 失败：
-  - `parse_vt_settings: Cannot open /dev/tty0 (Permission denied)`
-  - `systemd-logind: failed to take device /dev/dri/card*: Operation not permitted`
-
-这说明 4090 上当前阻塞点是权限/登录会话，不是代码问题、也不是物理屏幕问题。
+远端当前显示状态：管理员已安装并启动 `mcdata-xorg` systemd 服务；`DISPLAY=:77`
+由 RTX 4090 提供 direct NVIDIA rendering，已完成 20 秒真 GPU smoke run。历史 `Xvfb :99`
+仍只能用于软件渲染 smoke，不能作为 shader/water/reflection 质量证据。GPU 0 与其他训练任务
+共享；大规模任务启动前仍应检查显存占用，必要时把服务切到空闲卡。
 
 ## /tmp 清理记录
 
@@ -474,26 +494,7 @@ MCDATA_TMP_ROOT=/dev/shm scripts/clean_tmp_plan.sh apply
 2. VirtualGL/TurboVNC。
 3. 容器里或宿主机上启动 Xorg，并把 Unix socket 暴露给容器。
 
-普通用户可尝试：
-
-```bash
-cd /home/lyf/mcdata
-MCDATA_TMP_ROOT=/home/lyf/mcdata/.mcdata/tmp \
-MCDATA_HEADLESS_DISPLAY=:77 \
-MCDATA_GPU_INDEX=0 \
-scripts/headless_xorg_nvidia.sh probe
-```
-
-在当前 4090 上仍会失败，原因是权限。
-
-需要管理员在 4090 上执行：
-
-```bash
-cd /home/lyf/mcdata
-sudo MCDATA_GPU_INDEX=0 MCDATA_HEADLESS_DISPLAY=:77 scripts/install_headless_xorg_service.sh
-```
-
-然后普通用户验证：
+已安装环境的普通用户验证：
 
 ```bash
 export DISPLAY=:77
@@ -501,11 +502,21 @@ glxinfo -B
 PYTHONPATH=src python3 -m mcdata.cli doctor
 ```
 
+仅在服务丢失或宿主重建时需要管理员恢复：
+
+```bash
+cd /home/lyf/mcdata
+sudo MCDATA_GPU_INDEX=0 MCDATA_HEADLESS_DISPLAY=:77 scripts/install_headless_xorg_service.sh
+```
+
 `glxinfo -B` 必须显示 NVIDIA vendor/renderer。如果是 `llvmpipe` 或 `softpipe`，只能算 smoke test，不能用于最终高质量 shader/water/reflection 数据。
 
-## L40S 容器判断
+## L40S 容器状态
 
-Minecraft Java 可以在 L40S 上跑，不需要 Proton，不需要容器套容器。关键是容器必须具备图形能力：
+`ssh l40s` 当前暴露单张 NVIDIA L40S。仓库脚本已从同版本 NVIDIA deb 提取 Xorg 模块到
+`/opt/nvidia-xorg`，`DISPLAY=:77` 已验证为 `NVIDIA L40S/PCIe/SSE2`，并完成多轮 60 秒
+真 GPU 采集。容器重建后运行 `scripts/l40s_container_gpu_display.sh install/start/verify`
+即可恢复。Minecraft Java 在 L40S 上不需要 Proton，也不需要容器套容器；环境契约为：
 
 - NVIDIA Container Toolkit。
 - `NVIDIA_DRIVER_CAPABILITIES=all` 或至少包含 `graphics,display`。
@@ -573,7 +584,9 @@ runs/screen_recordings/matrix_emissive_makeup_nochat_20260707T171753/capture.mp4
 - HUD/物品栏保留。
 - 远端无残留 Minecraft/ffmpeg/Xorg 采集进程。
 
-注意：这些样例主要验证自动化、录制、action、资源加载链路。由于当前 4090 缺少可用 NVIDIA-backed display，不能把 Xvfb/llvmpipe 下的 shader 表现当作最终质量验证。
+注意：这些是早期自动化样例；后续 ITER-02/03 与全矩阵验收均使用 4090/L40S 的
+NVIDIA-backed `DISPLAY=:77`。Xvfb/llvmpipe 产物仍只可作为软件 smoke，不能当作最终
+shader 质量证据。
 
 ## 常用命令
 
@@ -656,68 +669,39 @@ bash -n scripts/headless_xorg_nvidia.sh scripts/install_headless_xorg_service.sh
 
 ## 已知问题和风险
 
-1. 4090 当前不能由普通 SSH 用户启动 GPU-backed Xorg。
-   - 需要管理员启动 systemd Xorg 服务，或把用户加入 `video/render` 并处理 Xwrapper/logind/tty 权限。
+当前没有阻塞北极星数据集使用的问题。保留风险如下：
 
-2. 远端 `/home` 仍然较满。
-   - `/tmp` 已清出 438G。
-   - `/home/lyf/mcdata/.mcdata/tmp` 所在 `/home` 约有 210G 可用，但仍 97% 使用。
-   - 真正大规模采集最好挂载大盘目录或配置远端可写 NAS。
-
-3. 本机用户没有权限创建 `/root/mas` 软链。
-   - 当前脚本会自动使用 `/root/nas/bigdata1/tmp/mcdata`。
-   - 如果团队强依赖 `/root/mas/bigdata1/tmp`，需要管理员创建软链或目录。
-
-4. `Xvfb` / `llvmpipe` 不能作为真实 shader 质量验证。
-   - 可以验证窗口、录制、action、mod/resource/shader 启动。
-   - 不能验证 4090/L40S 上的真实水反、阴影、emissive 性能和视觉效果。
-
-5. `brightness` 选项在不同 Minecraft 版本里可能不一定被完全识别。
-   - `gamma: "1.0"` 已写入。
-   - 夜晚最终效果仍应在 NVIDIA-backed display 上肉眼抽帧确认。
-
-6. `rl_placeholder` 只是预留 hook。
+1. `render/pipeline.py` 仍超过 600 行，是 checker 中唯一的既有 R19 warning；功能和测试
+   已稳定，后续实际触碰编排器时再按 phase 拆分，避免为重构而重构。
+2. 当前 accepted cohort 使用单张 L40S 实时串行渲染。8 卡分片与 ReplayMod 离线渲染仍是
+   可选吞吐优化，不能在证明逐帧等价前替代当前 correctness baseline。
+3. L40S 容器是易失运行环境；重建后需运行
+   `scripts/l40s_container_gpu_display.sh install/start/verify`。远端仍只作算力，数据必须按
+   pull → 二次零传输校验 → purge 流程回 NAS。
+4. 自动 QA 不能替代人工视觉 review。本次三轮 rejected cohort 分别暴露碰撞、toast/掉落物
+   和“已下载但未激活”的资源包，证明发布批次必须同时保留 numeric/runtime/visual 三门。
+5. `rl_placeholder` 只是预留 hook。
    - 当前尚未真正接入 MineRL/VPT/Voyager/MineDojo。
    - 下一步如果需要学习型策略，应新增 adapter，输出同样格式的 trajectory JSON。
 
 ## 下一步建议
 
-优先级最高：
+北极星任务已经完成，以下均是新 scope，而非补做项：
 
-1. 让管理员在 4090 或 L40S 宿主机启动 NVIDIA-backed Xorg。
-   - 4090 推荐执行 `scripts/install_headless_xorg_service.sh`。
-   - 验证 `DISPLAY=:77 glxinfo -B` 是 NVIDIA renderer。
-
-2. 在真 GPU display 上跑最小 3-way matrix：
-
-```bash
-source scripts/mcdata_env.sh
-export DISPLAY=:77
-PYTHONPATH=src python3 -m mcdata.cli run-matrix \
-  --profiles matrix_low,matrix_textured,matrix_shader_high \
-  --strategy ground_astar_loop \
-  --duration 60
-```
-
-3. 抽帧检查：
-   - 无黑边。
-   - 不录加载过程。
-   - HUD/物品栏保留。
-   - 无任务完成/聊天安全提示。
-   - 三个 profile 中 action 和世界内容对齐。
-   - shader profile 有水反、光照、emissive 差异。
-
-4. 扩展全 19 个 matrix profile 采集。
-
-5. 接入更强 action 策略。
+1. 数据消费前在 accepted archive 根目录执行 `sha256sum -c SHA256SUMS`，并以
+   `dataset_index.json` 的 strict cohort / variant 分组为准；不要把 midnight 路混入纯渲染
+   监督对。
+2. 接入更强 action 策略。
    - 短期可新增更多 scripted/A* route，覆盖水边、玻璃边、光源近景、夜晚场景。
    - 中期接 MineRL/VPT/Voyager/MineDojo，把外部 policy 输出统一转成现有 trajectory JSON。
-
-6. 完善数据 manifest。
-   - 每个 run 记录：profile、asset set、shaderpack、resourcepacks、mods、world seed、world state、trajectory hash、ffprobe 元数据、git commit/dirty 状态。
+3. 若扩大采集量，优先验证 `matrix_shard.sh` 多卡吞吐；若研究 record-once/render-N，先做
+   与本次实时 accepted baseline 的逐帧/统计等价性 spike。
+4. 若新增 Minecraft 版本或资源包，必须保留 source/upstream/effective hash、官方 client
+   resource format 目标与 ResourceManager 实际集合/顺序闸门，不得退回“文件存在即加载”。
 
 ## 接手重点
 
-如果只做一件事：先解决 NVIDIA-backed display。代码链路、资源矩阵、action、录制控制都已经基本可用；当前真正阻塞最终高质量采集的是 4090 当前用户权限不足，无法启动或访问真 GPU OpenGL display。
-
-解决 display 后，直接按 `run-matrix` 跑 3-way，再扩到 19 profile 全矩阵。
+accepted 19 路数据集、验收索引、checksum、拒收批次和完整根因链均已落盘；无需再重跑
+3-way 或 19-way 来证明当前目标。后续接手者先读 `docs/iterations/ITER-02-t3-report.md` 与
+accepted archive 的 `dataset_index.json`，只有新 world/action/render matrix 或吞吐目标才开启
+新的 iteration。

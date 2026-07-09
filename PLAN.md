@@ -1,43 +1,45 @@
 # PLAN.md — mcdata 协作计划
 
-本文件是 planner 和 coder 之间的工作契约，由 planner 维护。coder 只做本文件"当前 iteration"里列出的任务；做完写 report，等 planner review。
+本文件是项目的执行计划与验收契约。自 2026-07-10 起由同一执行者直接负责计划、实现、
+测试、真 GPU QA、视觉 review、merge 与文档收口，不再经过 planner → coder 人工交接。
 
 配套文档：
 - `docs/ARCHITECTURE.md` — 架构分层、依赖规则、数据契约、git 约定（**先读这个再动代码**）。
 - `docs/CODE_STANDARDS.md` — 硬性代码规范（环境变量纪律、副作用分离、错误处理、日志要求、依赖纪律）。其中 [checker] 条目由 `scripts/check_standards.py` 机械执行，**任何时候都必须保持退出码 0**。
 - `PROGRESS.md` — 长期交接文档，记录已完成能力和远端机器状态。
-- `docs/iterations/ITER-NN-report.md` — coder 的完成汇报（coder 写）。
-- `docs/iterations/ITER-NN-review.md` — planner 的 review 结论（planner 写）。
+- `docs/iterations/ITER-NN-report.md` — iteration 的实现、运行与验收证据。
+- `docs/iterations/ITER-NN-review.md` — 独立 review 结论；历史文件继续保留原角色署名。
 
-## 协作流程
+## 执行流程
 
-1. planner 在本文件写清当前 iteration 的任务和验收标准，打 tag `iter-NN-planned`。
-2. coder 从 main 切分支 `iter/NN-<slug>`，按任务顺序执行；每个任务至少一个独立 commit，前缀见 ARCHITECTURE.md；提交身份用 `mcdata-coder`（export GIT_AUTHOR_NAME/GIT_COMMITTER_NAME 等，见 ARCHITECTURE.md）。
-3. coder 完成后写 `docs/iterations/ITER-NN-report.md`（要求见文末），**不自行 merge**。
-4. planner review 代码 + 复跑验收命令，写 review 文件，merge --no-ff 进 main，打 `iter-NN-done`。
-5. **信号直连（2026-07-09 起，替代人工中转）**。信箱在 `/tmp/mcdata-collab/`（本机，不进 git），信箱语义（消息落盘直到被取走）保证不丢。
-
-   **双方共同义务**：
-   - 后台常驻自己的 listener：`scripts/collab_wait.sh planner`（planner 侧）/ `scripts/collab_wait.sh coder`（coder 侧）。进程退出=收到消息=被唤醒。
-   - 交接固定三步：**写文档 → push → 在后台运行 `scripts/collab_handoff.sh <自己的角色> "一句话指引"`**（原子命令：通知对方后立即变身自己的 listener，杜绝忘记重启监听）。消息只是指针（如 "T1g done, 见 report §T1g"），正式内容一律在 repo 文档里。
-   - 被唤醒后：读信箱打印的指引 → 直接读对应文档（**同机同工作树，无需 pull**——planner 的改动经其 worktree 提交后由 planner merge 进本分支，落盘即可见；push 仅为 GitHub 备份）→ 干活 → 交接 → **重启自己的 listener**（这步最容易忘）。
-
-   **内容落点约定**：planner 的下一步计划永远写在本文件（PLAN.md）当前 iteration 小节；验收结论写 `docs/iterations/ITER-NN-review*.md`。coder 的完成汇报写 `docs/iterations/ITER-NN-report.md`。信号里不携带正文。
-
-   **链路测试（首次启用时执行一次）**：coder 拉起 listener 后，执行 `scripts/collab_notify.sh planner "link test ack from coder"`；planner 被唤醒后回发 `scripts/collab_notify.sh coder "link confirmed, proceed"`；coder 的 listener 收到该回执即测试通过，此后开始正常推进。
+1. 在本文件写清任务、风险与可机械验证的完成定义。
+2. 从 main 创建范围明确的分支；实现与测试使用独立、可回退的 commit，格式遵循
+   `docs/ARCHITECTURE.md`。
+3. 在本地测试通过后执行与风险相称的真 GPU E2E、离线 QA 和视觉目检；运行失败证据与
+   accepted cohort 分目录保存，禁止拼接不同 commit/trajectory 的 run。
+4. 报告必须记录代码/轨迹/world-state provenance、逐路 QA、跨路对齐、存储位置与已知例外。
+5. review 完成后 `merge --no-ff`、push，并按 iteration/dataset milestone 打 tag。
 
 ## 项目北极星目标（不变部分，摘自 PROGRESS.md）
 
-对同一个 Minecraft 世界、同一条 action 轨迹，采集 N-way（当前 17 个 matrix profile）渲染差异视频数据集：底层世界内容与行动完全一致，只改变材质包/光影/水反/emissive 等渲染质量。录制 24fps、无黑边、保留 HUD、无干扰 toast、不录加载过程；action 在地面真实游走（A* 规划）；支持天气/时间/夜晚亮度控制。最终渲染设备是远端 4090 / L40S（GPU-backed X display），本机只能做逻辑验证和 Xvfb 软渲染 smoke test。
+对同一个 Minecraft 世界、同一条 action 轨迹，采集 N-way 渲染差异视频数据集：底层世界内容与行动完全一致，只改变材质包/光影/水反/emissive 等渲染质量。当前配置 19 个 matrix profile；其中 18 个 noon profile 构成固定 seed / scene / world-state / action 的严格 N-way 主矩阵，`matrix_night_complementary` 保持相同 seed / scene / action、仅将时间改为 midnight，作为独立受控补充变体。录制 24fps、无黑边、保留 HUD、无干扰 toast、不录加载过程；action 在地面真实游走（A* 规划）；支持天气/时间/夜晚亮度控制。最终渲染设备是远端 4090 / L40S（GPU-backed X display），本机只能做逻辑验证和 Xvfb 软渲染 smoke test。
 
 数据可用性的根基是**可复现与可验证**：每个 run 必须能从 manifest 完整还原（哪个 profile、哪些资源、哪条轨迹、什么世界状态），每批数据必须有自动 QA 证据（帧率/尺寸/黑边/对齐）。
+同一 strict N-way cohort 必须具有相同 trajectory SHA-256、world seed/state、scene、
+Minecraft 版本、采集规格和代码 commit；有意改变天气/时间的 profile 必须归入单独
+world-state variant，不与 rendering-only cohort 混称。
 
 ## 当前状态摘要
 
 - 代码链路（bootstrap → server/scene → launch → join-gate → warmup → capture → replay）已跑通，见 PROGRESS.md。
 - **原硬阻塞已解除（2026-07-08）**：管理员已在 4090 安装 `mcdata-xorg` systemd 服务，`DISPLAY=:77` 为 NVIDIA RTX 4090（direct rendering: Yes，驱动 550.67）。planner 已用 baseline 代码在真 GPU 上完成 20s smoke run（`matrix_low` + `ground_astar_loop`）：capture.mp4 1280x720 / 24fps / 480 帧整，Sodium 识别到 NVIDIA 适配器，56 mods 正常加载，run 结束无残留进程。远端 run dir：`/home/lyf/mcdata/runs/20260708T052709Z_matrix_low`。
   - 注意：GPU 0 与其他用户的训练任务共享（约 9GB 显存被占）。ITER-02 大规模采集前评估换空闲卡（重装服务改 `MCDATA_GPU_INDEX` 即可）。
-- 本 iteration 仍按原计划做**不依赖 GPU、本机可完整验证**的工程化任务：manifest/QA/测试是 GPU 放量采集的前置条件，缺了它们采回来的数据无法验收。ITER-01 merge 后立即启动 ITER-02（真 GPU 3-way → 17 全矩阵）。
+- **项目北极星采集已闭环（2026-07-10）**：L40S 单卡串行完成 clean commit
+  `dbca539` 的 19 路全矩阵；18 路 noon strict cohort 与 1 路 midnight variant 分组明确。
+  19/19 单路 QA、153 对 strict compare、171 对全量诊断、资源/光影 runtime audit 和人工
+  visual review 全部通过。批次由确定性 dataset index + `SHA256SUMS` 固化（dataset ID
+  `sha256:3e99daab…d1dc9`，本地 `runs/remote_l40s/accepted_full19_dbca539/`），详见
+  `docs/iterations/ITER-02-t3-report.md`。
 - **L40S 单卡已打通（2026-07-08）**：`ssh l40s` 是一个仅有 compute 能力的容器（root 权限，driver 580.173.02，单卡 46GB 空闲）。X server 侧 NVIDIA 模块在镜像里是空壳 stub 且被 bind-mount 锁死，planner 通过"提取同版本 deb 模块到 `/opt/nvidia-xorg` + ModulePath 前置"绕过，`:77` 已是 NVIDIA L40S renderer。全过程固化为 `scripts/l40s_container_gpu_display.sh`（install/start/verify 三步，幂等）——**容器重建后跑一遍即可恢复，8 卡机器上每卡换 `MCDATA_GPU_INDEX`/display 重复执行即可**。注意 L40S 属虚拟显示模式，Xorg 配置禁用 `UseDisplayDevice "None"` 选项（脚本已处理）。
 - 仓库已初始化 git（`v0.0-baseline`）。canonical repo 是 NAS 路径；`/home/chijw/workspace/projs/mcdata` 是历史手工镜像，先不要动它（planner 后续处理）。
 
@@ -57,11 +59,11 @@ review 通过并 merge（merge commit `b10a4ec`，tag `iter-01-done`）。任务
 
 ## ITER-02：真 GPU 采集验证 + 多卡并行化 —— ✅ 已完成（2026-07-09，tag `iter-02-done`）
 
-T1 链条根治 P3–P10 八层根因，四路对齐 0.216–0.475 格；T2 多实例并行化就绪；T4 架构清账完成。明细见 `docs/iterations/ITER-02-report.md` / `ITER-02-review*.md`。**T3（8 卡全矩阵）为运行型任务：用户提供容器后随时从 main 执行，优先级高于 ITER-03 一切任务**（流程：每卡 `l40s_container_gpu_display.sh install/start/verify` → 串行 bootstrap → `matrix_shard.sh <gpu> <profiles>` 分片并行 → qa → CephFS 归档 + 回传）。
+T1 链条根治 P3–P10 八层根因，四路对齐 0.216–0.475 格；T2 多实例并行化就绪；T4 架构清账完成。T3 已于 2026-07-10 在单张 L40S 上串行完成 19 路全矩阵（多卡只影响吞吐，不影响 correctness），验收与三轮 rejected-cohort 根因链见 `docs/iterations/ITER-02-t3-report.md`。其余明细见 `docs/iterations/ITER-02-report.md` / `ITER-02-review*.md`。
 
 ## ITER-03：程序化漫游 + 场景单一来源 + 矩阵扩容 —— ✅ 已完成（2026-07-10）
 
-分支名：`iter/03-roaming-scene`（从 main 切）。顺序 T0 → T1 → T2。**8 卡容器到位即中断当前任务，先执行 ITER-02 T3。**
+分支名：`iter/03-roaming-scene`（从 main 切）。顺序 T0 → T1 → T2；其后 T3 全矩阵也已闭环。
 
 T0 scene.yml 单一来源、T1 六条确定性 roam 路线和 T2 26.2 可用矩阵扩容均已完成；本地 94 项测试通过，L40S 验收与可视化目检通过。七个 T2 候选中五个没有 Modrinth 26.2 版本，按约定跳过，最终为 20 asset sets / 19 matrix profiles。明细见 `docs/iterations/ITER-03-report.md` 与 `ITER-03-review.md`。
 
@@ -120,7 +122,7 @@ scene:
 3. 轨迹相机契约从像素改成角度（`yaw_deg`/`pitch_deg`），px-per-degree 换算下沉到 replay 层并按 profile 标定；向后兼容旧字段。
 4. XTEST keycode 表补全（渲染机已实际使用 XTEST backend；表仍只覆盖基础键位）。
 5. 外部 policy adapter（MineRL/VPT/Voyager）：`external` 类型对接，输出统一 trajectory JSON。
-6. 数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。
+6. ~~数据集打包器：扫描 runs 目录 → 汇总 episode 索引（manifest 聚合 + QA 通过标记）。~~ ✅ 2026-07-10 完成：fail-closed cohort/资源/QA/视觉验收、schema 与全文件 `SHA256SUMS`。
 5b. **录制→轨迹转换管线**：捕获一段真人/智能体的输入流转成 trajectory JSON 再逐 profile 重放——接入 Baritone/VPT/MineRL 的通用入口（ITER-04 起）。
 6b. **仿真/渲染加速（deferred，ITER-04+，方案由 planner 设计，coder 勿自行引入）**：目标是超实时出片。硬性要求：**加速采集的渲染结果必须与实时采集等价可互换**（同一世界/轨迹/资源下逐帧内容一致或统计上不可区分，QA 工具可验证）。候选主路线 ReplayMod 离线渲染（record-once-render-N，顺带获得完美 N-way 对齐），spike 需验证：MC 版本兼容、Iris 光影渲染、HUD 保留方案、实测速度倍率、与实时采集的等价性对比。tick-rate 加速路线因 correctness 风险已排除。在此之前，采集管线里禁止引入任何时间缩放。
 7. workspace 镜像目录改成 git clone/worktree（planner 处理）。
@@ -129,4 +131,4 @@ scene:
 
 - ~~4090 headless Xorg~~ **已完成（2026-07-08）**：`mcdata-xorg` 服务运行中，`:77` = RTX 4090，smoke run 已验证（见"当前状态摘要"）。
 - 远端大规模采集的可写大盘仍待解决（4090 `/home` 6.0T 只剩 209G，97% 使用）。短期用回传+purge 缓解；长时段采集建议直接用 l40s（自带 298T CephFS）。
-- **8 卡 L40S 容器**：单卡验证已通过，T3 需要用户提供 8 卡环境（还是 `ssh l40s` 这种容器即可，要求 NVIDIA_VISIBLE_DEVICES 暴露 8 卡；graphics 能力不需要，脚本会自行补齐 X 模块）。
+- **8 卡 L40S 容器（可选吞吐优化）**：不再阻塞数据正确性或 T3；单卡 accepted cohort 已完成。未来若需放量，仍可让容器暴露 8 卡并按 lane 分片，现有 `matrix_shard.sh`/server-port/display 隔离契约无需改动。
