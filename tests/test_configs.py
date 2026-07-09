@@ -58,6 +58,25 @@ def test_matrix_profiles_share_world_and_server_port() -> None:
     assert {profile.get("server_port") for profile in matrix_profiles.values()} == {25570}
 
 
+def test_iter03_supported_expansion_combinations() -> None:
+    profiles = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
+    asset_sets = load_yaml(ROOT / "configs" / "asset_sets.yml")["asset_sets"]
+
+    euphoria = profiles["matrix_euphoria_complementary"]
+    assert euphoria["asset_set"] == "euphoria_complementary"
+    assert "euphoria-patches" in euphoria["mods"]
+    assert asset_sets["euphoria_complementary"] == {
+        "description": "Euphoria Patches mod plus Complementary Reimagined for extended shader features.",
+        "resourcepacks": [],
+        "shaderpack": "complementary-reimagined",
+    }
+
+    solas_patrix = profiles["matrix_solas_patrix"]
+    assert solas_patrix["asset_set"] == "solas_patrix"
+    assert asset_sets["solas_patrix"]["resourcepacks"] == ["patrix-32x"]
+    assert asset_sets["solas_patrix"]["shaderpack"] == "solas-shader"
+
+
 def test_action_strategy_types_are_registered() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml").get("strategies", {})
 
