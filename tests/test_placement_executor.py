@@ -106,6 +106,61 @@ def test_l3_executor_prepares_before_capture_dispatches_inputs_and_cleans_after(
     validate_post_capture_evidence(final, events, replay_log_path=replay_path)
 
 
+def test_l3_reset_sweeps_drops_created_by_killed_entities(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """Model the vanilla side effect that killing scene entities can drop items."""
+    log_path = tmp_path / "server.log"
+    log_path.write_text("[Server thread/INFO]: server ready\n", encoding="utf-8")
+    proc = SimpleNamespace(stdin=StringIO(), poll=lambda: None)
+    executor = placement.PlacementExecutor(
+        proc,
+        server_log_path=log_path,
+        username="mcdata_bot",
+        poll_sec=0,
+    )
+    state = {"nonplayers": 8, "dropped_items": 0}
+    commands: list[str] = []
+
+    def fake_write_commands(_proc, values: list[str]) -> None:
+        for command in values:
+            commands.append(command)
+            if command == "kill @e[type=!minecraft:player]":
+                state["dropped_items"] += state["nonplayers"]
+                state["nonplayers"] = 0
+            elif command == "kill @e[type=minecraft:item]":
+                state["dropped_items"] = 0
+            elif command.startswith("execute "):
+                allowed = True
+                if "unless entity @e[type=minecraft:item]" in command:
+                    allowed = state["dropped_items"] == 0
+                elif "unless entity @e[type=!minecraft:player]" in command:
+                    allowed = state["nonplayers"] == 0 and state["dropped_items"] == 0
+                if allowed:
+                    marker = command.rsplit("run say ", maxsplit=1)[1]
+                    with log_path.open("a", encoding="utf-8") as handle:
+                        handle.write(f"[Server thread/INFO]: [Server] {marker}\n")
+
+    monkeypatch.setattr(placement, "write_commands", fake_write_commands)
+    event = _event()
+    event["placement"]["receipt_timeout_sec"] = 0.01
+
+    evidence = executor.prepare([event])
+
+    assert commands[:3] == [
+        "clear mcdata_bot",
+        "kill @e[type=!minecraft:player]",
+        "kill @e[type=minecraft:item]",
+    ]
+    assert state == {"nonplayers": 0, "dropped_items": 0}
+    assert [item["phase"] for item in evidence["receipts"][:3]] == [
+        "inventory_empty",
+        "dropped_items_empty",
+        "non_player_entities_empty",
+    ]
+
+
 def test_l3_executor_rejects_failed_use_input(tmp_path: Path, monkeypatch) -> None:
     log_path = tmp_path / "server.log"
     log_path.write_text("ready\n", encoding="utf-8")
