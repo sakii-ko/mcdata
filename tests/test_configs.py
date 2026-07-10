@@ -4,7 +4,7 @@ import ast
 from mcdata.actions.strategies import STRATEGY_BUILDERS, build_trajectory
 from mcdata.config import load_profile, load_yaml
 from mcdata.render.scene import _scene_commands
-from mcdata.scene_model import load_scene, scene_commands, scene_mapping, walk_obstacles
+from mcdata.scene_model import load_scene, scene_commands, scene_mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -89,18 +89,22 @@ def test_three_way_preview_profiles_are_strictly_comparable() -> None:
     )
 
 
-def test_ten_minute_ground_loop_covers_capture_duration() -> None:
+def test_ten_minute_render_scan_is_stationary_and_covers_capture_duration() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"][
-        "ground_astar_loop_10min"
+        "render_comparison_scan_10min"
     ]
     trajectory = build_trajectory(
-        "ground_astar_loop_10min",
+        "render_comparison_scan_10min",
         dict(spec),
-        scene_obstacles=walk_obstacles(load_scene(ROOT / "configs")),
     )
 
-    assert trajectory["loops"] == 16
+    assert trajectory["type"] == "look_scan"
     assert trajectory["duration_sec"] >= 600
+    assert trajectory["events"]
+    assert not any("key" in event for event in trajectory["events"])
+    assert {event["duration"] for event in trajectory["events"]} == {6.0}
+    final_event = max(trajectory["events"], key=lambda event: event["t"])
+    assert final_event["t"] < 600 < final_event["t"] + final_event["duration"]
 
 
 def test_matrix_world_states_freeze_scene_and_suppress_recipe_toasts() -> None:

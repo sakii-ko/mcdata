@@ -113,16 +113,7 @@ def _random(spec: dict[str, Any]) -> dict[str, Any]:
 
 def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     start = _point(spec.get("start", [0, -14]))
-    base_goals = [
-        _point(point)
-        for point in spec.get(
-            "goals", [[10, -8], [10, 10], [-10, 10], [-10, -8], [0, -14]]
-        )
-    ]
-    loops = int(spec.get("loops", 1))
-    if loops < 1:
-        raise RuntimeError("astar_walk loops must be at least 1")
-    goals = base_goals * loops
+    goals = [_point(point) for point in spec.get("goals", [[10, -8], [10, 10], [-10, 10], [-10, -8], [0, -14]])]
     bounds = _walk_bounds(spec)
     clearance = int(spec.get("obstacle_clearance", 0))
     blocked = _expand_blocked(_walk_blocked(spec), bounds=bounds, clearance=clearance)
@@ -130,15 +121,12 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     event_spec = dict(spec)
     event_spec["goals"] = goals
     events, duration = _walk_events(route, event_spec)
-    trajectory: dict[str, Any] = {
+    return {
         "type": "astar_walk",
         "duration_sec": round(duration, 3),
         "route": [{"x": x, "z": z} for x, z in route],
         "events": events,
     }
-    if loops != 1:
-        trajectory["loops"] = loops
-    return trajectory
 
 
 def _roam(spec: dict[str, Any]) -> dict[str, Any]:
