@@ -54,12 +54,13 @@
 |---|---|---|
 | `mcdata.actions`（strategies/viz） | config, paths, scene_model | render、qa（策略不知道渲染的存在） |
 | `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
-| `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
+| `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, action_curriculum, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
+| `mcdata.action_curriculum` | 仅标准库 | 所有上层模块（L1–L4 taxonomy、证据归纳与纯验证） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
-| `mcdata.dataset` / `mcdata.dataset_support` | dataset 仅依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |
+| `mcdata.dataset` / `mcdata.dataset_support` | action_curriculum；dataset 另依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |
 | `mcdata.cli` | 所有模块 | —（但只做参数解析和调用，不写业务逻辑） |
 
 注：`actions.replay` 是运行时输入注入后端（消费 trajectory JSON、驱动 X 输入），允许被 render 调用，但它自身必须保持零 mcdata 依赖；长期可能迁出 actions 包成为独立模块。
@@ -89,9 +90,31 @@
 越过硬偏差或恢复预算耗尽时必须终止录制。相同 trajectory SHA 表示相同路线与控制策略，
 不表示不同画质 profile 会产生 byte-identical 的自适应输入序列。
 
-事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。
+事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。高阶动作由事件的
+`semantic_action` 明确标注；taxonomy v1 当前允许 `deliberate_jump`、
+`deterministic_block_placement` 和 `controlled_combat`。后两种只有契约名、尚无执行器，replay
+必须跳过输入并记录 `execution_status=unsupported_contract_only`，不能把“已调度”伪装成“已执行”。
 
-约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过，仅记录 replay_log 时间戳；这是 trajectory 契约的前向兼容规则。
+约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过并记录 replay log；这是 trajectory 契约的前向兼容规则。每个 dispatch 还必须记录 `executed`、`non_input` 或 `unsupported_contract_only`，数据集归纳器只相信与事件 primitive 一致的状态。
+
+### Action curriculum v1
+
+四个 bucket 固定为累积能力集合：`l1= navigation`、`l1_l2= navigation + deliberate_jump`、
+`l1_l2_l3= ... + deterministic_block_placement`、`l1_l2_l3_l4= ... + controlled_combat`。
+trajectory 可用严格的 `action_curriculum={taxonomy_version, planned_level, capabilities}` 声明
+高阶计划；字段缺失的现有 A*/roam/feedback trajectory 兼容推导为 L1。`deliberate_jump` 必须是
+显式标注的单次 Space tap。
+
+run manifest 的顶层 `action_curriculum` 同时记录 planned level/capabilities、逐类 observed semantic
+counts、observed level、bucket、动作日志哈希以及 `controller_recovery_counts`。open-loop 的 observed
+只从与完整 trajectory 逐事件一致的 `replay_log.jsonl` 归纳；feedback 的 L1 输入从
+`navigation_log.jsonl` 的 control 决策归纳。navigator 为脱困执行的一次 Space + S 只记为
+`attempts/jump_taps/reverse_moves`，永不记成 deliberate jump。
+
+accepted 数据 fail closed：缺日志、日志与 trajectory 不一致、manifest 计数被篡改、能力列表非
+累积、出现未声明语义动作、或 planned L2–L4 没有观察到该最高等级动作都会拒绝。dataset index
+为每个 episode 原样保存该记录，并在 `action_buckets` 中生成四组精确的排序 ID/count；它不复制
+capture，训练端可据此按比例采样。
 
 ### run dir（render → qa / 数据集）
 
@@ -101,13 +124,14 @@
   manifest.json      # 见 manifest schema
   pipeline.jsonl     # 结构化日志（每行一个 JSON 事件，含 stage/ts）
   positions.jsonl    # server 反馈坐标/朝向及相对时间
+  replay_log.jsonl   # open-loop 每个 trajectory event 的 dispatch 证据
   navigation_log.jsonl # feedback_roam 控制决策（仅闭环导航）
   server.log         # dedicated server 日志（如启用）
 ```
 
 ### manifest.json（每个 run 的完整可复现描述）
 
-必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane` 字段；schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
+必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`action_curriculum`、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane` 字段；schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
 
 open-loop N-way cohort 的 invariant 是相同 Minecraft 版本、代码 commit、trajectory sha256、world seed、
 完整 world-state、scene 和采集规格。有意改变天气或时间的 profile 必须归入单独的

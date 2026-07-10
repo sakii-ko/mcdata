@@ -71,6 +71,21 @@
 `target_duration_sec=604`，只改变显式 seed。它们是一个 `action_family` 下的六个
 `action_instance`，不是六种控制器。
 
+动作难度另按 taxonomy v1 解耦成四个累积 bucket，而不是从 strategy 名猜测：
+
+| bucket | planned capabilities | accepted episode 的最低真实证据 |
+|---|---|---|
+| `l1` | navigation（移动/相机） | replay event 或 feedback control 必须观察到实际移动；只有 fixed pan 不合格 |
+| `l1_l2` | L1 + deliberate jump | 显式语义标注且实际 dispatch 的 Space tap |
+| `l1_l2_l3` | L1+L2 + deterministic block placement | 最高等级 placement 执行证据 |
+| `l1_l2_l3_l4` | L1+L2+L3 + controlled combat | 最高等级 combat 执行证据 |
+
+现有 A*/roam/feedback trajectory 在没有声明时兼容推导为 L1。navigator 的 stuck recovery 会
+执行 Space + S，但只进入独立的 `controller_recovery_counts`，绝不把 episode 升成 L2。当前
+placement/combat 只有保留的契约事件名，replay 会跳过并标为 `unsupported_contract_only`；在
+真实执行器落地前，L3/L4 数据必须保持为空。dataset index 的 `action_buckets` 只保存每组精确、
+稳定排序的 episode ID 和数量，不复制 capture；训练可以先用 L1，再逐步调整四组采样比例。
+
 ### 2.3 Render
 
 配置层有 33 个 resource-pack asset 定义、8 个 shader family、46 个 asset set；62 个 profile

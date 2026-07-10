@@ -188,6 +188,16 @@ against the actual episode manifests and rejects compound or provenance-drifting
 marked `accepted` only when the expected profile set, manifests, actual artifact hashes, captures,
 resource-pack runtime gates, route/alignment QA, pair gates, and explicit visual review all pass.
 
+Every accepted episode also has an action-curriculum record. The fixed cumulative buckets are
+`l1` (navigation/camera), `l1_l2` (+ deliberate jumps), `l1_l2_l3` (+ deterministic block
+placement), and `l1_l2_l3_l4` (+ controlled combat). `dataset_index.json.action_buckets` contains
+the exact sorted episode IDs and count for each bucket, so training can mix bucket proportions
+without copying videos. Open-loop runs must bind an exact `replay_log.jsonl`; feedback runs bind
+`navigation_log.jsonl`. Navigator recovery Space/S inputs are counted separately and never turn
+an L1 episode into L2. L3/L4 event names are reserved by taxonomy v1, but the current replay marks
+them `unsupported_contract_only`; they cannot enter an accepted advanced bucket until a real
+executor emits verifiable evidence.
+
 The controlled high-quality lighting/weather seed matrix uses the following profiles with one
 fixed Legendary RT 128x + Complementary Unbound renderer preset:
 
