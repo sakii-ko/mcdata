@@ -57,6 +57,46 @@ assets:
       provider: "modrinth"
       slug: "modernarch"
       type: "resourcepack"
+    legendary-rt-128x:
+      provider: "modrinth"
+      slug: "legendary-rt-textures"
+      type: "resourcepack"
+    optimum-realism-64x:
+      provider: "modrinth"
+      slug: "optimum-realism"
+      type: "resourcepack"
+    prettyrealistic-32x:
+      provider: "modrinth"
+      slug: "prettyrealistic"
+      type: "resourcepack"
+    yitalith-128x:
+      provider: "modrinth"
+      slug: "yitalith"
+      type: "resourcepack"
+    reimagined-style:
+      provider: "modrinth"
+      slug: "reimagined"
+      type: "resourcepack"
+    ashen-16x:
+      provider: "modrinth"
+      slug: "ashen"
+      type: "resourcepack"
+    jeelh-simplified:
+      provider: "modrinth"
+      slug: "jeelh-simplified"
+      type: "resourcepack"
+    quadral:
+      provider: "modrinth"
+      slug: "quadral"
+      type: "resourcepack"
+    bare-bones-pbr-128x:
+      provider: "modrinth"
+      slug: "bare-bones-pbr-x128"
+      type: "resourcepack"
+    natural-texture-pack:
+      provider: "modrinth"
+      slug: "natural-texture-pack"
+      type: "resourcepack"
     better-leaves:
       provider: "modrinth"
       slug: "better-leaves"
@@ -136,6 +176,11 @@ asset_sets:
   vanilla:
     resourcepacks: []
     shaderpack: null
+
+  vanilla_unbound:
+    description: "Vanilla materials with Complementary Unbound 5.8 for the look-development reference."
+    resourcepacks: []
+    shaderpack: complementary-unbound
 
   faithful_high_no_shader:
     description: "Faithful 32x + Fresh Animations without shaders for a texture-only high-quality preview."
@@ -281,3 +326,129 @@ asset_sets:
     resourcepacks:
       - patrix-32x-full
     shaderpack: solas-shader
+
+  legendary_rt_high_no_shader:
+    description: "Legendary RT 128x full PBR/POM materials without shaders."
+    resourcepacks:
+      - legendary-rt-128x
+    shaderpack: null
+
+  legendary_rt_solas:
+    description: "Legendary RT 128x PBR/POM materials with Solas 3.7 cinematic lighting and water."
+    resourcepacks:
+      - legendary-rt-128x
+    shaderpack: solas-shader
+
+  legendary_rt_unbound:
+    description: "Legendary RT 128x PBR/POM materials with Complementary Unbound 5.8 world-space reflections."
+    resourcepacks:
+      - legendary-rt-128x
+    shaderpack: complementary-unbound
+
+  legendary_rt_bliss:
+    description: "Legendary RT 128x PBR/POM materials with Bliss 2.1 cinematic lighting and water."
+    resourcepacks:
+      - legendary-rt-128x
+    shaderpack: bliss-shader
+
+  modernarch_unbound:
+    description: "ModernArch 128x LabPBR/POM materials with Complementary Unbound 5.8."
+    resourcepacks:
+      - modernarch-128x
+    shaderpack: complementary-unbound
+
+  optimum_realism_high_no_shader:
+    description: "Optimum Realism 64x complete depth-write POM materials without shaders."
+    resourcepacks:
+      - optimum-realism-64x
+    shaderpack: null
+
+  optimum_realism_unbound:
+    description: "Optimum Realism 64x depth-write POM materials with Complementary Unbound 5.8."
+    resourcepacks:
+      - optimum-realism-64x
+    shaderpack: complementary-unbound
+
+  patrix_full_high_no_shader:
+    description: "All public Patrix 32x components without shaders."
+    resourcepacks:
+      - patrix-32x-full
+    shaderpack: null
+
+  patrix_full_unbound:
+    description: "All public Patrix 32x components with Complementary Unbound 5.8."
+    resourcepacks:
+      - patrix-32x-full
+    shaderpack: complementary-unbound
+
+  stylista_high_no_shader:
+    description: "Stylista 128x stylized LabPBR materials without shaders."
+    resourcepacks:
+      - stylista
+    shaderpack: null
+
+  prettyrealistic_high_no_shader:
+    description: "PrettyRealistic 32x faithful PBR/POM materials without shaders."
+    resourcepacks:
+      - prettyrealistic-32x
+    shaderpack: null
+
+  prettyrealistic_unbound:
+    description: "PrettyRealistic 32x faithful PBR/POM materials with Complementary Unbound 5.8."
+    resourcepacks:
+      - prettyrealistic-32x
+    shaderpack: complementary-unbound
+
+  yitalith_high_no_shader:
+    description: "Yitalith 128x broad LabPBR materials without shaders."
+    resourcepacks:
+      - yitalith-128x
+    shaderpack: null
+
+  yitalith_unbound:
+    description: "Yitalith 128x broad LabPBR materials with Complementary Unbound 5.8."
+    resourcepacks:
+      - yitalith-128x
+    shaderpack: complementary-unbound
+
+  style_reimagined:
+    description: "Reimagined's broad cozy and immersive art-direction overhaul."
+    resourcepacks:
+      - reimagined-style
+    shaderpack: null
+
+  style_ashen:
+    description: "Ashen's feature-complete medieval fantasy art direction."
+    resourcepacks:
+      - ashen-16x
+    shaderpack: null
+
+  style_simplified:
+    description: "Simplified's clean, colorful complete retexture."
+    resourcepacks:
+      - jeelh-simplified
+    shaderpack: null
+
+  style_quadral:
+    description: "Quadral's bright, crisp and vibrant art direction."
+    resourcepacks:
+      - quadral
+    shaderpack: null
+
+  style_bare_bones_pbr:
+    description: "Bare Bones PBR 128x trailer-like style; runtime compatibility candidate for 26.2."
+    resourcepacks:
+      - bare-bones-pbr-128x
+    shaderpack: null
+
+  style_natural:
+    description: "Natural Texture Pack's soft-line Legacy Console art direction."
+    resourcepacks:
+      - natural-texture-pack
+    shaderpack: null
+
+  stylista_unbound:
+    description: "Stylista 128x stylized LabPBR materials with Complementary Unbound 5.8."
+    resourcepacks:
+      - stylista
+    shaderpack: complementary-unbound

@@ -462,6 +462,8 @@ def _remove_stale_mods(mods_dir: Path, *, slug: str, keep: str) -> None:
         "entity-model-features": ["entity_model_features-", "entity-model-features-"],
         "entitytexturefeatures": ["entity_texture_features-", "entitytexturefeatures-"],
         "continuity": ["continuity-"],
+        "polytone": ["polytone-"],
+        "respackopts": ["respackopts-"],
         "lambdynamiclights": ["lambdynamiclights-"],
         "euphoria-patches": ["EuphoriaPatcher-", "euphoria-patches-"],
     }.get(slug, [f"{slug}-"])

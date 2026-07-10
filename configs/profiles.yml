@@ -566,6 +566,7 @@ profiles:
       - advancementdisable
       - no-chat-reports
       - continuity
+      - polytone
       - entity-model-features
       - entitytexturefeatures
     asset_set: "vanilla"
@@ -599,6 +600,7 @@ profiles:
       - advancementdisable
       - no-chat-reports
       - continuity
+      - polytone
       - entity-model-features
       - entitytexturefeatures
     asset_set: "modernarch_high_no_shader"
@@ -632,6 +634,7 @@ profiles:
       - advancementdisable
       - no-chat-reports
       - continuity
+      - polytone
       - entity-model-features
       - entitytexturefeatures
     asset_set: "modernarch_solas"
@@ -639,32 +642,64 @@ profiles:
     height: 1080
     server_port: 25570
     world_profile: "render_matrix_base"
-    shader_options:
+    shader_options: &solas_max_realism_options
       ADVANCED_MATERIALS: "true"
+      ALBEDO_METAL: "true"
+      BLOOM: "true"
+      CHROMATIC_ABERRATION: "false"
+      DISTANT_BLUR: "false"
+      DOF: "false"
+      DYNAMIC_HANDLIGHT: "true"
+      FXAA: "false"
       GENERATED_NORMALS: "false"
       GENERATED_SPECULAR: "false"
       LPV_CLOUDY_FOG: "true"
+      LPV_FOG: "true"
       MATERIAL_FORMAT: "1"
+      MOTION_BLUR: "false"
       PARALLAX: "true"
-      PARALLAX_DISTANCE: "32"
-      PARALLAX_QUALITY: "64"
+      PARALLAX_DEPTH: "0.20"
+      PARALLAX_DISTANCE: "64"
+      PARALLAX_QUALITY: "128"
+      REALTIME_SHADOWS: "true"
       REFLECTION: "2"
+      REFLECTION_LOD: "1"
+      REFLECTION_MODE: "1"
+      REFLECTION_RAIN: "true"
+      REFLECTION_RAIN_AMOUNT: "1.0"
       REFLECTION_ROUGH: "true"
+      REFLECTION_SKY_FALLOFF: "4"
       REFLECTION_SPECULAR: "true"
       REFRACTION: "true"
       REFRACTION_STRENGTH: "0.6"
       SELF_SHADOW: "true"
-      SELF_SHADOW_QUALITY: "6"
+      SELF_SHADOW_ANGLE: "3.0"
+      SELF_SHADOW_QUALITY: "16"
+      SELF_SHADOW_STRENGTH: "32"
+      SHADOW_COLOR: "true"
       SHADOW_ENTITIES: "true"
-      VL_SAMPLES: "12"
-      VOXEL_VOLUME_SIZE: "256"
+      SHADOW_PIXEL: "0"
+      SPECULAR_HIGHLIGHT: "2"
+      SPECULAR_HIGHLIGHT_ROUGH: "true"
+      SSAO: "true"
+      SS_SHADOWS: "true"
+      TAA: "true"
+      VC_SHADOWS: "true"
+      VL: "true"
+      VL_SAMPLES: "16"
+      VL_STRENGTH: "1.50"
+      VOLUMETRIC_CLOUDS: "true"
+      VOXEL_VOLUME_SIZE: "512"
       WATER_CAUSTICS: "true"
       WATER_CAUSTICS_STRENGTH: "2.50"
       WATER_FOG: "true"
       WATER_NORMALS: "3"
+      WATER_NORMAL_BUMP: "0.5"
+      WATER_NORMAL_DETAIL: "0.30"
+      WATER_NORMAL_OFFSET: "0.5"
       WATER_REFLECTIONS: "true"
-      shadowDistance: "512.0"
-      shadowMapResolution: "4096"
+      shadowDistance: "384.0"
+      shadowMapResolution: "8192"
     world_state:
       clear_non_player_entities: true
       gamerules:
@@ -691,6 +726,7 @@ profiles:
       - advancementdisable
       - no-chat-reports
       - continuity
+      - polytone
       - entity-model-features
       - entitytexturefeatures
     asset_set: "patrix_full_solas"
@@ -698,32 +734,7 @@ profiles:
     height: 1080
     server_port: 25570
     world_profile: "render_matrix_base"
-    shader_options:
-      ADVANCED_MATERIALS: "true"
-      GENERATED_NORMALS: "false"
-      GENERATED_SPECULAR: "false"
-      LPV_CLOUDY_FOG: "true"
-      MATERIAL_FORMAT: "1"
-      PARALLAX: "true"
-      PARALLAX_DISTANCE: "32"
-      PARALLAX_QUALITY: "64"
-      REFLECTION: "2"
-      REFLECTION_ROUGH: "true"
-      REFLECTION_SPECULAR: "true"
-      REFRACTION: "true"
-      REFRACTION_STRENGTH: "0.6"
-      SELF_SHADOW: "true"
-      SELF_SHADOW_QUALITY: "6"
-      SHADOW_ENTITIES: "true"
-      VL_SAMPLES: "12"
-      VOXEL_VOLUME_SIZE: "256"
-      WATER_CAUSTICS: "true"
-      WATER_CAUSTICS_STRENGTH: "2.50"
-      WATER_FOG: "true"
-      WATER_NORMALS: "3"
-      WATER_REFLECTIONS: "true"
-      shadowDistance: "512.0"
-      shadowMapResolution: "4096"
+    shader_options: *solas_max_realism_options
     world_state:
       clear_non_player_entities: true
       gamerules:
@@ -736,3 +747,741 @@ profiles:
         z: -14
         yaw: 90
         pitch: 18
+
+  feedback_legendary_rt_1080p:
+    description: "Feedback-roam material pass: Legendary RT 128x full PBR/POM base at 1080p."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "legendary_rt_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  preview_legendary_rt_solas_1080p: &legendary_rt_solas_profile
+    description: "Visual candidate: Legendary RT 128x with Solas 3.7 Ultra/LabPBR lighting and water."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "legendary_rt_solas"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *solas_max_realism_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  feedback_legendary_rt_unbound_1080p: &legendary_rt_unbound_profile
+    description: "Feedback-roam shader pass: Legendary RT 128x with Complementary Unbound cinematic PBR at 1080p."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "legendary_rt_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: &unbound_cinematic_options
+      ANISOTROPIC_FILTER: "16"
+      BLOCK_REFLECT_QUALITY: "3"
+      BLOOM_ENABLED: "1"
+      CHROMA_ABERRATION: "0"
+      CLOUD_QUALITY: "3"
+      CLOUD_SHADOWS: "true"
+      COLORED_LIGHTING: "512"
+      DETAIL_QUALITY: "3"
+      DIRECTIONAL_BLOCKLIGHT: "7"
+      ENTITY_SHADOW: "1"
+      FXAA_DEFINE: "1"
+      LIGHTSHAFT_QUALI_DEFINE: "4"
+      MOTION_BLUR_EFFECT: "-1"
+      NORMAL_MAP_STRENGTH: "100"
+      POM: "true"
+      POM_ALLOW_CUTOUT: "false"
+      POM_DEPTH: "0.80"
+      POM_DISTANCE: "64"
+      POM_LIGHTING_MODE: "2"
+      POM_QUALITY: "256"
+      RAIN_PUDDLES: "1"
+      REFLECTION_RES: "1.0"
+      RP_MODE: "3"
+      SHADER_STYLE: "4"
+      SHADOW_QUALITY: "5"
+      SHADOW_SMOOTHING: "4"
+      SSAO_QUALI_DEFINE: "3"
+      TAA_MODE: "1"
+      WATER_CAUSTIC_STYLE_DEFINE: "3"
+      WATER_REFRACTION_INTENSITY: "2.0"
+      WATER_REFLECT_QUALITY: "2"
+      WATER_STYLE_DEFINE: "3"
+      WORLD_BLUR: "0"
+      WORLD_SPACE_PLAYER_REF: "1"
+      WORLD_SPACE_REFLECTIONS: "1"
+      WORLD_SPACE_REF_MODE: "2"
+      shadowDistance: "256.0"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  preview_optimum_unbound_1080p:
+    description: "Visual candidate: Optimum Realism 64x depth-write POM with Complementary Unbound cinematic PBR."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "optimum_realism_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  preview_stylista_unbound_1080p:
+    description: "Visual candidate: Stylista 128x stylized LabPBR with Complementary Unbound cinematic PBR."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "stylista_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_vanilla_unbound_1080p:
+    description: "Look-dev reference: vanilla materials with maximum-realism Complementary Unbound settings."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "vanilla_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_modernarch_unbound_1080p:
+    description: "Look-dev candidate: ModernArch 128x with maximum-realism Complementary Unbound settings."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "modernarch_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_optimum_1080p:
+    description: "Look-dev material candidate: Optimum Realism 64x complete depth-write POM pack."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "optimum_realism_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_patrix_full_1080p:
+    description: "Look-dev material candidate: all public Patrix 32x components without shaders."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "patrix_full_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_patrix_full_unbound_1080p:
+    description: "Look-dev candidate: all public Patrix 32x components with maximum-realism Complementary Unbound."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "patrix_full_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_stylista_1080p:
+    description: "Look-dev material candidate: Stylista 128x stylized LabPBR pack without shaders."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "stylista_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_legendary_rt_bliss_1080p:
+    description: "Look-dev shader candidate: Legendary RT 128x with maximum-realism Bliss 2.1.2."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "legendary_rt_bliss"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options:
+      AUTO_EXPOSURE: "true"
+      Adaptive_Step_length: "false"
+      BASIC_SHADOW_FILTER: "true"
+      BLEND_FACTOR: "0.12"
+      BLOOM_STRENGTH: "1.0"
+      CLOUDS_QUALITY: "1.0"
+      CLOUDS_SHADOWS: "true"
+      DOF_QUALITY: "-1"
+      Dynamic_SSR_quality: "false"
+      EMISSIVE_TYPE: "2"
+      GI_Strength: "1.0"
+      HQ_SSGI: "false"
+      LPV_ENABLED: "true"
+      LPV_ENTITY_LIGHTS: "true"
+      LPV_NORMAL_STRENGTH: "75"
+      LPV_REDSTONE_LIGHTS: "true"
+      LPV_SIZE: "8"
+      LPV_VL_FOG_ILLUMINATION: "true"
+      LPV_VL_FOG_ILLUMINATION_BRIGHTNESS: "100"
+      MATERIAL_AO: "true"
+      MAX_DIST: "60.0"
+      MAX_ITERATIONS: "100"
+      MOTION_BLUR: "false"
+      POM: "true"
+      POM_DEPTH: "0.25"
+      Porosity: "true"
+      Puddles: "true"
+      RENDER_ENTITY_SHADOWS: "true"
+      RENDER_PLAYER_SHADOWS: "true"
+      Refraction: "true"
+      Rough_reflections: "true"
+      Roughness_Threshold: "2.0"
+      SCREENSPACE_CONTACT_SHADOWS: "true"
+      SCREENSPACE_REFLECTIONS: "true"
+      SHADOW_FILTER_SAMPLE_COUNT: "32"
+      SHARPENING: "0.35"
+      SNELLS_WINDOW: "true"
+      SSR_STEPS: "100"
+      Screen_Space_Reflections: "true"
+      Sky_reflection: "true"
+      Specular_Reflections: "true"
+      TAA: "true"
+      TAA_UPSCALING: "false"
+      TONEMAP: "ToneMap_AgX_minimal"
+      TOGGLE_VL_FOG: "true"
+      TRANSLUCENT_COLORED_SHADOWS: "true"
+      VL_RENDER_RESOLUTION: "1.0"
+      VL_SAMPLES: "24"
+      VOLUMETRIC_CLOUDS: "true"
+      VPS_Search_Samples: "16"
+      Variable_Penumbra_Shadows: "true"
+      WATER_BACKGROUND_SPECULAR: "true"
+      WATER_CAUSTICS_BRIGHTNESS: "1.5"
+      WATER_REFLECTIONS: "true"
+      WATER_SUN_SPECULAR: "true"
+      WATER_WAVE_SPEED: "1.0"
+      WATER_WAVE_STRENGTH: "1.0"
+      indirect_effect: "2"
+      reflection_quality: "100.0"
+      shadowDistance: "384.0"
+      shadowMapResolution: "8192"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_prettyrealistic_1080p:
+    description: "Look-dev material candidate: PrettyRealistic 32x faithful PBR/POM without shaders."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "prettyrealistic_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_prettyrealistic_unbound_1080p:
+    description: "Look-dev candidate: PrettyRealistic 32x faithful PBR/POM with Complementary Unbound."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "prettyrealistic_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options:
+      <<: *unbound_cinematic_options
+      RP_MODE: "2"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_yitalith_1080p:
+    description: "Look-dev material candidate: Yitalith 128x broad LabPBR pack without shaders."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "yitalith_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_yitalith_unbound_1080p:
+    description: "Look-dev candidate: Yitalith 128x broad LabPBR materials with Complementary Unbound."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "yitalith_unbound"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options: *unbound_cinematic_options
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_style_vanilla_1080p: &style_lookdev_profile
+    description: "Style look-dev reference with the shared style-pack compatibility mod superset."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - polytone
+      - respackopts
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "vanilla"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_style_stylista_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: Stylista 128x hand-authored LabPBR art direction."
+    asset_set: "stylista_high_no_shader"
+
+  lookdev_style_reimagined_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: Reimagined's cozy, model-rich immersive overhaul."
+    asset_set: "style_reimagined"
+
+  lookdev_style_ashen_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: Ashen's feature-complete medieval fantasy overhaul."
+    asset_set: "style_ashen"
+
+  lookdev_style_simplified_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: Simplified's clean and colorful complete retexture."
+    asset_set: "style_simplified"
+
+  lookdev_style_quadral_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: Quadral's bright, crisp and vibrant art direction."
+    asset_set: "style_quadral"
+
+  lookdev_style_bare_bones_pbr_1080p:
+    <<: *style_lookdev_profile
+    description: "Conditional style look-dev: Bare Bones PBR 128x trailer aesthetic; runtime gate required."
+    asset_set: "style_bare_bones_pbr"
+
+  lookdev_style_natural_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev fallback: Natural Texture Pack's soft-line Legacy Console aesthetic."
+    asset_set: "style_natural"
+
+  lookdev_legendary_rt_unbound_seuspbr_1080p:
+    <<: *legendary_rt_unbound_profile
+    description: "Material-format calibration: Legendary RT with Unbound SEUS PBR decoding."
+    shader_options:
+      <<: *unbound_cinematic_options
+      RP_MODE: "2"
+
+  lookdev_legendary_rt_solas_seuspbr_1080p:
+    <<: *legendary_rt_solas_profile
+    description: "Material-format calibration: Legendary RT with Solas SEUS PBR decoding."
+    shader_options:
+      <<: *solas_max_realism_options
+      MATERIAL_FORMAT: "0"

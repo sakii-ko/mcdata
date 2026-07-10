@@ -190,6 +190,7 @@ def test_feedback_visual_profiles_share_required_fabric_superset() -> None:
         "advancementdisable",
         "no-chat-reports",
         "continuity",
+        "polytone",
         "entity-model-features",
         "entitytexturefeatures",
     ]
@@ -236,8 +237,11 @@ def test_solas_profiles_emit_verified_ultra_labpbr_options(tmp_path: Path) -> No
     patrix = load_profile(
         ROOT / "configs", "preview_patrix_full_solas_1080p"
     )["shader_options"]
+    legendary = load_profile(
+        ROOT / "configs", "preview_legendary_rt_solas_1080p"
+    )["shader_options"]
 
-    assert modernarch == patrix
+    assert modernarch == patrix == legendary
     assert modernarch["MATERIAL_FORMAT"] == "1"
     assert modernarch["ADVANCED_MATERIALS"] == "true"
     assert modernarch["GENERATED_NORMALS"] == "false"
@@ -246,8 +250,12 @@ def test_solas_profiles_emit_verified_ultra_labpbr_options(tmp_path: Path) -> No
     assert modernarch["WATER_REFLECTIONS"] == "true"
     assert modernarch["WATER_CAUSTICS"] == "true"
     assert modernarch["REFRACTION"] == "true"
-    assert modernarch["shadowMapResolution"] == "4096"
-    assert modernarch["shadowDistance"] == "512.0"
+    assert modernarch["PARALLAX_QUALITY"] == "128"
+    assert modernarch["SELF_SHADOW_QUALITY"] == "16"
+    assert modernarch["VL_SAMPLES"] == "16"
+    assert modernarch["VOXEL_VOLUME_SIZE"] == "512"
+    assert modernarch["shadowMapResolution"] == "8192"
+    assert modernarch["shadowDistance"] == "384.0"
 
     write_iris_config(
         tmp_path,
@@ -260,6 +268,214 @@ def test_solas_profiles_emit_verified_ultra_labpbr_options(tmp_path: Path) -> No
         ROOT / "tests" / "golden" / "solas_3_7_ultra_labpbr_options.txt"
     ).read_bytes()
     assert actual == expected
+
+
+def test_realistic_lookdev_profiles_are_aligned_and_use_exact_26_2_assets() -> None:
+    config = load_yaml(ROOT / "configs" / "asset_sets.yml")
+    assets = config["assets"]["resourcepacks"]
+    asset_sets = config["asset_sets"]
+    names = [
+        "feedback_vanilla_1080p",
+        "lookdev_vanilla_unbound_1080p",
+        "feedback_legendary_rt_1080p",
+        "feedback_legendary_rt_unbound_1080p",
+        "lookdev_legendary_rt_bliss_1080p",
+        "feedback_modernarch_1080p",
+        "lookdev_modernarch_unbound_1080p",
+        "lookdev_optimum_1080p",
+        "preview_optimum_unbound_1080p",
+        "lookdev_patrix_full_1080p",
+        "lookdev_patrix_full_unbound_1080p",
+        "lookdev_stylista_1080p",
+        "preview_stylista_unbound_1080p",
+        "lookdev_prettyrealistic_1080p",
+        "lookdev_prettyrealistic_unbound_1080p",
+        "lookdev_yitalith_1080p",
+        "lookdev_yitalith_unbound_1080p",
+    ]
+    resolved = [load_profile(ROOT / "configs", name) for name in names]
+    invariant = [
+        {
+            key: value
+            for key, value in profile.items()
+            if key not in {"description", "asset_set", "shader_options"}
+        }
+        for profile in resolved
+    ]
+
+    assert invariant[1:] == invariant[:-1]
+    assert assets["legendary-rt-128x"]["slug"] == "legendary-rt-textures"
+    assert assets["optimum-realism-64x"]["slug"] == "optimum-realism"
+    assert assets["prettyrealistic-32x"]["slug"] == "prettyrealistic"
+    assert assets["yitalith-128x"]["slug"] == "yitalith"
+    assert asset_sets["legendary_rt_high_no_shader"]["shaderpack"] is None
+    assert asset_sets["legendary_rt_unbound"]["shaderpack"] == (
+        "complementary-unbound"
+    )
+    assert asset_sets["optimum_realism_unbound"]["resourcepacks"] == [
+        "optimum-realism-64x"
+    ]
+    assert asset_sets["patrix_full_high_no_shader"]["resourcepacks"] == [
+        "patrix-32x-full"
+    ]
+    assert asset_sets["patrix_full_unbound"]["shaderpack"] == (
+        "complementary-unbound"
+    )
+    assert asset_sets["stylista_unbound"]["resourcepacks"] == ["stylista"]
+
+
+def test_unbound_profiles_emit_verified_cinematic_labpbr_options(tmp_path: Path) -> None:
+    names = [
+        "feedback_legendary_rt_unbound_1080p",
+        "lookdev_vanilla_unbound_1080p",
+        "lookdev_modernarch_unbound_1080p",
+        "preview_optimum_unbound_1080p",
+        "lookdev_patrix_full_unbound_1080p",
+        "preview_stylista_unbound_1080p",
+        "lookdev_yitalith_unbound_1080p",
+    ]
+    options = [
+        load_profile(ROOT / "configs", name)["shader_options"] for name in names
+    ]
+
+    assert options[1:] == options[:-1]
+    assert options[0]["RP_MODE"] == "3"
+    assert options[0]["POM_QUALITY"] == "256"
+    assert options[0]["SHADOW_QUALITY"] == "5"
+    assert options[0]["WATER_REFLECT_QUALITY"] == "2"
+    assert options[0]["WORLD_SPACE_REFLECTIONS"] == "1"
+    assert options[0]["REFLECTION_RES"] == "1.0"
+    assert options[0]["MOTION_BLUR_EFFECT"] == "-1"
+    assert load_profile(
+        ROOT / "configs", "lookdev_prettyrealistic_unbound_1080p"
+    )["shader_options"]["RP_MODE"] == "2"
+
+    write_iris_config(
+        tmp_path,
+        shaderpack="ComplementaryUnbound_r5.8.1.zip",
+        enabled=True,
+        shader_options=options[0],
+    )
+    actual = (
+        tmp_path / "shaderpacks" / "ComplementaryUnbound_r5.8.1.zip.txt"
+    ).read_bytes()
+    expected = (
+        ROOT / "tests" / "golden" / "complementary_unbound_5_8_cinematic_options.txt"
+    ).read_bytes()
+    assert actual == expected
+
+
+def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:
+    profile = load_profile(
+        ROOT / "configs", "lookdev_legendary_rt_bliss_1080p"
+    )
+    options = profile["shader_options"]
+
+    assert profile["asset_set"] == "legendary_rt_bliss"
+    assert options["LPV_ENABLED"] == "true"
+    assert options["POM"] == "true"
+    assert options["Screen_Space_Reflections"] == "true"
+    assert options["SCREENSPACE_REFLECTIONS"] == "true"
+    assert options["WATER_REFLECTIONS"] == "true"
+    assert options["shadowMapResolution"] == "8192"
+    assert options["MOTION_BLUR"] == "false"
+    assert options["DOF_QUALITY"] == "-1"
+    assert options["HQ_SSGI"] == "false"
+    assert options["indirect_effect"] == "2"
+
+    write_iris_config(
+        tmp_path,
+        shaderpack="Bliss_v2.1.2_(Chocapic13_Shaders_edit).zip",
+        enabled=True,
+        shader_options=options,
+    )
+    actual = (
+        tmp_path
+        / "shaderpacks"
+        / "Bliss_v2.1.2_(Chocapic13_Shaders_edit).zip.txt"
+    ).read_bytes()
+    expected = (
+        ROOT / "tests" / "golden" / "bliss_2_1_2_max_realism_options.txt"
+    ).read_bytes()
+    assert actual == expected
+
+
+def test_legendary_rt_material_format_calibration_changes_only_decoder() -> None:
+    unbound_lab = load_profile(
+        ROOT / "configs", "feedback_legendary_rt_unbound_1080p"
+    )
+    unbound_seus = load_profile(
+        ROOT / "configs", "lookdev_legendary_rt_unbound_seuspbr_1080p"
+    )
+    solas_lab = load_profile(
+        ROOT / "configs", "preview_legendary_rt_solas_1080p"
+    )
+    solas_seus = load_profile(
+        ROOT / "configs", "lookdev_legendary_rt_solas_seuspbr_1080p"
+    )
+
+    assert unbound_lab["shader_options"]["RP_MODE"] == "3"
+    assert unbound_seus["shader_options"]["RP_MODE"] == "2"
+    assert solas_lab["shader_options"]["MATERIAL_FORMAT"] == "1"
+    assert solas_seus["shader_options"]["MATERIAL_FORMAT"] == "0"
+    for lab, seus, option in (
+        (unbound_lab, unbound_seus, "RP_MODE"),
+        (solas_lab, solas_seus, "MATERIAL_FORMAT"),
+    ):
+        lab_options = dict(lab["shader_options"])
+        seus_options = dict(seus["shader_options"])
+        lab_options.pop(option)
+        seus_options.pop(option)
+        assert lab_options == seus_options
+        for key in lab:
+            if key not in {"description", "shader_options"}:
+                assert lab[key] == seus[key]
+
+
+def test_style_lookdev_profiles_are_aligned_and_distinct() -> None:
+    names = [
+        "lookdev_style_vanilla_1080p",
+        "lookdev_style_stylista_1080p",
+        "lookdev_style_reimagined_1080p",
+        "lookdev_style_ashen_1080p",
+        "lookdev_style_simplified_1080p",
+        "lookdev_style_quadral_1080p",
+        "lookdev_style_bare_bones_pbr_1080p",
+        "lookdev_style_natural_1080p",
+    ]
+    resolved = [load_profile(ROOT / "configs", name) for name in names]
+    invariant = [
+        {
+            key: value
+            for key, value in profile.items()
+            if key not in {"description", "asset_set"}
+        }
+        for profile in resolved
+    ]
+    expected_mods = [
+        "fabric-api",
+        "sodium",
+        "iris",
+        "modmenu",
+        "advancementdisable",
+        "no-chat-reports",
+        "continuity",
+        "polytone",
+        "respackopts",
+        "entity-model-features",
+        "entitytexturefeatures",
+    ]
+    config = load_yaml(ROOT / "configs" / "asset_sets.yml")
+    assets = config["assets"]["resourcepacks"]
+
+    assert invariant[1:] == invariant[:-1]
+    assert resolved[0]["mods"] == expected_mods
+    assert len({profile["asset_set"] for profile in resolved}) == len(resolved)
+    assert assets["reimagined-style"]["slug"] == "reimagined"
+    assert assets["ashen-16x"]["slug"] == "ashen"
+    assert assets["jeelh-simplified"]["slug"] == "jeelh-simplified"
+    assert assets["quadral"]["slug"] == "quadral"
+    assert assets["bare-bones-pbr-128x"]["slug"] == "bare-bones-pbr-x128"
 
 
 def test_action_strategy_types_are_registered() -> None:
