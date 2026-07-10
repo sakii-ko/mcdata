@@ -13,6 +13,7 @@ from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_d
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
+from mcdata.qa.visual_grid import VisualGridError, write_visual_grid
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
@@ -213,6 +214,19 @@ def qa_compare(
     """Compare aligned frames across two or more run dirs/videos."""
     report = write_compare_report(inputs, frames=frames, out_dir=out_dir)
     console.print(f"Wrote QA compare report: {report['outputs']['markdown']}")
+
+
+@app.command("visual-grid")
+def visual_grid(
+    spec: Path = typer.Argument(...),
+    out_dir: Path = typer.Option(Path("visual_grid"), "--out-dir"),
+) -> None:
+    """Build a lossless four-moment rendering comparison grid."""
+    try:
+        report = write_visual_grid(spec, out_dir)
+    except VisualGridError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(f"Wrote visual comparison grid: {report['outputs']['grid']['path']}")
 
 
 @app.command("dataset-index")
