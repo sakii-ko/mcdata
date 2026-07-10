@@ -18,7 +18,7 @@ strategies:
   render_comparison_scan_10min:
     type: "look_scan"
     duration_sec: 604
-    sweep_px: 520
+    sweep_px: -420
     sweep_sec: 6.0
     vertical_px: 25
     pause_sec: 0.5
