@@ -126,6 +126,13 @@ profiles:
     height: 720
     server_port: 25570
     world_profile: "render_matrix_base"
+    world_state:
+      player:
+        x: -3
+        y: 64
+        z: -8
+        yaw: 0
+        pitch: 18
 
   preview_texture_high:
     description: "10-minute preview texture pass: Faithful 32x + Fresh Animations, high settings, no shader."
@@ -146,6 +153,40 @@ profiles:
     height: 720
     server_port: 25570
     world_profile: "render_matrix_base"
+    world_state:
+      player:
+        x: -3
+        y: 64
+        z: -8
+        yaw: 0
+        pitch: 18
+
+  preview_shader_high:
+    description: "10-minute preview shader pass: Faithful 32x + Fresh Animations with Complementary water reflections."
+    version_strategy: "latest_modded"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "complementary_high"
+    width: 1280
+    height: 720
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      player:
+        x: -3
+        y: 64
+        z: -8
+        yaw: 0
+        pitch: 18
 
   matrix_low:
     description: "3-way matrix baseline: vanilla resources, no shader, identical world/action."
