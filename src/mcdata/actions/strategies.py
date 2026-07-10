@@ -16,6 +16,7 @@ from mcdata.actions.pathing import (
     walk_blocked as _walk_blocked,
     walk_bounds as _walk_bounds,
 )
+from mcdata.actions.placement_events import append_block_placement, append_deliberate_jump
 from mcdata.config import load_yaml
 from mcdata.scene_model import load_scene, walk_obstacles
 
@@ -466,19 +467,16 @@ def _apply_waypoint_actions(
                 }
             )
             t += 0.35 + scan_pause_sec
-        deliberate_jump = action.get("deliberate_jump", False)
-        if not isinstance(deliberate_jump, bool):
-            raise RuntimeError("waypoint deliberate_jump must be a boolean")
-        if deliberate_jump:
-            events.append(
-                {
-                    "t": round(t, 3),
-                    "key": "space",
-                    "action": "tap",
-                    "semantic_action": "deliberate_jump",
-                    "route_index": route_index,
-                }
-            )
+        t = append_block_placement(
+            events,
+            t,
+            action.get("block_placement"),
+            route_index=route_index,
+            scan_pause_sec=scan_pause_sec,
+        )
+        append_deliberate_jump(
+            events, t, action.get("deliberate_jump", False), route_index=route_index
+        )
     return t
 
 

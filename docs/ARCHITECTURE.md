@@ -52,13 +52,13 @@
 
 | 模块 | 允许 import | 明确禁止 |
 |---|---|---|
-| `mcdata.actions`（strategies/viz） | config, paths, scene_model | render、qa（策略不知道渲染的存在） |
+| `mcdata.actions`（strategies/viz） | config, paths, scene_model, action_placement（纯 placement event contract） | render、qa（策略不知道渲染的存在） |
 | `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
-| `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, action_curriculum, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
+| `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, action_curriculum, action_placement, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe/placement 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
 | `mcdata.terrain` | config, scene_model（纯校验/哈希；只读 canonical registry 与所绑定配置） | render、actions、qa、manifest、dataset（Phase 1 尚未 wiring） |
-| `mcdata.action_curriculum` | 仅标准库 | 所有上层模块（L1–L4 taxonomy、证据归纳与纯验证） |
+| `mcdata.action_curriculum` / `mcdata.action_placement` | action_curriculum 可依赖 action_placement；其余仅标准库 | 所有上层模块（taxonomy、placement 计划/回执验证与证据归纳） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
 | `mcdata.dataset` / `mcdata.dataset_support` | action_curriculum；dataset 另依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |
@@ -93,10 +93,15 @@
 
 事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。高阶动作由事件的
 `semantic_action` 明确标注；taxonomy v1 当前允许 `deliberate_jump`、
-`deterministic_block_placement` 和 `controlled_combat`。后两种只有契约名、尚无执行器，replay
-必须跳过输入并记录 `execution_status=unsupported_contract_only`，不能把“已调度”伪装成“已执行”。
+`deterministic_block_placement` 和 `controlled_combat`。L3 placement 已有受管 server 执行器；L4
+仍只有契约名，replay 必须跳过并记录 `execution_status=unsupported_contract_only`。L3 的 replay
+event 在真实选槽和右键成功发送后先记 `input_dispatched_pending_probe`，只有录制后 world probe、
+cleanup 和 server-log 哈希全部验证通过，归纳器才把它计为 observed placement。
+每个 placement 还必须紧邻一个与 spec 的 dx/dy/route index 完全一致的 0.35 秒 tagged aim，以及
+紧随其后的精确 inverse restore；任一 tagged camera input 后端返回失败都会中止 worker，不能写成
+`executed`。
 
-约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过并记录 replay log；这是 trajectory 契约的前向兼容规则。每个 dispatch 还必须记录 `executed`、`non_input` 或 `unsupported_contract_only`，数据集归纳器只相信与事件 primitive 一致的状态。
+约束：`events` 按 `t` 非递减排序；每个 `key` 的 down/up 必须配对；同一配置生成的 JSON 必须 byte-identical（确定性，这是 N-way 渲染对齐的根基）。replay 对未知事件字段必须静默跳过并记录 replay log；这是 trajectory 契约的前向兼容规则。每个 dispatch 还必须记录 `executed`、`non_input`、`input_dispatched_pending_probe` 或 `unsupported_contract_only`，数据集归纳器只相信与 event primitive 一致、且具备所需外部回执的状态。
 
 ### Action curriculum v1
 
@@ -112,8 +117,19 @@ counts、observed level、bucket、动作日志哈希以及 `controller_recovery
 `navigation_log.jsonl` 的 control 决策归纳。navigator 为脱困执行的一次 Space + S 只记为
 `attempts/jump_taps/reverse_moves`，永不记成 deliberate jump。
 
+L3 showcase 严格沿用 L2 的 117 点路线和 59.034 秒时间预算，在 route indices 12/60 加入两个
+侧向 action arena，并保留 route indices 12/34/39/104 的四次 deliberate jump。录制开始前，
+render 清空 inventory/掉落物/非玩家实体，把两个 target 置 air、support 与 hotbar 固定到声明值，
+再以 conditional server `say` marker 验证；录制区间内禁止 teleport，只执行轨迹相机 aim、数字键
+选槽和 mouse button 3；录制结束后才验证两个 target block，并清除 target/support/action item。
+pre/post receipt line、命令数量与对应 `server.log` prefix size/SHA-256 都嵌入哈希绑定的 replay log。
+receipt 只从命令发送前的 log byte offset 之后查找真实 `[Server] marker` success line，拒绝旧 marker
+和命令错误回显；post-capture verification 必须是 replay 最后一条，且 final prefix 必须扩展 reset
+prefix。
+
 accepted 数据 fail closed：缺日志、日志与 trajectory 不一致、manifest 计数被篡改、能力列表非
-累积、出现未声明语义动作、或 planned L2–L4 没有观察到该最高等级动作都会拒绝。dataset index
+累积、出现未声明语义动作、或 planned L2–L4 缺少任一累计必需动作都会拒绝。L3 还会在 reset、
+输入、target/face、world probe、cleanup、server-log prefix hash 任一缺失/篡改时拒绝。dataset index
 为每个 episode 原样保存该记录，并在 `action_buckets` 中生成四组精确的排序 ID/count；它不复制
 capture，训练端可据此按比例采样。
 

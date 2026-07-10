@@ -6,6 +6,17 @@ import math
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_placement import (
+    PLACEMENT_SEMANTIC,
+    PlacementEvidenceError,
+    placement_spec,
+    placement_specs,
+    validate_episode_reset_evidence,
+    validate_placement_event_sequences,
+    validate_placement_input_evidence,
+    validate_post_capture_evidence,
+)
+
 TAXONOMY_VERSION = 1
 
 CAPABILITIES_BY_LEVEL: dict[int, tuple[str, ...]] = {
@@ -96,6 +107,7 @@ def summarize_action_run(
             counts = _open_loop_counts(
                 trajectory,
                 records,
+                replay_log_path=evidence_path,
                 allow_legacy_execution_status_missing=(
                     allow_legacy_execution_status_missing
                 ),
@@ -183,10 +195,11 @@ def validate_action_summary(summary: Any, *, require_evidence: bool = True) -> N
             f"observed undeclared semantic actions for planned L{level}: {undeclared!r}"
         )
     if level > 1:
-        highest = CAPABILITIES_BY_LEVEL[level][-1]
-        if counts[highest] <= 0:
+        for required in CAPABILITIES_BY_LEVEL[level][1:]:
+            if counts[required] > 0:
+                continue
             raise ActionCurriculumError(
-                f"planned L{level} has no observed highest-level action {highest!r}"
+                f"planned L{level} has no observed required action {required!r}"
             )
 
 
@@ -229,23 +242,52 @@ def _validate_trajectory_semantics(trajectory: dict[str, Any], planned_level: in
             raise ActionCurriculumError(
                 "deliberate_jump must be a single explicit space tap"
             )
+        if semantic == PLACEMENT_SEMANTIC:
+            try:
+                placement_spec(event)
+            except PlacementEvidenceError as exc:
+                raise ActionCurriculumError(str(exc)) from exc
+    try:
+        placement_specs(events)
+        validate_placement_event_sequences(events)
+    except PlacementEvidenceError as exc:
+        raise ActionCurriculumError(str(exc)) from exc
 
 
 def _open_loop_counts(
     trajectory: dict[str, Any],
     records: list[dict[str, Any]],
     *,
+    replay_log_path: Path,
     allow_legacy_execution_status_missing: bool,
 ) -> dict[str, int]:
     if not records or records[0].get("event") != "start":
         raise ActionCurriculumError("replay log has no start record")
     observed_events: list[dict[str, Any]] = []
     counts = _zero_semantic_counts()
+    placement_events = [
+        event
+        for event in trajectory.get("events", [])
+        if event.get("semantic_action") == PLACEMENT_SEMANTIC
+    ]
+    dispatched_placements: list[dict[str, Any]] = []
+    post_capture_evidence: list[dict[str, Any]] = []
     for index, record in enumerate(records[1:], 1):
         event = record.get("event")
         if not isinstance(event, dict):
             raise ActionCurriculumError(f"replay record {index} has no event object")
         if "replay_control" in event:
+            if event.get("replay_control") == "l3_post_capture_verification":
+                if index != len(records) - 1:
+                    raise ActionCurriculumError(
+                        "L3 post-capture verification must be the final replay record"
+                    )
+                evidence = record.get("semantic_evidence")
+                if not isinstance(evidence, dict):
+                    raise ActionCurriculumError(
+                        "L3 post-capture replay control has no semantic evidence"
+                    )
+                post_capture_evidence.append(evidence)
             continue
         scheduled_t = record.get("scheduled_t")
         actual_t = record.get("actual_t")
@@ -256,14 +298,10 @@ def _open_loop_counts(
             for value in (scheduled_t, actual_t)
         ):
             raise ActionCurriculumError(f"replay record {index} has no dispatch timing")
-        expected_status = _expected_execution_status(event)
         observed_status = record.get("execution_status")
         if observed_status is None and allow_legacy_execution_status_missing:
-            observed_status = expected_status
-        if observed_status != expected_status:
-            raise ActionCurriculumError(
-                f"replay record {index} execution status does not match its input primitive"
-            )
+            observed_status = _expected_execution_status(event)
+        _validate_execution_status(event, observed_status, index=index)
         event_t = event.get("t", 0)
         if (
             not isinstance(event_t, (int, float))
@@ -276,12 +314,65 @@ def _open_loop_counts(
                 f"replay record {index} timing does not match its trajectory event"
             )
         observed_events.append(event)
-        if expected_status == "executed":
+        if observed_status == "executed":
             _count_executed_event(counts, event)
+        elif observed_status == "input_dispatched_pending_probe":
+            try:
+                validate_placement_input_evidence(record.get("semantic_evidence"), event)
+            except PlacementEvidenceError as exc:
+                raise ActionCurriculumError(str(exc)) from exc
+            dispatched_placements.append(event)
     planned_events = trajectory.get("events", [])
     if observed_events != planned_events:
         raise ActionCurriculumError("replay evidence does not exactly match trajectory events")
+    _apply_verified_placement_counts(
+        counts,
+        placement_events=placement_events,
+        dispatched_placements=dispatched_placements,
+        start_record=records[0],
+        post_capture_evidence=post_capture_evidence,
+        replay_log_path=replay_log_path,
+    )
     return counts
+
+
+def _apply_verified_placement_counts(
+    counts: dict[str, int],
+    *,
+    placement_events: list[dict[str, Any]],
+    dispatched_placements: list[dict[str, Any]],
+    start_record: dict[str, Any],
+    post_capture_evidence: list[dict[str, Any]],
+    replay_log_path: Path,
+) -> None:
+    if not dispatched_placements:
+        if post_capture_evidence:
+            raise ActionCurriculumError("L3 post-capture evidence exists without placement inputs")
+        return
+    if dispatched_placements != placement_events:
+        raise ActionCurriculumError("not every planned placement input was dispatched")
+    if len(post_capture_evidence) != 1:
+        raise ActionCurriculumError("L3 replay must contain exactly one post-capture verification")
+    try:
+        validate_episode_reset_evidence(
+            start_record.get("episode_reset_evidence"),
+            placement_events,
+            replay_log_path=replay_log_path,
+        )
+        validate_post_capture_evidence(
+            post_capture_evidence[0],
+            placement_events,
+            replay_log_path=replay_log_path,
+        )
+    except PlacementEvidenceError as exc:
+        raise ActionCurriculumError(str(exc)) from exc
+    reset_size = start_record["episode_reset_evidence"]["server_log"]["prefix_size_bytes"]
+    final_size = post_capture_evidence[0]["server_log"]["prefix_size_bytes"]
+    if reset_size >= final_size:
+        raise ActionCurriculumError(
+            "L3 final server-log prefix must extend the episode-reset prefix"
+        )
+    counts[PLACEMENT_SEMANTIC] = len(placement_events)
 
 
 def _feedback_counts(
@@ -339,14 +430,22 @@ def _count_executed_event(counts: dict[str, int], event: dict[str, Any]) -> None
 
 
 def _expected_execution_status(event: dict[str, Any]) -> str:
-    if event.get("semantic_action") in {
-        "deterministic_block_placement",
-        "controlled_combat",
-    }:
+    if event.get("semantic_action") in {PLACEMENT_SEMANTIC, "controlled_combat"}:
         return "unsupported_contract_only"
     if "key" in event or "mouse_dx" in event or "mouse_dy" in event:
         return "executed"
     return "non_input"
+
+
+def _validate_execution_status(event: dict[str, Any], status: Any, *, index: int) -> None:
+    if event.get("semantic_action") == PLACEMENT_SEMANTIC:
+        if status in {"unsupported_contract_only", "input_dispatched_pending_probe"}:
+            return
+    elif status == _expected_execution_status(event):
+        return
+    raise ActionCurriculumError(
+        f"replay record {index} execution status does not match its input primitive"
+    )
 
 
 def _observed_level(counts: dict[str, int]) -> int:

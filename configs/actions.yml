@@ -302,6 +302,83 @@ strategies:
         look_hold_sec: 0.4
         deliberate_jump: true
 
+  curriculum_l3_place_showcase_60s:
+    <<: *lookdev_showcase_60s
+    action_curriculum:
+      taxonomy_version: 1
+      planned_level: 3
+      capabilities:
+        - "navigation"
+        - "deliberate_jump"
+        - "deterministic_block_placement"
+    waypoint_actions:
+      - at: [-10, -12]
+        moment: "material_closeup"
+        pause_sec: 0.4
+        look_dy_px: 45
+        look_hold_sec: 0.8
+        deliberate_jump: true
+        block_placement:
+          action_id: "place_gold_west"
+          block: "minecraft:gold_block"
+          support_block: "minecraft:glass"
+          hotbar_slot: 1
+          item_count: 2
+          target: [-12, 65, -13]
+          support: [-13, 65, -13]
+          face: "east"
+          aim_dx_px: 610
+          aim_dy_px: -150
+          input_settle_sec: 0.1
+          input_duration_sec: 0.25
+          receipt_timeout_sec: 3.0
+      - at: [-3, 3]
+        moment: "water_reflection_alt"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+        deliberate_jump: true
+      - at: [-3, 8]
+        moment: "water_reflection"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+        deliberate_jump: true
+      - at: [0, 10]
+        moment: "scene_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 2.5
+      - at: [15, 11]
+        moment: "gallery_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 1.0
+        block_placement:
+          action_id: "place_emerald_north"
+          block: "minecraft:emerald_block"
+          support_block: "minecraft:glass"
+          hotbar_slot: 2
+          item_count: 2
+          target: [14, 65, 13]
+          support: [14, 65, 14]
+          face: "north"
+          aim_dx_px: 610
+          aim_dy_px: -150
+          input_settle_sec: 0.1
+          input_duration_sec: 0.25
+          receipt_timeout_sec: 3.0
+      - at: [10, -12]
+        moment: "material_closeup_alt"
+        pause_sec: 0.4
+        look_dy_px: -25
+        look_hold_sec: 0.4
+        deliberate_jump: true
+
   glass_edge_loop:
     type: "astar_walk"
     start: [0, -14]

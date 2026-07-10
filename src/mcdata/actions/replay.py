@@ -6,7 +6,7 @@ import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Callable, Protocol
 
 from rich.console import Console
 
@@ -20,6 +20,10 @@ class StartEvent(Protocol):
 
 class StopEvent(Protocol):
     def is_set(self) -> bool: ...
+
+
+class SemanticEventExecutor(Protocol):
+    def dispatch(self, event: dict[str, Any], send_input: Callable[[dict[str, Any]], bool]) -> dict[str, Any]: ...
 
 
 class InputController:
@@ -88,14 +92,14 @@ class InputController:
         if _stop_requested(self._stop_event) and not allow_after_stop:
             return False
         if self._backend == "xdotool":
-            _send_event_xdotool(
+            result = _send_event_xdotool(
                 event,
                 warned=self._warned,
                 stop_event=self._stop_event,
             )
         else:
-            _send_event_xtest(event, stop_event=self._stop_event)
-        return True
+            result = _send_event_xtest(event, stop_event=self._stop_event)
+        return result is not False
 
 
 def replay_trajectory(
@@ -106,6 +110,8 @@ def replay_trajectory(
     start_event: StartEvent | None = None,
     stop_event: StopEvent | None = None,
     run_dir: Path | None = None,
+    semantic_executor: SemanticEventExecutor | None = None,
+    episode_reset_evidence: dict[str, Any] | None = None,
 ) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     events = sorted(data.get("events", []), key=lambda e: float(e.get("t", 0)))
@@ -129,7 +135,7 @@ def replay_trajectory(
     replay_log = _ReplayLog(run_dir / "replay_log.jsonl") if run_dir else None
     start = time.monotonic()
     if replay_log is not None:
-        replay_log.write_start(start)
+        replay_log.write_start(start, episode_reset_evidence=episode_reset_evidence)
         if inherited:
             replay_log.write_control("inherited_stuck_keys", keys=inherited)
     held: set[str] = set()
@@ -145,19 +151,21 @@ def replay_trajectory(
             ):
                 break
             actual_t = time.monotonic() - start
-            execution_status = _event_execution_status(event)
-            if execution_status != "unsupported_contract_only":
-                if backend == "xdotool":
-                    _send_event_xdotool(event, warned=xdotool_warnings, stop_event=stop_event)
-                else:
-                    _send_event_xtest(event, stop_event=stop_event)
-                _update_held(held, event)
+            execution_status, semantic_evidence = _dispatch_replay_event(
+                event,
+                backend=backend,
+                semantic_executor=semantic_executor,
+                warned=xdotool_warnings,
+                stop_event=stop_event,
+                held=held,
+            )
             if replay_log is not None:
                 replay_log.write(
                     event=event,
                     scheduled_t=scheduled_t,
                     actual_t=actual_t,
                     execution_status=execution_status,
+                    semantic_evidence=semantic_evidence,
                 )
     finally:
         released = sorted(held)
@@ -223,14 +231,63 @@ def _update_held(held: set[str], event: dict) -> None:
         held.discard(key)
 
 
-def _event_execution_status(event: dict) -> str:
-    """Record contract-only actions without claiming that an input was executed."""
-    if event.get("semantic_action") in {
-        "deterministic_block_placement",
-        "controlled_combat",
-    }:
+def append_replay_control(
+    path: Path, name: str, *, semantic_evidence: dict[str, Any]
+) -> None:
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "event": {"replay_control": name},
+        "semantic_evidence": semantic_evidence,
+    }
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True) + "\n")
+        handle.flush()
+
+
+def _dispatch_replay_event(
+    event: dict[str, Any],
+    *, backend: str, semantic_executor: SemanticEventExecutor | None,
+    warned: set[tuple[str, ...]], stop_event: StopEvent | None, held: set[str],
+) -> tuple[str, dict[str, Any] | None]:
+    execution_status = _event_execution_status(event, semantic_executor=semantic_executor)
+    if execution_status == "input_dispatched_pending_probe":
+        if semantic_executor is None:
+            raise RuntimeError("placement input executor disappeared before dispatch")
+        evidence = semantic_executor.dispatch(
+            event,
+            lambda primitive: _send_backend_event(
+                backend,
+                primitive,
+                warned=warned,
+                stop_event=stop_event,
+            ),
+        )
+        return execution_status, evidence
+    if execution_status != "unsupported_contract_only":
+        dispatched = _send_backend_event(
+            backend,
+            event,
+            warned=warned,
+            stop_event=stop_event,
+        )
+        if dispatched is False and (
+            event.get("placement_aim") is True
+            or event.get("placement_aim_restore") is True
+        ):
+            phase = "aim" if event.get("placement_aim") is True else "restore"
+            raise RuntimeError(f"Placement camera {phase} input dispatch failed")
+        _update_held(held, event)
+    return execution_status, None
+
+
+def _event_execution_status(event: dict, *, semantic_executor: SemanticEventExecutor | None = None) -> str:
+    if event.get("semantic_action") == "deterministic_block_placement":
+        if semantic_executor is not None:
+            return "input_dispatched_pending_probe"
         return "unsupported_contract_only"
-    if "key" in event or "mouse_dx" in event or "mouse_dy" in event:
+    if event.get("semantic_action") == "controlled_combat":
+        return "unsupported_contract_only"
+    if "key" in event or "mouse_dx" in event or "mouse_dy" in event or "mouse_button" in event:
         return "executed"
     return "non_input"
 
@@ -256,33 +313,43 @@ def _send_event_xdotool(
     *,
     warned: set[tuple[str, ...]] | None = None,
     stop_event: StopEvent | None = None,
-) -> None:
+) -> bool:
+    success = True
     if "key" in event:
         key = str(event["key"])
         action = event.get("action", "tap")
         if action == "down":
-            _run_xdotool(["keydown", key], warned=warned)
+            success = _run_xdotool(["keydown", key], warned=warned) and success
         elif action == "up":
-            _run_xdotool(["keyup", key], warned=warned)
+            success = _run_xdotool(["keyup", key], warned=warned) and success
         else:
-            _run_xdotool(["key", key], warned=warned)
+            success = _run_xdotool(["key", key], warned=warned) and success
+    if "mouse_button" in event:
+        button = str(event["mouse_button"])
+        action = event.get("action", "click")
+        command = {"down": "mousedown", "up": "mouseup"}.get(action, "click")
+        success = _run_xdotool([command, button], warned=warned) and success
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
             if _stop_requested(stop_event):
-                break
-            _run_xdotool(["mousemove_relative", "--", str(dx), str(dy)], warned=warned)
+                return False
+            success = (
+                _run_xdotool(["mousemove_relative", "--", str(dx), str(dy)], warned=warned)
+                and success
+            )
             if delay > 0 and not _sleep_interruptible(delay, stop_event):
-                break
+                return False
+    return success
 
 
-def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None) -> None:
+def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None) -> bool:
     cmd = ["xdotool", *args]
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)
     if result.returncode == 0:
-        return
+        return True
     key = tuple(cmd[:2])
     if warned is not None and key in warned:
-        return
+        return False
     if warned is not None:
         warned.add(key)
     detail = (result.stderr or result.stdout).strip()
@@ -290,6 +357,7 @@ def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None)
     console.print(
         f"Warning: xdotool command failed ({' '.join(cmd)}), rc={result.returncode}{suffix}"
     )
+    return False
 
 
 def _xtest_focus_window(window_name: str) -> None:
@@ -322,12 +390,13 @@ def _walk_windows(window):
         yield from _walk_windows(child)
 
 
-def _send_event_xtest(event: dict, *, stop_event: StopEvent | None = None) -> None:
+def _send_event_xtest(event: dict, *, stop_event: StopEvent | None = None) -> bool:
     from Xlib import X
     from Xlib.display import Display
     from Xlib.ext import xtest
 
     display = Display()
+    success = True
     if "key" in event:
         keycode = _keycode(display, str(event["key"]))
         action = event.get("action", "tap")
@@ -341,15 +410,34 @@ def _send_event_xtest(event: dict, *, stop_event: StopEvent | None = None) -> No
                 xtest.fake_input(display, X.KeyRelease, keycode)
         else:
             console.print(f"Warning: could not resolve keycode for {event['key']!r}")
+            success = False
+    if "mouse_button" in event:
+        button = int(event["mouse_button"])
+        action = event.get("action", "click")
+        if action in {"down", "click"}:
+            xtest.fake_input(display, X.ButtonPress, button)
+        if action in {"up", "click"}:
+            xtest.fake_input(display, X.ButtonRelease, button)
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
             if _stop_requested(stop_event):
-                break
+                return False
             xtest.fake_input(display, X.MotionNotify, x=dx, y=dy)
             display.sync()
             if delay > 0 and not _sleep_interruptible(delay, stop_event):
-                break
+                return False
     display.sync()
+    return success
+
+
+def _send_backend_event(
+    backend: str,
+    event: dict[str, Any],
+    *, warned: set[tuple[str, ...]], stop_event: StopEvent | None,
+) -> bool:
+    if backend == "xdotool":
+        return _send_event_xdotool(event, warned=warned, stop_event=stop_event)
+    return _send_event_xtest(event, stop_event=stop_event)
 
 
 def _release_inherited_keys(
@@ -468,8 +556,13 @@ class _ReplayLog:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh = path.open("w", encoding="utf-8")
 
-    def write_start(self, mono: float) -> None:
-        self._fh.write(json.dumps({"event": "start", "mono": mono}, sort_keys=True) + "\n")
+    def write_start(
+        self, mono: float, *, episode_reset_evidence: dict[str, Any] | None = None
+    ) -> None:
+        record = {"event": "start", "mono": mono}
+        if episode_reset_evidence is not None:
+            record["episode_reset_evidence"] = episode_reset_evidence
+        self._fh.write(json.dumps(record, sort_keys=True) + "\n")
         self._fh.flush()
 
     def write(
@@ -479,6 +572,7 @@ class _ReplayLog:
         scheduled_t: float,
         actual_t: float,
         execution_status: str,
+        semantic_evidence: dict[str, Any] | None,
     ) -> None:
         record = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -487,6 +581,8 @@ class _ReplayLog:
             "event": event,
             "execution_status": execution_status,
         }
+        if semantic_evidence is not None:
+            record["semantic_evidence"] = semantic_evidence
         self._fh.write(json.dumps(record, sort_keys=True) + "\n")
         self._fh.flush()
 

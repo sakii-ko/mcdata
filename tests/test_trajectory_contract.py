@@ -305,9 +305,7 @@ def test_l2_jump_showcase_is_a_semantic_only_extension_of_l1_lookdev() -> None:
         strategies["curriculum_l2_jump_showcase_60s"],
     )
     jumps = [
-        event
-        for event in trajectory["events"]
-        if event.get("semantic_action") == "deliberate_jump"
+        event for event in trajectory["events"] if event.get("semantic_action") == "deliberate_jump"
     ]
 
     assert planned_action_contract(trajectory) == {
@@ -319,13 +317,9 @@ def test_l2_jump_showcase_is_a_semantic_only_extension_of_l1_lookdev() -> None:
     assert trajectory["duration_sec"] == base["duration_sec"] == 59.034
     assert trajectory["route"] == base["route"]
     assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
-    assert all(
-        event["key"] == "space" and event["action"] == "tap" for event in jumps
-    )
+    assert all(event["key"] == "space" and event["action"] == "tap" for event in jumps)
     assert [
-        event
-        for event in trajectory["events"]
-        if event.get("semantic_action") != "deliberate_jump"
+        event for event in trajectory["events"] if event.get("semantic_action") != "deliberate_jump"
     ] == base["events"]
     assert not any(event.get("semantic_action") for event in base["events"])
     assert simulate_track(trajectory) == simulate_track(base)
@@ -342,6 +336,66 @@ def test_waypoint_deliberate_jump_requires_an_explicit_boolean() -> None:
 
     with pytest.raises(RuntimeError, match="deliberate_jump must be a boolean"):
         build_trajectory("bad_jump", spec)
+
+
+def test_l3_place_showcase_keeps_l2_route_and_uses_real_aim_restore_events() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    l2 = _build_configured(
+        "curriculum_l2_jump_showcase_60s",
+        strategies["curriculum_l2_jump_showcase_60s"],
+    )
+    l3 = _build_configured(
+        "curriculum_l3_place_showcase_60s",
+        strategies["curriculum_l3_place_showcase_60s"],
+    )
+    placements = [
+        event
+        for event in l3["events"]
+        if event.get("semantic_action") == "deterministic_block_placement"
+    ]
+    jumps = [event for event in l3["events"] if event.get("semantic_action") == "deliberate_jump"]
+
+    assert planned_action_contract(l3) == {
+        "taxonomy_version": 1,
+        "planned_level": 3,
+        "planned_capabilities": [
+            "navigation",
+            "deliberate_jump",
+            "deterministic_block_placement",
+        ],
+        "bucket": "l1_l2_l3",
+    }
+    assert l3["duration_sec"] == l2["duration_sec"] == 59.034
+    assert l3["route"] == l2["route"]
+    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
+    assert [event["route_index"] for event in placements] == [12, 60]
+    assert [event["placement"]["hotbar_slot"] for event in placements] == [1, 2]
+    assert [event["placement"]["face"] for event in placements] == ["east", "north"]
+    route_cells = {(point["x"], point["z"]) for point in l3["route"]}
+    assert all(
+        (event["placement"]["target"][0], event["placement"]["target"][2]) not in route_cells
+        for event in placements
+    )
+    assert all(
+        min(
+            abs(event["placement"][key][0] - x)
+            + abs(event["placement"][key][2] - z)
+            for x, z in route_cells
+        )
+        >= 2
+        for event in placements
+        for key in ("target", "support")
+    )
+    for placement in placements:
+        index = l3["events"].index(placement)
+        aim = l3["events"][index - 1]
+        restore = l3["events"][index + 1]
+        assert aim["placement_aim"] is True
+        assert restore["placement_aim_restore"] is True
+        assert (restore["mouse_dx"], restore["mouse_dy"]) == (
+            -aim["mouse_dx"],
+            -aim["mouse_dy"],
+        )
 
 
 def test_turn_calibration_probe_is_eight_600px_turns() -> None:

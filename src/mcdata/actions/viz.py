@@ -55,6 +55,7 @@ def render_trajectory_map(
             zorder=5,
             label="deliberate jump",
         )
+    _draw_placement_targets(ax, trajectory, route)
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel("x")
     ax.set_ylabel("z")
@@ -68,6 +69,48 @@ def render_trajectory_map(
 
 def load_trajectory(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _draw_placement_targets(
+    ax: Any,
+    trajectory: dict[str, Any],
+    route: list[tuple[int, int]],
+) -> None:
+    placements = [
+        event
+        for event in trajectory.get("events", [])
+        if isinstance(event, dict)
+        and event.get("semantic_action") == "deterministic_block_placement"
+        and isinstance(event.get("placement"), dict)
+    ]
+    targets = [
+        (int(event["placement"]["target"][0]), int(event["placement"]["target"][2]))
+        for event in placements
+    ]
+    if not targets:
+        return
+    ax.scatter(
+        [point[0] for point in targets],
+        [point[1] for point in targets],
+        marker="P",
+        color="#e6a700",
+        edgecolor="#111111",
+        s=105,
+        zorder=6,
+        label="verified block target",
+    )
+    for event, target in zip(placements, targets, strict=True):
+        route_index = event.get("route_index")
+        if isinstance(route_index, int) and 0 <= route_index < len(route):
+            source = route[route_index]
+            ax.plot(
+                [source[0], target[0]],
+                [source[1], target[1]],
+                color="#e6a700",
+                linewidth=1.2,
+                linestyle=":",
+                zorder=4,
+            )
 
 
 def _draw_spec(ax: Any, spec: dict[str, Any], *, rectangle_cls: Any) -> None:

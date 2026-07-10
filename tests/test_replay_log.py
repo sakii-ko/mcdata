@@ -3,6 +3,8 @@ import subprocess
 import threading
 from pathlib import Path
 
+import pytest
+
 from mcdata.actions import replay
 
 
@@ -74,6 +76,88 @@ def test_replay_marks_unimplemented_semantic_actions_contract_only(
     ]
     assert records[1]["execution_status"] == "unsupported_contract_only"
     assert sent == []
+
+
+def test_replay_dispatches_real_slot_and_use_inputs_but_leaves_l3_pending_probe(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    trajectory = tmp_path / "trajectory.json"
+    event = {
+        "t": 0.0,
+        "semantic_action": "deterministic_block_placement",
+        "placement": {"action_id": "place_gold"},
+    }
+    trajectory.write_text(json.dumps({"events": [event]}), encoding="utf-8")
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _window_name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda _backend, *, warned=None: [])
+    sent: list[dict] = []
+    monkeypatch.setattr(
+        replay,
+        "_send_event_xdotool",
+        lambda primitive, **_kwargs: sent.append(dict(primitive)) or True,
+    )
+
+    class Executor:
+        def dispatch(self, _event, send_input):
+            inputs = [
+                {"key": "1", "action": "tap"},
+                {"mouse_button": 3, "action": "click"},
+            ]
+            assert all(send_input(item) for item in inputs)
+            return {"input_events": inputs}
+
+    replay.replay_trajectory(
+        trajectory,
+        start_event=_AlreadyStarted(),
+        run_dir=tmp_path,
+        semantic_executor=Executor(),
+        episode_reset_evidence={"kind": "test_reset"},
+    )
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "replay_log.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[0]["episode_reset_evidence"] == {"kind": "test_reset"}
+    assert records[1]["execution_status"] == "input_dispatched_pending_probe"
+    assert records[1]["semantic_evidence"] == {"input_events": sent}
+    assert sent == [
+        {"key": "1", "action": "tap"},
+        {"mouse_button": 3, "action": "click"},
+    ]
+
+
+def test_xdotool_right_click_uses_mouse_button_three(monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(cmd, **_kwargs):
+        calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, returncode=0)
+
+    monkeypatch.setattr(replay.subprocess, "run", fake_run)
+
+    assert replay._send_event_xdotool({"mouse_button": 3, "action": "click"}) is True
+    assert calls == [["xdotool", "click", "3"]]
+
+
+@pytest.mark.parametrize("tag", ["placement_aim", "placement_aim_restore"])
+def test_failed_placement_camera_input_never_claims_execution(
+    tag: str,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(replay, "_send_backend_event", lambda *_args, **_kwargs: False)
+
+    with pytest.raises(RuntimeError, match="Placement camera .* input dispatch failed"):
+        replay._dispatch_replay_event(
+            {"mouse_dx": 600, "mouse_dy": -150, tag: True},
+            backend="xdotool",
+            semantic_executor=None,
+            warned=set(),
+            stop_event=None,
+            held=set(),
+        )
 
 
 def test_update_held_tracks_key_lifecycle() -> None:

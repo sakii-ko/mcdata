@@ -36,6 +36,7 @@ from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.resourcepacks import discover_target_resource_format, materialize_resourcepacks
 from mcdata.render.options import write_iris_config, write_options
+from mcdata.render.placement import PlacementExecutor
 from mcdata.render.probe import (
     start_position_probe,
     wait_for_position_sample,
@@ -121,6 +122,9 @@ class RunState:
     replay_start_mono: float | None = None
     capture_cmd: list[str] | None = None
     resourcepack_runtime: dict[str, object] | None = None
+    placement_executor: PlacementExecutor | None = None
+    placement_reset_evidence: dict[str, Any] | None = None
+    placement_finalized: bool = False
     worker_error: BaseException | None = None
     error: str | None = None
 
@@ -704,12 +708,21 @@ def _replay_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
             controller="position_yaw_feedback",
         )
         return
-    state.replay_thread = _start_replay_thread(
-        plan.run_trajectory_path,
-        start_event=state.ready_event,
-        stop_event=state.replay_stop,
-        run_dir=plan.run_dir,
+    trajectory = _read_optional_json(plan.run_trajectory_path) or {}
+    has_placement = any(
+        event.get("semantic_action") == "deterministic_block_placement"
+        for event in trajectory.get("events", [])
+        if isinstance(event, dict)
     )
+    if has_placement:
+        if not plan.capture or not plan.with_server or state.server_proc is None:
+            raise RuntimeError("L3 block placement replay requires capture with a managed server")
+        state.placement_executor = PlacementExecutor(
+            state.server_proc,
+            server_log_path=plan.run_dir / "server.log",
+            username=str(plan.profile.get("username")),
+        )
+    state.replay_thread = _start_replay_thread(plan, state)
     runlog.log("replay", "thread_started", trajectory=str(plan.run_trajectory_path))
 
 
@@ -795,6 +808,7 @@ def _prepare_joined_capture(plan: RunPlan, state: RunState, runlog: RunLogger) -
         apply_join_state(state.server_proc, plan.profile)
         runlog.log("join", "re_apply_state")
         _wait_or_raise_if_exited(state.game_proc, 1.0)
+    _prepare_placement_actions(plan, state, runlog)
     _prepare_capture_view(plan.capture_settings)
     runlog.log("capture", "view_prepared")
 
@@ -818,6 +832,11 @@ def _capture_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
         plan.run_dir / "game.exitcode",
         stop_event=state.replay_stop,
         worker_error=lambda: state.worker_error,
+        post_capture=(
+            (lambda: _finalize_placement_actions(plan, state, runlog))
+            if state.placement_executor is not None
+            else None
+        ),
     )
     runlog.log("capture", "stop", returncode=state.capture_proc.returncode)
     if state.position_probe_stop:
@@ -887,6 +906,9 @@ def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
             f"action/navigation worker failed: "
             f"{type(state.worker_error).__name__}: {state.worker_error}"
         )
+    cleanup_failure = _cleanup_rejected_placement_actions(state, runlog)
+    if cleanup_failure and not worker_failure:
+        worker_failure = cleanup_failure
     _terminate_running_processes(state, runlog)
     _write_position_log(plan, state, runlog)
     raise_worker_failure = bool(worker_failure and state.error is None)
@@ -907,6 +929,28 @@ def _join_replay_worker(state: RunState, runlog: RunLogger) -> str | None:
     runlog.log("replay", "thread_joined", alive=alive)
     if alive:
         return "action/navigation worker remained alive after 5s teardown timeout"
+    return None
+
+
+def _cleanup_rejected_placement_actions(
+    state: RunState,
+    runlog: RunLogger,
+) -> str | None:
+    if state.placement_executor is None or state.placement_finalized:
+        return None
+    try:
+        evidence = state.placement_executor.cleanup_after_failure()
+    except Exception as exc:
+        message = f"L3 rejected-run cleanup failed: {type(exc).__name__}: {exc}"
+        runlog.log("placement", "rejected_cleanup_failed", error=message)
+        return message
+    runlog.log(
+        "placement",
+        "rejected_cleanup_verified",
+        action_ids=evidence["action_ids"],
+        cleanup_command_count=evidence["cleanup_command_count"],
+        receipt_count=len(evidence["receipts"]),
+    )
     return None
 
 
@@ -1052,23 +1096,90 @@ def remote_tmux_command(
     return f"tmux new-session -d -s {shlex.quote(session)} {shlex.quote(run)}"
 
 
-def _start_replay_thread(
-    trajectory_path: Path,
-    *,
-    start_event: threading.Event,
-    stop_event: threading.Event,
-    run_dir: Path,
-) -> threading.Thread:
+def _start_replay_thread(plan: RunPlan, state: RunState) -> threading.Thread:
     from mcdata.actions.replay import replay_trajectory
 
-    thread = threading.Thread(
-        target=replay_trajectory,
-        args=(trajectory_path,),
-        kwargs={"start_event": start_event, "stop_event": stop_event, "run_dir": run_dir},
-        daemon=True,
-    )
+    if plan.run_trajectory_path is None:
+        raise RuntimeError("action replay requires a trajectory")
+
+    def run() -> None:
+        try:
+            start_event: threading.Event | None = state.ready_event
+            if state.placement_executor is not None:
+                while not state.ready_event.wait(0.25):
+                    if state.replay_stop.is_set():
+                        return
+                if state.replay_stop.is_set():
+                    return
+                if state.placement_reset_evidence is None:
+                    raise RuntimeError("L3 pre-capture reset evidence is missing")
+                start_event = None
+            replay_trajectory(
+                plan.run_trajectory_path,
+                start_event=start_event,
+                stop_event=state.replay_stop,
+                run_dir=plan.run_dir,
+                semantic_executor=state.placement_executor,
+                episode_reset_evidence=state.placement_reset_evidence,
+            )
+        except BaseException as exc:
+            state.worker_error = exc
+
+    thread = threading.Thread(target=run, daemon=True)
     thread.start()
     return thread
+
+
+def _prepare_placement_actions(
+    plan: RunPlan,
+    state: RunState,
+    runlog: RunLogger,
+) -> None:
+    if state.placement_executor is None or plan.run_trajectory_path is None:
+        return
+    trajectory = _read_optional_json(plan.run_trajectory_path) or {}
+    events = [event for event in trajectory.get("events", []) if isinstance(event, dict)]
+    state.placement_reset_evidence = state.placement_executor.prepare(events)
+    runlog.log(
+        "placement",
+        "pre_capture_reset_verified",
+        action_ids=state.placement_reset_evidence["action_ids"],
+        reset_command_count=state.placement_reset_evidence["reset_command_count"],
+        receipt_count=len(state.placement_reset_evidence["receipts"]),
+    )
+
+
+def _finalize_placement_actions(
+    plan: RunPlan,
+    state: RunState,
+    runlog: RunLogger,
+) -> None:
+    if state.placement_executor is None or state.placement_finalized:
+        return
+    if state.replay_thread is not None:
+        state.replay_thread.join(timeout=5)
+        if state.replay_thread.is_alive():
+            raise RuntimeError("L3 replay worker remained alive after capture")
+    if state.worker_error is not None:
+        raise RuntimeError(
+            f"L3 input worker failed: {type(state.worker_error).__name__}: {state.worker_error}"
+        ) from state.worker_error
+    evidence = state.placement_executor.finalize()
+    from mcdata.actions.replay import append_replay_control
+
+    append_replay_control(
+        plan.run_dir / "replay_log.jsonl",
+        "l3_post_capture_verification",
+        semantic_evidence=evidence,
+    )
+    state.placement_finalized = True
+    runlog.log(
+        "placement",
+        "post_capture_verified_and_cleaned",
+        action_ids=evidence["action_ids"],
+        cleanup_command_count=evidence["cleanup_command_count"],
+        receipt_count=sum(len(item["receipts"]) for item in evidence["placements"]),
+    )
 
 
 def _start_navigation_thread(plan: RunPlan, state: RunState) -> threading.Thread:
@@ -1315,6 +1426,7 @@ def _wait_for_capture(
     *,
     stop_event: threading.Event | None = None,
     worker_error: Callable[[], BaseException | None] | None = None,
+    post_capture: Callable[[], None] | None = None,
 ) -> None:
     while capture_proc.poll() is None:
         failure = worker_error() if worker_error else None
@@ -1334,6 +1446,10 @@ def _wait_for_capture(
             _write_exitcode(exitcode_file, game_proc.returncode)
             if game_proc.returncode:
                 raise subprocess.CalledProcessError(game_proc.returncode, game_proc.args)
+            if post_capture is not None:
+                raise RuntimeError(
+                    "Minecraft client exited before L3 post-capture verification"
+                )
             return
         time.sleep(0.5)
     if stop_event:
@@ -1346,10 +1462,16 @@ def _wait_for_capture(
     if capture_proc.returncode:
         raise subprocess.CalledProcessError(capture_proc.returncode, capture_proc.args)
     if game_proc.poll() is None:
-        _terminate_process_tree(game_proc, timeout=20)
-        _write_exitcode(exitcode_file, 0)
+        try:
+            if post_capture is not None:
+                post_capture()
+        finally:
+            _terminate_process_tree(game_proc, timeout=20)
+            _write_exitcode(exitcode_file, 0)
     else:
         _write_exitcode(exitcode_file, game_proc.returncode)
+        if post_capture is not None:
+            raise RuntimeError("Minecraft client exited before L3 post-capture verification")
 
 
 def _wait_for_game(

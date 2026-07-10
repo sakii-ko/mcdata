@@ -194,9 +194,12 @@ placement), and `l1_l2_l3_l4` (+ controlled combat). `dataset_index.json.action_
 the exact sorted episode IDs and count for each bucket, so training can mix bucket proportions
 without copying videos. Open-loop runs must bind an exact `replay_log.jsonl`; feedback runs bind
 `navigation_log.jsonl`. Navigator recovery Space/S inputs are counted separately and never turn
-an L1 episode into L2. L3/L4 event names are reserved by taxonomy v1, but the current replay marks
-them `unsupported_contract_only`; they cannot enter an accepted advanced bucket until a real
-executor emits verifiable evidence.
+an L1 episode into L2. L3 now has a deterministic placement executor: it resets/provisions a fixed
+action arena before capture, sends real camera/hotbar/right-click input without teleport during
+capture, and verifies/cleans the exact target blocks afterward. Unique server receipts and
+`server.log` prefix hashes are bound into `replay_log.jsonl`; input dispatch alone remains
+insufficient. L4 combat is still `unsupported_contract_only`. The L3 bucket remains empty until its
+true-GPU 60-second showcase, independent manifest recomputation, and video review pass.
 
 New runs write manifest schema v3, where `action_curriculum` is required. Dataset index v2 also
 accepts legacy manifest v2 captures: when—and only when—the v2 manifest has no action claim, the
