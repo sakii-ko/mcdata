@@ -10,6 +10,11 @@ from mcdata.actions import generate_strategy
 from mcdata.actions.viz import load_trajectory, render_trajectory_map
 from mcdata.config import load_yaml
 from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
+from mcdata.dataset_support.curriculum import (
+    CurriculumPlanError,
+    parse_ratio_assignments,
+)
+from mcdata.dataset_support.curriculum_io import write_curriculum_plan
 from mcdata.doctor import run_doctor
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
@@ -288,6 +293,46 @@ def dataset_collect_logs(
     except DatasetValidationError as exc:
         raise typer.BadParameter(str(exc)) from exc
     console.print(f"Collected {len(outputs)} client runtime logs under {dataset_root.resolve()}")
+
+
+@app.command("curriculum-plan")
+def curriculum_plan(
+    dataset_index: Path = typer.Argument(...),
+    out: Path = typer.Option(..., "--out"),
+    stage: str = typer.Option(..., "--stage"),
+    ratio: list[str] = typer.Option(
+        ...,
+        "--ratio",
+        help="Repeat once per action bucket as bucket=value; all four must sum exactly to 1.",
+    ),
+    epoch: int = typer.Option(..., "--epoch", min=0),
+    samples: int = typer.Option(..., "--samples", min=1),
+    seed: int = typer.Option(..., "--seed"),
+    allow_pair_id: Optional[list[str]] = typer.Option(
+        None,
+        "--allow-pair-id",
+        help="Optional explicit pair allowlist; repeat for each permitted pair ID.",
+    ),
+) -> None:
+    """Derive a deterministic, hash-bound edit-pair action curriculum schedule."""
+    try:
+        ratios = parse_ratio_assignments(ratio)
+        plan = write_curriculum_plan(
+            dataset_index,
+            out,
+            stage_name=stage,
+            ratios=ratios,
+            epoch=epoch,
+            sample_count=samples,
+            seed=seed,
+            allowed_pair_ids=allow_pair_id,
+        )
+    except CurriculumPlanError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(
+        f"Wrote curriculum plan: {out.resolve()} "
+        f"({plan['sample_count']} edit pairs, {plan['plan_id']})"
+    )
 
 
 @app.command("remote-command")

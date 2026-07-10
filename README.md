@@ -206,6 +206,24 @@ logs may omit the newer `execution_status` field, but their event objects and sc
 still match the trajectory exactly. A v2 claim is validated and labelled `manifest`; v3 never
 falls back to derivation, so a missing/null v3 claim fails closed.
 
+Training mixes are derived as content-addressed edit-pair schedules without copying captures:
+
+```bash
+mcdata curriculum-plan runs/accepted/dataset_index.json \
+  --out runs/plans/stage_l1_l2_epoch000.json \
+  --stage stage_l1_l2 \
+  --ratio l1=0.7 --ratio l1_l2=0.3 \
+  --ratio l1_l2_l3=0 --ratio l1_l2_l3_l4=0 \
+  --epoch 0 --samples 4096 --seed 17
+```
+
+Only an `accepted` dataset index can produce a plan. Pair endpoints must share the same recorded
+action bucket; positive ratios for empty buckets, invalid ratios, stale dataset IDs, or unknown
+allowlisted pair IDs fail closed. The stable schedule and exact bucket counts are bound to both the
+logical dataset ID and source-index file SHA. See
+[`docs/action_curriculum_sampling.md`](docs/action_curriculum_sampling.md) for the sampling policy,
+explicit pair filtering, reproducibility contract, and staged examples.
+
 The controlled high-quality lighting/weather seed matrix uses the following profiles with one
 fixed Legendary RT 128x + Complementary Unbound renderer preset:
 

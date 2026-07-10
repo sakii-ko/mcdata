@@ -124,6 +124,13 @@ loader 直接拒绝，不允许 fallback。历史 v2 若已有 claim，必须按
 scheduled time 仍须与 trajectory 逐项一致；缺日志或任一篡改继续 fail closed。dataset index 本身
 仍为 schema v2，其 episode manifest artifact 明确允许 v2/v3，并显式保存上述 source 枚举。
 
+训练侧的 `curriculum_plan.json` 是由 accepted dataset index v2 派生的只读 schedule artifact，schema
+位于 `src/mcdata/schemas/curriculum_plan.schema.json`。采样单位固定为 edit pair；pair 两端必须共享
+episode 证据声明的 action bucket，禁止按 profile 名推断。四桶比例用最大余数法得到精确整数计数，
+桶内与全局展开均使用显式 seed/epoch 和 SHA-256 固定排序，不读取当前时间。plan 同时绑定逻辑
+`dataset_id`、源 index 文件 SHA 和自身规范 JSON `plan_id`，只引用 pair ID，不复制 capture。可选
+训练 split 只能以显式 pair allowlist 进入并原样记录 lineage；工具不假装已有隐式 split。
+
 ### run dir（render → qa / 数据集）
 
 ```

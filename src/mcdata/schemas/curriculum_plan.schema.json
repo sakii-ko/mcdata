@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/curriculum_plan.schema.json",
+  "title": "mcdata derived action curriculum plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generator",
+    "plan_id",
+    "stage_name",
+    "source_index",
+    "action_taxonomy_version",
+    "sampling_unit",
+    "epoch",
+    "sample_count",
+    "seed",
+    "policy",
+    "bucket_counts",
+    "eligible_pair_ids",
+    "schedule"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "generator": {
+      "type": "object",
+      "required": ["name", "policy_version"],
+      "properties": {
+        "name": {"const": "mcdata.curriculum-plan"},
+        "policy_version": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "plan_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stage_name": {"type": "string", "minLength": 1, "maxLength": 128},
+    "source_index": {
+      "type": "object",
+      "required": ["schema_version", "dataset_id", "sha256", "status"],
+      "properties": {
+        "schema_version": {"const": 2},
+        "dataset_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "status": {"const": "accepted"}
+      },
+      "additionalProperties": false
+    },
+    "action_taxonomy_version": {"const": 1},
+    "sampling_unit": {"const": "edit_pair"},
+    "epoch": {"type": "integer", "minimum": 0},
+    "sample_count": {"type": "integer", "minimum": 1},
+    "seed": {
+      "type": "integer",
+      "minimum": -9223372036854775808,
+      "maximum": 9223372036854775807
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "name",
+        "ratios",
+        "apportionment",
+        "replacement",
+        "tie_break_order",
+        "pair_filter"
+      ],
+      "properties": {
+        "name": {"const": "stratified_edit_pair_schedule_v1"},
+        "ratios": {"$ref": "#/$defs/ratios"},
+        "apportionment": {"const": "largest_remainder_fixed_bucket_order"},
+        "replacement": {"const": "sha256_cycle_after_exhaustion"},
+        "tie_break_order": {
+          "const": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"]
+        },
+        "pair_filter": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["mode"],
+              "properties": {"mode": {"const": "all_eligible_pairs"}},
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "required": ["mode", "pair_ids"],
+              "properties": {
+                "mode": {"const": "explicit_pair_ids"},
+                "pair_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {"$ref": "#/$defs/pairId"}
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "bucket_counts": {"$ref": "#/$defs/bucketCounts"},
+    "eligible_pair_ids": {"$ref": "#/$defs/eligiblePairIds"},
+    "schedule": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sample_index", "bucket", "pair_id"],
+        "properties": {
+          "sample_index": {"type": "integer", "minimum": 0},
+          "bucket": {"$ref": "#/$defs/bucketName"},
+          "pair_id": {"$ref": "#/$defs/pairId"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "bucketName": {
+      "enum": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"]
+    },
+    "pairId": {"type": "string", "pattern": "^pair-[0-9a-f]{16}$"},
+    "ratios": {
+      "type": "object",
+      "required": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"],
+      "properties": {
+        "l1": {"type": "number", "minimum": 0, "maximum": 1},
+        "l1_l2": {"type": "number", "minimum": 0, "maximum": 1},
+        "l1_l2_l3": {"type": "number", "minimum": 0, "maximum": 1},
+        "l1_l2_l3_l4": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "bucketCounts": {
+      "type": "object",
+      "required": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"],
+      "properties": {
+        "l1": {"type": "integer", "minimum": 0},
+        "l1_l2": {"type": "integer", "minimum": 0},
+        "l1_l2_l3": {"type": "integer", "minimum": 0},
+        "l1_l2_l3_l4": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "eligiblePairIds": {
+      "type": "object",
+      "required": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"],
+      "properties": {
+        "l1": {"$ref": "#/$defs/pairIdArray"},
+        "l1_l2": {"$ref": "#/$defs/pairIdArray"},
+        "l1_l2_l3": {"$ref": "#/$defs/pairIdArray"},
+        "l1_l2_l3_l4": {"$ref": "#/$defs/pairIdArray"}
+      },
+      "additionalProperties": false
+    },
+    "pairIdArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/pairId"}
+    }
+  }
+}
