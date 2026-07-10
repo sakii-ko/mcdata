@@ -127,6 +127,9 @@ profiles:
     server_port: 25570
     world_profile: "render_matrix_base"
     world_state:
+      clear_non_player_entities: true
+      gamerules:
+        do_mob_spawning: false
       player:
         x: -3
         y: 64
@@ -154,6 +157,9 @@ profiles:
     server_port: 25570
     world_profile: "render_matrix_base"
     world_state:
+      clear_non_player_entities: true
+      gamerules:
+        do_mob_spawning: false
       player:
         x: -3
         y: 64
@@ -181,6 +187,9 @@ profiles:
     server_port: 25570
     world_profile: "render_matrix_base"
     world_state:
+      clear_non_player_entities: true
+      gamerules:
+        do_mob_spawning: false
       player:
         x: -3
         y: 64

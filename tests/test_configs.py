@@ -94,6 +94,8 @@ def test_three_way_preview_profiles_are_strictly_comparable() -> None:
         "yaw": 0,
         "pitch": 18,
     }
+    assert resolved[0]["world_state"]["clear_non_player_entities"] is True
+    assert resolved[0]["world_state"]["gamerules"]["do_mob_spawning"] is False
 
 
 def test_ten_minute_render_scan_is_stationary_and_covers_capture_duration() -> None:

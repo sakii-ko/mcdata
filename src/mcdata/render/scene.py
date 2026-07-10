@@ -30,6 +30,8 @@ def apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
         *_time_weather_commands(state),
         *_scene_commands(state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}),
     ]
+    if state.get("clear_non_player_entities"):
+        commands.append("kill @e[type=!minecraft:player]")
     if state.get("clear_dropped_items"):
         commands.append("kill @e[type=minecraft:item]")
     write_commands(proc, commands)
