@@ -31,6 +31,30 @@ def render_trajectory_map(
     goals = [_point(point) for point in goal_values]
     for idx, (x, z) in enumerate(goals, 1):
         ax.text(x + 0.2, z + 0.2, str(idx), fontsize=9, color="#111111", weight="bold")
+    jump_indices = sorted(
+        {
+            index
+            for event in trajectory.get("events", [])
+            if isinstance(event, dict)
+            and event.get("semantic_action") == "deliberate_jump"
+            for index in (event.get("route_index"),)
+            if isinstance(index, int)
+            and not isinstance(index, bool)
+            and 0 <= index < len(route)
+        }
+    )
+    jump_points = [route[index] for index in jump_indices]
+    if jump_points:
+        ax.scatter(
+            [point[0] for point in jump_points],
+            [point[1] for point in jump_points],
+            marker="^",
+            color="#9467bd",
+            edgecolor="#ffffff",
+            s=90,
+            zorder=5,
+            label="deliberate jump",
+        )
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel("x")
     ax.set_ylabel("z")

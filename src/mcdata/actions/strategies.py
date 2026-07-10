@@ -466,6 +466,19 @@ def _apply_waypoint_actions(
                 }
             )
             t += 0.35 + scan_pause_sec
+        deliberate_jump = action.get("deliberate_jump", False)
+        if not isinstance(deliberate_jump, bool):
+            raise RuntimeError("waypoint deliberate_jump must be a boolean")
+        if deliberate_jump:
+            events.append(
+                {
+                    "t": round(t, 3),
+                    "key": "space",
+                    "action": "tap",
+                    "semantic_action": "deliberate_jump",
+                    "route_index": route_index,
+                }
+            )
     return t
 
 

@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from mcdata.action_curriculum import planned_action_contract
 from mcdata.actions.strategies import build_trajectory
 from mcdata.config import load_yaml
 from mcdata.qa.route import simulate_track
@@ -292,6 +295,53 @@ def test_lookdev_showcase_walks_and_holds_horizontal_water_views() -> None:
         "material_closeup_alt",
     ]
     assert all(isinstance(event.get("route_index"), int) for event in held_views)
+
+
+def test_l2_jump_showcase_is_a_semantic_only_extension_of_l1_lookdev() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    base = _build_configured("lookdev_showcase_60s", strategies["lookdev_showcase_60s"])
+    trajectory = _build_configured(
+        "curriculum_l2_jump_showcase_60s",
+        strategies["curriculum_l2_jump_showcase_60s"],
+    )
+    jumps = [
+        event
+        for event in trajectory["events"]
+        if event.get("semantic_action") == "deliberate_jump"
+    ]
+
+    assert planned_action_contract(trajectory) == {
+        "taxonomy_version": 1,
+        "planned_level": 2,
+        "planned_capabilities": ["navigation", "deliberate_jump"],
+        "bucket": "l1_l2",
+    }
+    assert trajectory["duration_sec"] == base["duration_sec"] == 59.034
+    assert trajectory["route"] == base["route"]
+    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
+    assert all(
+        event["key"] == "space" and event["action"] == "tap" for event in jumps
+    )
+    assert [
+        event
+        for event in trajectory["events"]
+        if event.get("semantic_action") != "deliberate_jump"
+    ] == base["events"]
+    assert not any(event.get("semantic_action") for event in base["events"])
+    assert simulate_track(trajectory) == simulate_track(base)
+
+
+def test_waypoint_deliberate_jump_requires_an_explicit_boolean() -> None:
+    spec = {
+        "type": "astar_walk",
+        "start": [0, 0],
+        "goals": [[0, 2]],
+        "bounds": [-1, 1, 0, 2],
+        "waypoint_actions": [{"at": [0, 2], "deliberate_jump": "yes"}],
+    }
+
+    with pytest.raises(RuntimeError, match="deliberate_jump must be a boolean"):
+        build_trajectory("bad_jump", spec)
 
 
 def test_turn_calibration_probe_is_eight_600px_turns() -> None:

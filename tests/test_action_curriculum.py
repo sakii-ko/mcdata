@@ -11,6 +11,9 @@ from mcdata.action_curriculum import (
     validate_action_summary,
 )
 from mcdata.actions.strategies import build_trajectory
+from mcdata.config import load_yaml
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -130,6 +133,34 @@ def test_deliberate_jump_is_l2_only_when_explicit_and_dispatched(tmp_path: Path)
     assert result["bucket"] == "l1_l2"
     assert result["observed_level"] == 2
     assert result["observed_semantic_action_counts"]["deliberate_jump"] == 1
+
+
+def test_configured_l2_jump_showcase_counts_all_dispatched_jumps(tmp_path: Path) -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"][
+        "curriculum_l2_jump_showcase_60s"
+    ]
+    trajectory = build_trajectory("curriculum_l2_jump_showcase_60s", spec)
+    trajectory_path = tmp_path / "trajectory.json"
+    replay_path = tmp_path / "replay_log.jsonl"
+    _write_json(trajectory_path, trajectory)
+    statuses = [
+        "executed"
+        if "key" in event or "mouse_dx" in event or "mouse_dy" in event
+        else "non_input"
+        for event in trajectory["events"]
+    ]
+    _write_replay(replay_path, trajectory["events"], statuses)
+
+    result = summarize_action_run(
+        trajectory_path,
+        replay_path,
+        execution_mode="open_loop_event_replay",
+    )
+
+    assert result["bucket"] == "l1_l2"
+    assert result["observed_level"] == 2
+    assert result["observed_semantic_action_counts"]["deliberate_jump"] == 4
+    assert result["controller_recovery_counts"]["jump_taps"] == 0
 
 
 def test_scripted_strategy_preserves_action_curriculum_contract() -> None:
