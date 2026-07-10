@@ -207,6 +207,10 @@ declared time/weather state. The shared all-weather values were checked against 
 overexposure. Per-condition shader tuning may look stronger, but it would create a compound edit
 and must not be mixed into these single-axis pairs.
 
+The framework-neutral contract for training on dataset index v2 pairs, retaining a frozen base,
+and evaluating held-out style and non-Minecraft generalization is in
+[`docs/training_generalization_contract.md`](docs/training_generalization_contract.md).
+
 ## Notes
 
 This machine currently only needs to be able to bootstrap and dry-run. True rendering requires
