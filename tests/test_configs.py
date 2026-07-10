@@ -58,6 +58,44 @@ def test_matrix_profiles_share_world_and_server_port() -> None:
     assert {profile.get("server_port") for profile in matrix_profiles.values()} == {25570}
 
 
+def test_three_way_preview_profiles_are_strictly_comparable() -> None:
+    profiles = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
+    asset_sets = load_yaml(ROOT / "configs" / "asset_sets.yml")["asset_sets"]
+    names = ["preview_vanilla_high", "preview_texture_high", "matrix_shader_high"]
+    selected = [profiles[name] for name in names]
+
+    comparable_keys = (
+        "version_strategy",
+        "loader",
+        "quality",
+        "mods",
+        "width",
+        "height",
+        "server_port",
+        "world_profile",
+    )
+    for key in comparable_keys:
+        assert len({repr(profile[key]) for profile in selected}) == 1, key
+
+    assert asset_sets[profiles["preview_vanilla_high"]["asset_set"]] == {
+        "resourcepacks": [],
+        "shaderpack": None,
+    }
+    assert asset_sets[profiles["preview_texture_high"]["asset_set"]]["resourcepacks"] == [
+        "faithful-32x",
+        "fresh-animations",
+    ]
+    assert asset_sets[profiles["preview_texture_high"]["asset_set"]]["shaderpack"] is None
+    assert asset_sets[profiles["matrix_shader_high"]["asset_set"]]["resourcepacks"] == [
+        "faithful-32x",
+        "fresh-animations",
+    ]
+    assert (
+        asset_sets[profiles["matrix_shader_high"]["asset_set"]]["shaderpack"]
+        == "complementary-reimagined"
+    )
+
+
 def test_matrix_world_states_freeze_scene_and_suppress_recipe_toasts() -> None:
     names = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
 

@@ -55,6 +55,44 @@ def test_astar_walk_adds_startup_compensation_to_forward_holds() -> None:
     ]
 
 
+def test_astar_walk_repeats_closed_goal_loop() -> None:
+    spec = {
+        "type": "astar_walk",
+        "start": [0, 0],
+        "goals": [[0, 2], [0, 0]],
+        "bounds": [-1, 1, 0, 2],
+        "blocked": [],
+        "seconds_per_block": 0.5,
+        "initial_pause_sec": 0,
+        "scan_pause_sec": 0,
+    }
+
+    single = build_trajectory("unit_walk_single", spec)
+    repeated = build_trajectory("unit_walk_repeated", {**spec, "loops": 2})
+
+    assert repeated["loops"] == 2
+    assert repeated["route"] == single["route"] + single["route"][1:]
+    assert repeated["duration_sec"] > single["duration_sec"]
+    single_forward = [event for event in single["events"] if event.get("key") == "w"]
+    repeated_forward = [event for event in repeated["events"] if event.get("key") == "w"]
+    assert len(repeated_forward) == 2 * len(single_forward)
+    assert [event["action"] for event in repeated_forward] == ["down", "up"] * 4
+
+
+def test_astar_walk_rejects_non_positive_loops() -> None:
+    with pytest.raises(RuntimeError, match="loops must be at least 1"):
+        build_trajectory(
+            "unit_walk_invalid_loops",
+            {
+                "type": "astar_walk",
+                "start": [0, 0],
+                "goals": [[0, 1]],
+                "bounds": [0, 0, 0, 1],
+                "loops": 0,
+            },
+        )
+
+
 def test_roam_requires_explicit_seed() -> None:
     with pytest.raises(RuntimeError, match="requires an explicit seed"):
         build_trajectory(
