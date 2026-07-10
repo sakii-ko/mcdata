@@ -49,6 +49,8 @@ def build_trajectory(
     if builder is None:
         raise RuntimeError(f"Unsupported strategy type for {name}: {kind}")
     trajectory = builder(name, spec)
+    if "action_curriculum" in spec:
+        trajectory = {**trajectory, "action_curriculum": spec["action_curriculum"]}
     if "events" not in trajectory:
         return trajectory
     result = dict(trajectory)

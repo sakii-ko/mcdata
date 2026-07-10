@@ -12,6 +12,7 @@
     "invariants",
     "cohorts",
     "episodes",
+    "action_buckets",
     "pair_manifest",
     "pairs",
     "comparisons",
@@ -105,6 +106,7 @@
           "manifest",
           "video",
           "trajectory",
+          "action_curriculum",
           "positions",
           "qa",
           "client_log",
@@ -157,6 +159,7 @@
               }
             ]
           },
+          "action_curriculum": {"$ref": "#/$defs/acceptedActionCurriculum"},
           "positions": {"$ref": "#/$defs/artifact"},
           "navigation": {"$ref": "#/$defs/artifact"},
           "qa": {
@@ -198,6 +201,18 @@
           "accepted": {"const": true}
         }
       }
+    },
+    "action_buckets": {
+      "type": "object",
+      "required": ["taxonomy_version", "l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "l1": {"$ref": "#/$defs/actionBucket"},
+        "l1_l2": {"$ref": "#/$defs/actionBucket"},
+        "l1_l2_l3": {"$ref": "#/$defs/actionBucket"},
+        "l1_l2_l3_l4": {"$ref": "#/$defs/actionBucket"}
+      },
+      "additionalProperties": false
     },
     "pair_manifest": {
       "allOf": [
@@ -351,6 +366,143 @@
     }
   },
   "$defs": {
+    "actionBucket": {
+      "type": "object",
+      "required": ["episode_count", "episode_ids"],
+      "properties": {
+        "episode_count": {"type": "integer", "minimum": 0},
+        "episode_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "additionalProperties": false
+    },
+    "actionCounts": {
+      "type": "object",
+      "required": [
+        "navigation_move",
+        "navigation_camera",
+        "deliberate_jump",
+        "deterministic_block_placement",
+        "controlled_combat"
+      ],
+      "properties": {
+        "navigation_move": {"type": "integer", "minimum": 0},
+        "navigation_camera": {"type": "integer", "minimum": 0},
+        "deliberate_jump": {"type": "integer", "minimum": 0},
+        "deterministic_block_placement": {"type": "integer", "minimum": 0},
+        "controlled_combat": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "controllerRecoveryCounts": {
+      "type": "object",
+      "required": ["attempts", "jump_taps", "reverse_moves"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 0},
+        "jump_taps": {"type": "integer", "minimum": 0},
+        "reverse_moves": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "acceptedActionCurriculum": {
+      "type": "object",
+      "required": [
+        "taxonomy_version",
+        "planned_level",
+        "planned_capabilities",
+        "observed_semantic_action_counts",
+        "observed_level",
+        "controller_recovery_counts",
+        "bucket",
+        "evidence"
+      ],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "planned_level": {"type": "integer", "minimum": 1, "maximum": 4},
+        "planned_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "navigation",
+              "deliberate_jump",
+              "deterministic_block_placement",
+              "controlled_combat"
+            ]
+          }
+        },
+        "observed_semantic_action_counts": {"$ref": "#/$defs/actionCounts"},
+        "observed_level": {"type": "integer", "minimum": 1, "maximum": 4},
+        "controller_recovery_counts": {"$ref": "#/$defs/controllerRecoveryCounts"},
+        "bucket": {"enum": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"]},
+        "evidence": {
+          "allOf": [
+            {"$ref": "#/$defs/artifact"},
+            {
+              "type": "object",
+              "required": ["kind", "record_count"],
+              "properties": {
+                "kind": {"enum": ["replay_log", "navigation_log"]},
+                "record_count": {"type": "integer", "minimum": 1}
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"planned_level": {"const": 1}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {"const": ["navigation"]},
+              "bucket": {"const": "l1"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 2}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {"const": ["navigation", "deliberate_jump"]},
+              "bucket": {"const": "l1_l2"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 3}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {
+                "const": ["navigation", "deliberate_jump", "deterministic_block_placement"]
+              },
+              "bucket": {"const": "l1_l2_l3"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 4}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {
+                "const": [
+                  "navigation",
+                  "deliberate_jump",
+                  "deterministic_block_placement",
+                  "controlled_combat"
+                ]
+              },
+              "bucket": {"const": "l1_l2_l3_l4"}
+            }
+          }
+        }
+      ]
+    },
     "artifact": {
       "type": "object",
       "required": ["path", "sha256", "size_bytes"],

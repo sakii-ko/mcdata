@@ -37,6 +37,43 @@ def test_replay_writes_scheduled_and_actual_times(
     assert records[1]["scheduled_t"] == 0.0
     assert records[1]["actual_t"] >= 0.0
     assert records[1]["event"]["key"] == "w"
+    assert records[1]["execution_status"] == "executed"
+
+
+def test_replay_marks_unimplemented_semantic_actions_contract_only(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    trajectory = tmp_path / "trajectory.json"
+    trajectory.write_text(
+        json.dumps(
+            {
+                "events": [
+                    {
+                        "t": 0.0,
+                        "semantic_action": "deterministic_block_placement",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _window_name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda _backend, *, warned=None: [])
+    sent: list[dict] = []
+    monkeypatch.setattr(
+        replay, "_send_event_xdotool", lambda event, **_kwargs: sent.append(dict(event))
+    )
+
+    replay.replay_trajectory(trajectory, start_event=_AlreadyStarted(), run_dir=tmp_path)
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "replay_log.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert records[1]["execution_status"] == "unsupported_contract_only"
+    assert sent == []
 
 
 def test_update_held_tracks_key_lifecycle() -> None:

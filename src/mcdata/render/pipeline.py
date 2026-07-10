@@ -21,6 +21,12 @@ from typing import Any, Callable, Iterator
 
 from rich.console import Console
 
+from mcdata.action_curriculum import (
+    ActionCurriculumError,
+    planned_action_contract,
+    summarize_action_run,
+    validate_action_summary,
+)
 from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
@@ -886,9 +892,11 @@ def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     raise_worker_failure = bool(worker_failure and state.error is None)
     if worker_failure and state.error is None:
         state.error = worker_failure
-    _write_run_manifest_for_plan(plan, state, runlog)
+    action_failure = _write_run_manifest_for_plan(plan, state, runlog)
     if raise_worker_failure:
         raise RuntimeError(worker_failure)
+    if action_failure:
+        raise RuntimeError(action_failure)
 
 
 def _join_replay_worker(state: RunState, runlog: RunLogger) -> str | None:
@@ -949,9 +957,15 @@ def _write_position_log(plan: RunPlan, state: RunState, runlog: RunLogger) -> No
     runlog.log("position_probe", "positions_written", count=count)
 
 
-def _write_run_manifest_for_plan(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
+def _write_run_manifest_for_plan(
+    plan: RunPlan, state: RunState, runlog: RunLogger
+) -> str | None:
     resources = dict(plan.resources)
     resources["resourcepack_runtime"] = state.resourcepack_runtime
+    action_curriculum, action_error = _action_curriculum_for_plan(plan)
+    raise_action_failure = bool(action_error and state.error is None)
+    if action_error and state.error is None:
+        state.error = f"action curriculum validation failed: {action_error}"
     manifest = build_run_manifest(
         run_id=plan.run_dir.name,
         profile_name=plan.profile_name,
@@ -959,6 +973,7 @@ def _write_run_manifest_for_plan(plan: RunPlan, state: RunState, runlog: RunLogg
         mc_version=plan.game_version,
         resources=resources,
         trajectory=plan.trajectory_info,
+        action_curriculum=action_curriculum,
         capture=_capture_manifest(
             enabled=plan.capture,
             settings=plan.capture_settings,
@@ -974,6 +989,38 @@ def _write_run_manifest_for_plan(plan: RunPlan, state: RunState, runlog: RunLogg
     )
     write_run_manifest(plan.run_dir, manifest)
     runlog.log("teardown", "manifest_written", path=str(plan.run_dir / "manifest.json"))
+    return state.error if raise_action_failure else None
+
+
+def _action_curriculum_for_plan(
+    plan: RunPlan,
+) -> tuple[dict[str, Any] | None, str | None]:
+    if plan.run_trajectory_path is None or plan.trajectory_info is None:
+        return None, None
+    evidence_path = _action_timing_log(plan)
+    execution_mode = str(plan.trajectory_info.get("execution_mode"))
+    try:
+        summary = summarize_action_run(
+            plan.run_trajectory_path,
+            evidence_path,
+            execution_mode=execution_mode,
+            require_evidence=False,
+        )
+    except ActionCurriculumError as exc:
+        summary = summarize_action_run(
+            plan.run_trajectory_path,
+            None,
+            execution_mode=execution_mode,
+            require_evidence=False,
+        )
+        return summary, str(exc)
+    if not plan.replay_actions or plan.dry_run:
+        return summary, None
+    try:
+        validate_action_summary(summary, require_evidence=True)
+    except ActionCurriculumError as exc:
+        return summary, str(exc)
+    return summary, None
 
 
 def remote_tmux_command(
@@ -1350,6 +1397,7 @@ def _trajectory_manifest(
     if trajectory_path is None:
         return None
     data = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    planned_action_contract(data)
     route = data.get("route", [])
     return {
         "strategy": strategy,

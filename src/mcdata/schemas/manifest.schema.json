@@ -10,6 +10,7 @@
     "resources",
     "world",
     "trajectory",
+    "action_curriculum",
     "capture",
     "env",
     "git",
@@ -75,6 +76,12 @@
       },
       "additionalProperties": true
     },
+    "action_curriculum": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/actionCurriculum"}
+      ]
+    },
     "capture": {
       "type": "object",
       "required": ["enabled", "settings", "ffmpeg_cmd", "ffprobe"],
@@ -100,5 +107,136 @@
     "ended_at": { "type": ["string", "null"] },
     "error": { "type": ["string", "null"] }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "$defs": {
+    "actionCounts": {
+      "type": "object",
+      "required": [
+        "navigation_move",
+        "navigation_camera",
+        "deliberate_jump",
+        "deterministic_block_placement",
+        "controlled_combat"
+      ],
+      "properties": {
+        "navigation_move": {"type": "integer", "minimum": 0},
+        "navigation_camera": {"type": "integer", "minimum": 0},
+        "deliberate_jump": {"type": "integer", "minimum": 0},
+        "deterministic_block_placement": {"type": "integer", "minimum": 0},
+        "controlled_combat": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "controllerRecoveryCounts": {
+      "type": "object",
+      "required": ["attempts", "jump_taps", "reverse_moves"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 0},
+        "jump_taps": {"type": "integer", "minimum": 0},
+        "reverse_moves": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "actionEvidence": {
+      "type": "object",
+      "required": ["kind", "path", "sha256", "size_bytes", "record_count"],
+      "properties": {
+        "kind": {"enum": ["replay_log", "navigation_log"]},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "record_count": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "actionCurriculum": {
+      "type": "object",
+      "required": [
+        "taxonomy_version",
+        "planned_level",
+        "planned_capabilities",
+        "observed_semantic_action_counts",
+        "observed_level",
+        "controller_recovery_counts",
+        "bucket",
+        "evidence"
+      ],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "planned_level": {"type": "integer", "minimum": 1, "maximum": 4},
+        "planned_capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "navigation",
+              "deliberate_jump",
+              "deterministic_block_placement",
+              "controlled_combat"
+            ]
+          }
+        },
+        "observed_semantic_action_counts": {"$ref": "#/$defs/actionCounts"},
+        "observed_level": {"type": "integer", "minimum": 0, "maximum": 4},
+        "controller_recovery_counts": {"$ref": "#/$defs/controllerRecoveryCounts"},
+        "bucket": {"enum": ["l1", "l1_l2", "l1_l2_l3", "l1_l2_l3_l4"]},
+        "evidence": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/actionEvidence"}
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"planned_level": {"const": 1}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {"const": ["navigation"]},
+              "bucket": {"const": "l1"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 2}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {"const": ["navigation", "deliberate_jump"]},
+              "bucket": {"const": "l1_l2"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 3}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {
+                "const": ["navigation", "deliberate_jump", "deterministic_block_placement"]
+              },
+              "bucket": {"const": "l1_l2_l3"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"planned_level": {"const": 4}}},
+          "then": {
+            "properties": {
+              "planned_capabilities": {
+                "const": [
+                  "navigation",
+                  "deliberate_jump",
+                  "deterministic_block_placement",
+                  "controlled_combat"
+                ]
+              },
+              "bucket": {"const": "l1_l2_l3_l4"}
+            }
+          }
+        }
+      ]
+    }
+  }
 }

@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from jsonschema import validate
 
+from mcdata.action_curriculum import summarize_action_run
 from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
 
 GENERATOR_COMMIT = "f" * 40
@@ -60,9 +61,21 @@ def _write_episode(
     if feedback:
         (run_dir / "navigation_log.jsonl").write_text(
             '{"event":"start","mono":1.0}\n'
-            '{"event":"control","t_rel":59.9,"moving":true,"yaw_error":1.0}\n',
+            '{"event":"control","t_rel":59.9,"moving":true,"mouse_dx":0,"yaw_error":1.0}\n'
+            '{"event":"stop","t_rel":60.0,"reason":"stop_requested"}\n',
             encoding="utf-8",
         )
+        action_evidence = run_dir / "navigation_log.jsonl"
+        execution_mode = "online_position_yaw_feedback"
+    else:
+        (run_dir / "replay_log.jsonl").write_text(
+            '{"event":"start","mono":1.0}\n'
+            '{"actual_t":0.0,"event":{"action":"tap","key":"w","t":0},'
+            '"execution_status":"executed","scheduled_t":0.0}\n',
+            encoding="utf-8",
+        )
+        action_evidence = run_dir / "replay_log.jsonl"
+        execution_mode = "open_loop_event_replay"
     shader_filename = f"{shader}.zip" if shader else None
     runtime_line = (
         f"[Render thread/INFO]: Using shaderpack: {shader_filename}\n"
@@ -145,7 +158,7 @@ def _write_episode(
         "world": {"seed": 1, "profile": "render_matrix_base", "state": world_state},
         "trajectory": {
             "sha256": trajectory_sha,
-            "event_count": 0 if feedback else 60,
+            "event_count": 0 if feedback else 1,
             "duration_sec": 604.0 if feedback else 38.937,
             "type": "feedback_roam" if feedback else "astar_walk",
             "execution_mode": (
@@ -153,6 +166,11 @@ def _write_episode(
             ),
             "route_point_count": 3 if feedback else 0,
         },
+        "action_curriculum": summarize_action_run(
+            trajectory_path,
+            action_evidence,
+            execution_mode=execution_mode,
+        ),
         "capture": {
             "enabled": True,
             "settings": {"width": 1280, "height": 720, "fps": 24},
@@ -400,6 +418,25 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
     }
     assert len(strict_cohort["profile_names"]) == 2
     assert len(variants) == 1 and variants[0]["profile_names"] == ["matrix_night"]
+    assert index["action_buckets"] == {
+        "taxonomy_version": 1,
+        "l1": {
+            "episode_count": 3,
+            "episode_ids": [
+                "episode-matrix_low",
+                "episode-matrix_night",
+                "episode-matrix_textured",
+            ],
+        },
+        "l1_l2": {"episode_count": 0, "episode_ids": []},
+        "l1_l2_l3": {"episode_count": 0, "episode_ids": []},
+        "l1_l2_l3_l4": {"episode_count": 0, "episode_ids": []},
+    }
+    assert all(item["action_curriculum"]["bucket"] == "l1" for item in index["episodes"])
+    assert all(
+        not Path(item["action_curriculum"]["evidence"]["path"]).is_absolute()
+        for item in index["episodes"]
+    )
     assert index["dataset_id"] == repeated["dataset_id"]
     assert (tmp_path / "dataset_index.json").read_bytes() == first_index
     assert (tmp_path / "SHA256SUMS").read_bytes() == first_sums
@@ -729,6 +766,15 @@ def test_feedback_dataset_is_policy_aligned_and_binds_navigation(tmp_path: Path)
     assert index["invariants"]["trajectory_event_count"] == 0
     assert all("navigation" in episode for episode in index["episodes"])
     assert all(episode["trajectory"]["route_point_count"] == 3 for episode in index["episodes"])
+    assert all(
+        episode["action_curriculum"]["observed_level"] == 1
+        and episode["action_curriculum"]["observed_semantic_action_counts"][
+            "deliberate_jump"
+        ]
+        == 0
+        and episode["action_curriculum"]["controller_recovery_counts"]["jump_taps"] == 0
+        for episode in index["episodes"]
+    )
     assert index["status"] == "accepted"
     assert index["manual_review"] is not None
 
@@ -822,6 +868,46 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
     with pytest.raises(DatasetValidationError, match="required cohort"):
         write_dataset_index(
             tmp_path / "partial",
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
+def test_dataset_rejects_missing_or_tampered_action_evidence(tmp_path: Path) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    replay_path = tmp_path / "run_matrix_textured" / "replay_log.jsonl"
+    replay_path.unlink()
+
+    with pytest.raises(DatasetValidationError, match="replay evidence is missing"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+    root = tmp_path / "tampered"
+    profiles, strict, diagnostic, review, pairs = _fixture(root)
+    manifest_path = root / "run_matrix_textured" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["action_curriculum"]["observed_semantic_action_counts"][
+        "navigation_move"
+    ] += 1
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+
+    with pytest.raises(DatasetValidationError, match="does not match replay evidence"):
+        write_dataset_index(
+            root,
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,

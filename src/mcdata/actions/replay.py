@@ -145,13 +145,20 @@ def replay_trajectory(
             ):
                 break
             actual_t = time.monotonic() - start
-            if backend == "xdotool":
-                _send_event_xdotool(event, warned=xdotool_warnings, stop_event=stop_event)
-            else:
-                _send_event_xtest(event, stop_event=stop_event)
-            _update_held(held, event)
+            execution_status = _event_execution_status(event)
+            if execution_status != "unsupported_contract_only":
+                if backend == "xdotool":
+                    _send_event_xdotool(event, warned=xdotool_warnings, stop_event=stop_event)
+                else:
+                    _send_event_xtest(event, stop_event=stop_event)
+                _update_held(held, event)
             if replay_log is not None:
-                replay_log.write(event=event, scheduled_t=scheduled_t, actual_t=actual_t)
+                replay_log.write(
+                    event=event,
+                    scheduled_t=scheduled_t,
+                    actual_t=actual_t,
+                    execution_status=execution_status,
+                )
     finally:
         released = sorted(held)
         if released:
@@ -214,6 +221,18 @@ def _update_held(held: set[str], event: dict) -> None:
         held.add(key)
     elif action in {"up", "tap"}:
         held.discard(key)
+
+
+def _event_execution_status(event: dict) -> str:
+    """Record contract-only actions without claiming that an input was executed."""
+    if event.get("semantic_action") in {
+        "deterministic_block_placement",
+        "controlled_combat",
+    }:
+        return "unsupported_contract_only"
+    if "key" in event or "mouse_dx" in event or "mouse_dy" in event:
+        return "executed"
+    return "non_input"
 
 
 def _focus_window(window_name: str, *, warned: set[tuple[str, ...]] | None = None) -> None:
@@ -453,12 +472,20 @@ class _ReplayLog:
         self._fh.write(json.dumps({"event": "start", "mono": mono}, sort_keys=True) + "\n")
         self._fh.flush()
 
-    def write(self, *, event: dict, scheduled_t: float, actual_t: float) -> None:
+    def write(
+        self,
+        *,
+        event: dict,
+        scheduled_t: float,
+        actual_t: float,
+        execution_status: str,
+    ) -> None:
         record = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "scheduled_t": scheduled_t,
             "actual_t": actual_t,
             "event": event,
+            "execution_status": execution_status,
         }
         self._fh.write(json.dumps(record, sort_keys=True) + "\n")
         self._fh.flush()

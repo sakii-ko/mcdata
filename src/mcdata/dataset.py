@@ -5,6 +5,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_curriculum import ActionCurriculumError, action_buckets
 from mcdata.dataset_support.comparisons import cohorts, comparisons, manual_review
 from mcdata.dataset_support.core import (
     DatasetValidationError,
@@ -89,6 +90,10 @@ def _build_index(
         primary_cohort_id,
     )
     review = manual_review(root, visual_review.resolve() if visual_review else None, set(expected))
+    try:
+        bucket_index = action_buckets(episodes)
+    except ActionCurriculumError as exc:
+        raise DatasetValidationError(str(exc)) from exc
     index = {
         "schema_version": SCHEMA_VERSION,
         "generator": {"name": "mcdata.dataset-index", "git_commit": generator_commit},
@@ -97,6 +102,7 @@ def _build_index(
         "invariants": invariants,
         "cohorts": cohort_items,
         "episodes": episodes,
+        "action_buckets": bucket_index,
         "pair_manifest": pair_manifest_artifact,
         "pairs": pair_items,
         "comparisons": comparison_items,

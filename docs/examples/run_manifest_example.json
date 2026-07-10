@@ -1,4 +1,26 @@
 {
+  "action_curriculum": {
+    "bucket": "l1",
+    "controller_recovery_counts": {
+      "attempts": 0,
+      "jump_taps": 0,
+      "reverse_moves": 0
+    },
+    "evidence": null,
+    "observed_level": 0,
+    "observed_semantic_action_counts": {
+      "controlled_combat": 0,
+      "deliberate_jump": 0,
+      "deterministic_block_placement": 0,
+      "navigation_camera": 0,
+      "navigation_move": 0
+    },
+    "planned_capabilities": [
+      "navigation"
+    ],
+    "planned_level": 1,
+    "taxonomy_version": 1
+  },
   "capture": {
     "enabled": false,
     "ffmpeg_cmd": null,

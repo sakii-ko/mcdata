@@ -5,6 +5,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_curriculum import (
+    ActionCurriculumError,
+    summarize_action_run,
+    validate_action_summary,
+)
 from mcdata.dataset_support.core import (
     DatasetValidationError,
     artifact,
@@ -348,6 +353,46 @@ def _trajectory_facts(
     }
 
 
+def _action_curriculum_facts(
+    manifest: dict[str, Any], root: Path, run_dir: Path
+) -> dict[str, Any]:
+    trajectory = require_mapping(manifest.get("trajectory"), "manifest.trajectory")
+    execution_mode = trajectory.get("execution_mode", "open_loop_event_replay")
+    filename = (
+        "navigation_log.jsonl"
+        if execution_mode == "online_position_yaw_feedback"
+        else "replay_log.jsonl"
+    )
+    evidence_path = run_dir / filename
+    try:
+        computed = summarize_action_run(
+            run_dir / "trajectory.json",
+            evidence_path,
+            execution_mode=execution_mode,
+            require_evidence=True,
+        )
+        claimed = manifest.get("action_curriculum")
+        validate_action_summary(claimed, require_evidence=True)
+    except ActionCurriculumError as exc:
+        raise DatasetValidationError(
+            f"Action curriculum validation failed for {run_dir.name}: {exc}"
+        ) from exc
+    claimed_normalized = dict(claimed)
+    claimed_evidence = dict(require_mapping(claimed.get("evidence"), "action evidence"))
+    claimed_evidence["path"] = computed["evidence"]["path"]
+    claimed_normalized["evidence"] = claimed_evidence
+    if claimed_normalized != computed:
+        raise DatasetValidationError(
+            f"Manifest action curriculum does not match replay evidence for {run_dir.name}"
+        )
+    normalized = dict(computed)
+    normalized["evidence"] = {
+        **computed["evidence"],
+        "path": relative_path(root, evidence_path),
+    }
+    return normalized
+
+
 def _episode_resources(manifest: dict[str, Any], run_dir: Path) -> dict[str, Any]:
     resources = require_mapping(manifest["resources"], "manifest.resources")
     runtime = require_mapping(resources["resourcepack_runtime"], "resourcepack_runtime")
@@ -388,6 +433,7 @@ def episode_from_run(
         duration=expected_duration,
     )
     trajectory_facts = _trajectory_facts(manifest, evidence["trajectory"], run_dir)
+    action_curriculum = _action_curriculum_facts(manifest, root, run_dir)
     profile = require_mapping(manifest["profile"], "manifest.profile")
     resources = _episode_resources(manifest, run_dir)
     episode = {
@@ -399,6 +445,7 @@ def episode_from_run(
         "manifest": {**evidence["manifest"], "schema_version": manifest.get("schema_version")},
         "video": {**evidence["video"], **video_facts},
         "trajectory": trajectory_facts,
+        "action_curriculum": action_curriculum,
         "positions": evidence["positions"],
         "qa": {**artifact(root, run_dir / "qa_report.json"), **qa_facts},
         "client_log": evidence["client_log"],

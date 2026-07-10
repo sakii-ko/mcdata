@@ -36,6 +36,26 @@ def _sample_manifest() -> dict:
             "execution_mode": "open_loop_event_replay",
             "route_point_count": 20,
         },
+        action_curriculum={
+            "taxonomy_version": 1,
+            "planned_level": 1,
+            "planned_capabilities": ["navigation"],
+            "observed_semantic_action_counts": {
+                "navigation_move": 0,
+                "navigation_camera": 0,
+                "deliberate_jump": 0,
+                "deterministic_block_placement": 0,
+                "controlled_combat": 0,
+            },
+            "observed_level": 0,
+            "controller_recovery_counts": {
+                "attempts": 0,
+                "jump_taps": 0,
+                "reverse_moves": 0,
+            },
+            "bucket": "l1",
+            "evidence": None,
+        },
         capture={
             "enabled": False,
             "settings": {"width": 1280, "height": 720, "fps": 24},
