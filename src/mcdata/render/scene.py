@@ -14,10 +14,12 @@ SCENE_FAILURE_PATTERNS = (
     "Expected",
     "Unknown",
 )
-SCENE_RECEIPT_PATTERNS = (
+SERVER_MUTATION_RECEIPT_PATTERNS = (
     "Successfully filled",
     "Changed the block",
     "No blocks were filled",
+    "Biomes set between",
+    "biome entry/entries set between",
 )
 MAX_BIOME_VOLUME = 32768
 
@@ -56,9 +58,11 @@ def apply_join_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
 
 
 def expected_scene_fill_count(profile: dict[str, Any]) -> int:
+    """Count scene and biome mutations that must emit server receipts before launch."""
     state = profile.get("world_state", {}) if isinstance(profile.get("world_state"), dict) else {}
     scene = state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}
-    return _count_receipted_scene_commands(_scene_commands(scene))
+    biome = state.get("biome", {}) if isinstance(state.get("biome"), dict) else {}
+    return _count_receipted_scene_commands(_scene_commands(scene)) + len(_biome_commands(biome))
 
 
 def verify_scene_commands(
@@ -68,24 +72,25 @@ def verify_scene_commands(
     wait_sec: float = 10.0,
     poll_sec: float = 0.2,
 ) -> int:
+    """Wait for every configured scene/biome mutation receipt, failing on server errors."""
     deadline = time.time() + wait_sec
     last_count = 0
     while time.time() <= deadline:
         lines = _read_log_lines(log_path)
         for line in lines:
             if _is_scene_failure_line(line):
-                raise RuntimeError(f"Scene command failed: {line.strip()} (see {log_path})")
+                raise RuntimeError(f"Server mutation failed: {line.strip()} (see {log_path})")
         last_count = sum(1 for line in lines if _is_scene_receipt_line(line))
         if last_count == expected_fill_count:
             return last_count
         if last_count > expected_fill_count:
             raise RuntimeError(
-                f"Scene command receipt count exceeded expected count: "
+                f"Server mutation receipt count exceeded expected count: "
                 f"saw {last_count}/{expected_fill_count}; see {log_path}"
             )
         time.sleep(poll_sec)
     raise TimeoutError(
-        f"Timed out waiting for scene command receipts: "
+        f"Timed out waiting for scene/biome mutation receipts: "
         f"saw {last_count}/{expected_fill_count}; see {log_path}"
     )
 
@@ -112,7 +117,7 @@ def _is_scene_failure_line(line: str) -> bool:
 
 
 def _is_scene_receipt_line(line: str) -> bool:
-    return any(pattern in line for pattern in SCENE_RECEIPT_PATTERNS)
+    return any(pattern in line for pattern in SERVER_MUTATION_RECEIPT_PATTERNS)
 
 
 def _count_receipted_scene_commands(commands: list[str]) -> int:
