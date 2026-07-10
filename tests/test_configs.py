@@ -61,7 +61,7 @@ def test_matrix_profiles_share_world_and_server_port() -> None:
 def test_three_way_preview_profiles_are_strictly_comparable() -> None:
     profiles = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
     asset_sets = load_yaml(ROOT / "configs" / "asset_sets.yml")["asset_sets"]
-    names = ["preview_vanilla_high", "preview_texture_high", "matrix_shader_high"]
+    names = ["preview_vanilla_high", "preview_texture_high", "preview_shader_high"]
     resolved = [load_profile(ROOT / "configs", name) for name in names]
     comparable = [
         {key: value for key, value in profile.items() if key not in {"description", "asset_set"}}
@@ -79,14 +79,21 @@ def test_three_way_preview_profiles_are_strictly_comparable() -> None:
         "fresh-animations",
     ]
     assert asset_sets[profiles["preview_texture_high"]["asset_set"]]["shaderpack"] is None
-    assert asset_sets[profiles["matrix_shader_high"]["asset_set"]]["resourcepacks"] == [
+    assert asset_sets[profiles["preview_shader_high"]["asset_set"]]["resourcepacks"] == [
         "faithful-32x",
         "fresh-animations",
     ]
     assert (
-        asset_sets[profiles["matrix_shader_high"]["asset_set"]]["shaderpack"]
+        asset_sets[profiles["preview_shader_high"]["asset_set"]]["shaderpack"]
         == "complementary-reimagined"
     )
+    assert resolved[0]["world_state"]["player"] == {
+        "x": -3,
+        "y": 64,
+        "z": -8,
+        "yaw": 0,
+        "pitch": 18,
+    }
 
 
 def test_ten_minute_render_scan_is_stationary_and_covers_capture_duration() -> None:
