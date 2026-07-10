@@ -1,0 +1,95 @@
+{
+  "artifacts": {
+    "actions": {
+      "path": "env_actions.jsonl",
+      "sha256": "07764d1a769e13d545519c78b641b35a92a50c6c445e3173e7932f940eb8e83f",
+      "size_bytes": 1067,
+      "tick_count": 4
+    },
+    "frames": null,
+    "video": null
+  },
+  "engine": {
+    "archive_filename": "engine.zip",
+    "archive_sha256": "293fac6ac72245b3365dce0e8bfbb6396fb94df29b23b6538f3bd7e2eec13ec6",
+    "repository": "CraftJarvis/SimulatorEngine",
+    "revision": "48d4809cfddc7e2b85295e8c39b3c5e8c6d46ae7",
+    "runtime_jar": "engine/build/libs/mcprec-6.13.jar",
+    "runtime_jar_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
+  "producer": {
+    "config_sha256": "d088a1f68ca44cac73d0efe1af7b7df4ade5994b39360da7fe74cfb6b282cbd2",
+    "filename": "model.safetensors",
+    "license_status": "license_unknown",
+    "model_sha256": "475fbd0df655ad77c3e3f602d157f4273032bff8e6e82c3863a992f5b03753f9",
+    "name": "MineStudio VPT foundation_model_1x",
+    "repository": "CraftJarvis/MineStudio_VPT.foundation_model_1x",
+    "revision": "17a5f43b30c4f734489902fdc6a55bf47781be3a",
+    "usage_scope": "research_only"
+  },
+  "reset_contract": {
+    "contract_id": "fixture-neutral-seed-401-v1",
+    "path": "reset_contract.json",
+    "sha256": "7424c3a1ee8c60c3dafd76b8d0b66340ecb4e804c4b2e8535f0c92ef60172ff7",
+    "snapshot_kind": "procedural_seeded_reset_only",
+    "world_seed": 401
+  },
+  "rollout": {
+    "action_type": "agent",
+    "callback_order": [
+      "neutral_mask",
+      "post_mapper_env_action_recorder"
+    ],
+    "deterministic_policy": true,
+    "duration_sec": 0.2,
+    "learned_controls": [
+      "back",
+      "forward",
+      "left",
+      "right",
+      "sneak",
+      "sprint",
+      "camera"
+    ],
+    "masked_controls": [
+      "jump",
+      "use",
+      "attack",
+      "inventory",
+      "drop",
+      "hotbar.1",
+      "hotbar.2",
+      "hotbar.3",
+      "hotbar.4",
+      "hotbar.5",
+      "hotbar.6",
+      "hotbar.7",
+      "hotbar.8",
+      "hotbar.9"
+    ],
+    "seed": 401,
+    "tick_count": 4,
+    "tick_rate_hz": 20
+  },
+  "rollout_sha256": "ff8fe21cd89497f722dbf567a3cf4ea9ebc91c69b70cc46853b7ddf7b9e5fe4c",
+  "runtime": {
+    "cuda": null,
+    "device": "cpu",
+    "java": "openjdk version \"1.8.0_fixture\"",
+    "numpy": "fixture",
+    "python": "3.11.fixture",
+    "torch": "fixture"
+  },
+  "schema_version": 1,
+  "source_environment": {
+    "action_format": "minestudio_post_mapper_env_action_v1",
+    "action_tick_rate_hz": 20,
+    "action_type": "agent",
+    "minecraft_version": "1.16.5",
+    "name": "MineStudio",
+    "repository": "https://github.com/CraftJarvis/MineStudio.git",
+    "repository_commit": "278aa8553668d591339dbf30d281594ed06ee882",
+    "version": "1.1.5"
+  },
+  "status": "complete"
+}

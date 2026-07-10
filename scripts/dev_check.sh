@@ -11,7 +11,7 @@ if [[ ! -x "$PYTHON" ]]; then
 fi
 
 cd "$ROOT_DIR"
-"$PYTHON" -m compileall -q src
+"$PYTHON" -m compileall -q src external/minestudio_vpt_neutral/runner.py
 "$PYTHON" scripts/check_standards.py
-"$PYTHON" -m ruff check src tests
+"$PYTHON" -m ruff check src tests external/minestudio_vpt_neutral/runner.py
 "$PYTHON" -m pytest -q

@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/minestudio_neutral_rollout.schema.json",
+  "title": "Pinned MineStudio VPT neutral rollout",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "source_environment",
+    "producer",
+    "engine",
+    "reset_contract",
+    "rollout",
+    "runtime",
+    "artifacts",
+    "rollout_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "complete"},
+    "rollout_sha256": {"$ref": "#/$defs/sha256"},
+    "source_environment": {
+      "type": "object",
+      "required": [
+        "name",
+        "version",
+        "repository",
+        "repository_commit",
+        "minecraft_version",
+        "action_type",
+        "action_format",
+        "action_tick_rate_hz"
+      ],
+      "properties": {
+        "name": {"const": "MineStudio"},
+        "version": {"const": "1.1.5"},
+        "repository": {"const": "https://github.com/CraftJarvis/MineStudio.git"},
+        "repository_commit": {"const": "278aa8553668d591339dbf30d281594ed06ee882"},
+        "minecraft_version": {"const": "1.16.5"},
+        "action_type": {"const": "agent"},
+        "action_format": {"const": "minestudio_post_mapper_env_action_v1"},
+        "action_tick_rate_hz": {"const": 20}
+      },
+      "additionalProperties": false
+    },
+    "producer": {
+      "type": "object",
+      "required": [
+        "name",
+        "repository",
+        "revision",
+        "filename",
+        "model_sha256",
+        "config_sha256",
+        "license_status",
+        "usage_scope"
+      ],
+      "properties": {
+        "name": {"const": "MineStudio VPT foundation_model_1x"},
+        "repository": {"const": "CraftJarvis/MineStudio_VPT.foundation_model_1x"},
+        "revision": {"const": "17a5f43b30c4f734489902fdc6a55bf47781be3a"},
+        "filename": {"const": "model.safetensors"},
+        "model_sha256": {
+          "const": "475fbd0df655ad77c3e3f602d157f4273032bff8e6e82c3863a992f5b03753f9"
+        },
+        "config_sha256": {
+          "const": "d088a1f68ca44cac73d0efe1af7b7df4ade5994b39360da7fe74cfb6b282cbd2"
+        },
+        "license_status": {"const": "license_unknown"},
+        "usage_scope": {"const": "research_only"}
+      },
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "required": [
+        "repository",
+        "revision",
+        "archive_filename",
+        "archive_sha256",
+        "runtime_jar",
+        "runtime_jar_sha256"
+      ],
+      "properties": {
+        "repository": {"const": "CraftJarvis/SimulatorEngine"},
+        "revision": {"const": "48d4809cfddc7e2b85295e8c39b3c5e8c6d46ae7"},
+        "archive_filename": {"const": "engine.zip"},
+        "archive_sha256": {
+          "const": "293fac6ac72245b3365dce0e8bfbb6396fb94df29b23b6538f3bd7e2eec13ec6"
+        },
+        "runtime_jar": {"const": "engine/build/libs/mcprec-6.13.jar"},
+        "runtime_jar_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "additionalProperties": false
+    },
+    "reset_contract": {
+      "type": "object",
+      "required": ["path", "sha256", "contract_id", "snapshot_kind", "world_seed"],
+      "properties": {
+        "path": {"const": "reset_contract.json"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "contract_id": {"type": "string", "minLength": 1},
+        "snapshot_kind": {"const": "procedural_seeded_reset_only"},
+        "world_seed": {"type": "integer"}
+      },
+      "additionalProperties": false
+    },
+    "rollout": {
+      "type": "object",
+      "required": [
+        "tick_rate_hz",
+        "tick_count",
+        "duration_sec",
+        "seed",
+        "deterministic_policy",
+        "action_type",
+        "callback_order",
+        "masked_controls",
+        "learned_controls"
+      ],
+      "properties": {
+        "tick_rate_hz": {"const": 20},
+        "tick_count": {"type": "integer", "minimum": 1},
+        "duration_sec": {"type": "number", "exclusiveMinimum": 0},
+        "seed": {"type": "integer"},
+        "deterministic_policy": {"const": true},
+        "action_type": {"const": "agent"},
+        "callback_order": {
+          "oneOf": [
+            {"const": ["neutral_mask", "post_mapper_env_action_recorder"]},
+            {"const": ["neutral_mask", "post_mapper_env_action_recorder", "record_video"]}
+          ]
+        },
+        "masked_controls": {"type": "array", "minItems": 14, "uniqueItems": true},
+        "learned_controls": {"type": "array", "minItems": 7, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["python", "device", "numpy", "torch", "cuda", "java"],
+      "properties": {
+        "python": {"type": "string", "minLength": 1},
+        "device": {"enum": ["cpu", "cuda"]},
+        "numpy": {"type": "string", "minLength": 1},
+        "torch": {"type": "string", "minLength": 1},
+        "cuda": {"type": ["string", "null"]},
+        "java": {"type": "string", "pattern": "1\\.8"}
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["actions", "frames", "video"],
+      "properties": {
+        "actions": {
+          "type": "object",
+          "required": ["path", "sha256", "size_bytes", "tick_count"],
+          "properties": {
+            "path": {"const": "env_actions.jsonl"},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "size_bytes": {"type": "integer", "minimum": 1},
+            "tick_count": {"type": "integer", "minimum": 1}
+          },
+          "additionalProperties": false
+        },
+        "frames": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["path", "file_count", "tree_sha256"],
+              "properties": {
+                "path": {"const": "frames"},
+                "file_count": {"type": "integer", "minimum": 1},
+                "tree_sha256": {"$ref": "#/$defs/sha256"}
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "video": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["path", "sha256", "size_bytes", "fps", "frame_contract", "ticks"],
+              "properties": {
+                "path": {"const": "capture.mp4"},
+                "sha256": {"$ref": "#/$defs/sha256"},
+                "size_bytes": {"type": "integer", "minimum": 1},
+                "fps": {"const": 20},
+                "frame_contract": {"const": "reset_plus_post_step"},
+                "ticks": {"type": "integer", "minimum": 1}
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

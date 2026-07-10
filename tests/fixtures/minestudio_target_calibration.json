@@ -1,0 +1,8 @@
+{
+  "calibration_id": "fixture-mc26.2-neutral-cal-v1",
+  "pitch_pixels_per_degree": 4.0,
+  "schema_version": 1,
+  "target_client_profile": "fixture_neutral_reference",
+  "target_minecraft_version": "26.2",
+  "yaw_pixels_per_degree": 4.0
+}

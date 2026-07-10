@@ -1,0 +1,82 @@
+{
+  "action_source": {
+    "id": "learned_visual_policy",
+    "provenance": "declared",
+    "taxonomy_version": 1
+  },
+  "camera_calibration": {
+    "artifact_sha256": "3e273f199d5e63eaf52d9c85c092a8aa3724089ed400843f843d90b946b243d5",
+    "calibration_id": "fixture-mc26.2-neutral-cal-v1",
+    "pitch_pixels_per_degree": 4.0,
+    "yaw_pixels_per_degree": 4.0
+  },
+  "curriculum_binding": {
+    "has_attack_input": false,
+    "has_jump_input": false,
+    "has_use_input": false,
+    "status": "l1_candidate"
+  },
+  "duration_sec": 0.2,
+  "events": [
+    {
+      "action": "down",
+      "key": "w",
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": 5,
+      "mouse_dy": 0,
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "action": "down",
+      "key": "d",
+      "native_trace_tick": 1,
+      "t": 0.05
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": 8,
+      "mouse_dy": -2,
+      "native_trace_tick": 1,
+      "t": 0.05
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": -4,
+      "mouse_dy": 2,
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "up",
+      "key": "d",
+      "native_trace_tick": 3,
+      "t": 0.15
+    }
+  ],
+  "external_rollout_binding": {
+    "camera_calibration_sha256": "3e273f199d5e63eaf52d9c85c092a8aa3724089ed400843f843d90b946b243d5",
+    "compatibility_status": "target_replay_not_yet_validated",
+    "rollout_schema_version": 1,
+    "rollout_sha256": "ff8fe21cd89497f722dbf567a3cf4ea9ebc91c69b70cc46853b7ddf7b9e5fe4c",
+    "source_minecraft_version": "1.16.5",
+    "target_client_profile": "fixture_neutral_reference",
+    "target_minecraft_version": "26.2"
+  },
+  "native_trace": {
+    "schema_version": 1,
+    "sha256": "a40ed7c256d60dca1edfe40cb90b406139a433e0a36a9dcdfbf5aa53be89dffe",
+    "tick_rate_hz": 20
+  },
+  "type": "native_action_trace_replay"
+}

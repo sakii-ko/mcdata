@@ -135,6 +135,36 @@ def validate_curriculum_binding(value: Any) -> dict[str, Any]:
     }
 
 
+def validate_external_rollout_binding(value: Any) -> dict[str, Any]:
+    """Validate the source/target boundary emitted by the neutral Phase 2 importer."""
+    fields = {
+        "rollout_schema_version",
+        "rollout_sha256",
+        "source_minecraft_version",
+        "target_minecraft_version",
+        "target_client_profile",
+        "camera_calibration_sha256",
+        "compatibility_status",
+    }
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise ActionSourceError("external_rollout_binding has an unstable field set")
+    if value["rollout_schema_version"] != 1:
+        raise ActionSourceError("external rollout schema_version must be 1")
+    for field in ("rollout_sha256", "camera_calibration_sha256"):
+        if not _is_sha256(value[field]):
+            raise ActionSourceError(f"external rollout {field} must be a SHA-256")
+    if value["source_minecraft_version"] != "1.16.5":
+        raise ActionSourceError("neutral rollout source Minecraft version must be 1.16.5")
+    if value["target_minecraft_version"] != "26.2":
+        raise ActionSourceError("neutral rollout target Minecraft version must be 26.2")
+    profile = value["target_client_profile"]
+    if not isinstance(profile, str) or not profile.strip():
+        raise ActionSourceError("external rollout target_client_profile must be non-empty")
+    if value["compatibility_status"] != "target_replay_not_yet_validated":
+        raise ActionSourceError("unknown external rollout compatibility status")
+    return dict(value)
+
+
 def attach_episode_action_sources(
     episodes: Sequence[dict[str, Any]], manifests: Sequence[Mapping[str, Any]]
 ) -> None:

@@ -67,6 +67,7 @@
 | `mcdata.resourcepack_catalog` | config（只读候选、许可、lineage 与 split 契约） | packs、render、actions、qa、dataset（不下载资产，也不推断训练许可） |
 | `mcdata.action_curriculum` / `mcdata.action_effect` / `mcdata.action_jump` / `mcdata.action_combat` / `mcdata.action_placement` | curriculum 可依赖 jump/combat/placement；effect 只依赖 jump 并复算 trajectory/replay/positions；jump 只定义 running key-hold 契约；combat 复用 placement 的 server receipt/log-prefix 校验 | 所有其余上层模块 |
 | `mcdata.action_source` / `mcdata.action_trace` / `mcdata.external_action_adapters` | source 为零依赖 taxonomy；trace 只依赖 source，负责 20 Hz canonical trace 与标定后 replay 编译；adapters 只依赖 trace 并完成外部动作纯转换 | render、qa、dataset、游戏/模拟器运行时 |
+| `mcdata.minestudio_rollout_import` / `mcdata.minestudio_rollout_support` | import 依赖 action_trace、external_action_adapters 和零依赖 support；只验证已落盘的 neutral rollout 并编译目标轨迹 | render、qa、dataset、MineStudio/PyTorch/游戏运行时 |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
 | `mcdata.dataset` / `mcdata.dataset_support` | action_curriculum、action_effect、action_source；dataset 另依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |

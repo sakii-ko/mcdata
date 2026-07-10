@@ -80,7 +80,8 @@
             {"$ref": "#/$defs/nativeTraceRef"}
           ]
         },
-        "curriculum_binding": {"$ref": "#/$defs/nativeCurriculumBinding"}
+        "curriculum_binding": {"$ref": "#/$defs/nativeCurriculumBinding"},
+        "external_rollout_binding": {"$ref": "#/$defs/externalRolloutBinding"}
       },
       "additionalProperties": true,
       "allOf": [
@@ -158,6 +159,28 @@
     }
   ],
   "$defs": {
+    "externalRolloutBinding": {
+      "type": "object",
+      "required": [
+        "rollout_schema_version",
+        "rollout_sha256",
+        "source_minecraft_version",
+        "target_minecraft_version",
+        "target_client_profile",
+        "camera_calibration_sha256",
+        "compatibility_status"
+      ],
+      "properties": {
+        "rollout_schema_version": {"const": 1},
+        "rollout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_minecraft_version": {"const": "1.16.5"},
+        "target_minecraft_version": {"const": "26.2"},
+        "target_client_profile": {"type": "string", "minLength": 1},
+        "camera_calibration_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "compatibility_status": {"const": "target_replay_not_yet_validated"}
+      },
+      "additionalProperties": false
+    },
     "actionSource": {
       "type": "object",
       "required": ["taxonomy_version", "id", "provenance"],

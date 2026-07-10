@@ -1,0 +1,151 @@
+{
+  "action_source": {
+    "id": "learned_visual_policy",
+    "provenance": "declared",
+    "taxonomy_version": 1
+  },
+  "adapter": {
+    "name": "minestudio_vpt_env",
+    "parameters": {
+      "camera_order": [
+        "pitch",
+        "yaw"
+      ],
+      "hotbar_index_base": 1,
+      "raw_source_format": "minestudio_env_action_v1",
+      "rollout_binding": {
+        "deterministic_policy": true,
+        "engine_archive_sha256": "293fac6ac72245b3365dce0e8bfbb6396fb94df29b23b6538f3bd7e2eec13ec6",
+        "engine_runtime_jar_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "masked_controls": [
+          "jump",
+          "use",
+          "attack",
+          "inventory",
+          "drop",
+          "hotbar.1",
+          "hotbar.2",
+          "hotbar.3",
+          "hotbar.4",
+          "hotbar.5",
+          "hotbar.6",
+          "hotbar.7",
+          "hotbar.8",
+          "hotbar.9"
+        ],
+        "minestudio_repository_commit": "278aa8553668d591339dbf30d281594ed06ee882",
+        "reset_contract_sha256": "7424c3a1ee8c60c3dafd76b8d0b66340ecb4e804c4b2e8535f0c92ef60172ff7",
+        "rollout_schema_version": 1,
+        "rollout_sha256": "ff8fe21cd89497f722dbf567a3cf4ea9ebc91c69b70cc46853b7ddf7b9e5fe4c"
+      }
+    },
+    "source_format": "minestudio_post_mapper_env_action_v1",
+    "version": 1
+  },
+  "duration_sec": 0.2,
+  "producer": {
+    "model_sha256": "475fbd0df655ad77c3e3f602d157f4273032bff8e6e82c3863a992f5b03753f9",
+    "name": "MineStudio VPT foundation_model_1x",
+    "version": "17a5f43b30c4f734489902fdc6a55bf47781be3a"
+  },
+  "schema_version": 1,
+  "source_environment": {
+    "action_format": "minestudio_post_mapper_env_action_v1",
+    "action_tick_rate_hz": 20,
+    "minecraft_version": "1.16.5",
+    "name": "MineStudio",
+    "version": "1.1.5"
+  },
+  "tick_rate_hz": 20,
+  "ticks": [
+    {
+      "attack": false,
+      "camera_delta_degrees": {
+        "pitch": 0.0,
+        "yaw": 1.25
+      },
+      "edge_events": [
+        {
+          "control": "forward",
+          "edge": "press"
+        }
+      ],
+      "held_buttons": [
+        "forward"
+      ],
+      "hotbar": null,
+      "inventory": false,
+      "source_tick": 0,
+      "tick": 0,
+      "use": false
+    },
+    {
+      "attack": false,
+      "camera_delta_degrees": {
+        "pitch": -0.5,
+        "yaw": 2.0
+      },
+      "edge_events": [
+        {
+          "control": "right",
+          "edge": "press"
+        }
+      ],
+      "held_buttons": [
+        "forward",
+        "right"
+      ],
+      "hotbar": null,
+      "inventory": false,
+      "source_tick": 1,
+      "tick": 1,
+      "use": false
+    },
+    {
+      "attack": false,
+      "camera_delta_degrees": {
+        "pitch": 0.5,
+        "yaw": -1.0
+      },
+      "edge_events": [
+        {
+          "control": "forward",
+          "edge": "release"
+        }
+      ],
+      "held_buttons": [
+        "right"
+      ],
+      "hotbar": null,
+      "inventory": false,
+      "source_tick": 2,
+      "tick": 2,
+      "use": false
+    },
+    {
+      "attack": false,
+      "camera_delta_degrees": {
+        "pitch": 0.0,
+        "yaw": 0.0
+      },
+      "edge_events": [
+        {
+          "control": "right",
+          "edge": "release"
+        }
+      ],
+      "held_buttons": [],
+      "hotbar": null,
+      "inventory": false,
+      "source_tick": 3,
+      "tick": 3,
+      "use": false
+    }
+  ],
+  "trace_sha256": "a40ed7c256d60dca1edfe40cb90b406139a433e0a36a9dcdfbf5aa53be89dffe",
+  "world": {
+    "seed": 401,
+    "snapshot_id": "fixture-neutral-seed-401-v1",
+    "snapshot_sha256": "7424c3a1ee8c60c3dafd76b8d0b66340ecb4e804c4b2e8535f0c92ef60172ff7"
+  }
+}

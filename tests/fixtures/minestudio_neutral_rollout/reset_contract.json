@@ -1,0 +1,18 @@
+{
+  "contract_id": "fixture-neutral-seed-401-v1",
+  "inventory": {},
+  "num_empty_frames": 20,
+  "obs_size": [
+    128,
+    128
+  ],
+  "preferred_spawn_biome": "plains",
+  "render_size": [
+    640,
+    360
+  ],
+  "schema_version": 1,
+  "source_minecraft_version": "1.16.5",
+  "snapshot_kind": "procedural_seeded_reset_only",
+  "world_seed": 401
+}

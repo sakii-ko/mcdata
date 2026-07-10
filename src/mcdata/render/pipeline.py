@@ -33,7 +33,11 @@ from mcdata.action_effect import (
     action_effect_required,
     write_action_effect_report,
 )
-from mcdata.action_source import resolve_manifest_action_source, validate_native_trace_ref
+from mcdata.action_source import (
+    resolve_manifest_action_source,
+    validate_external_rollout_binding,
+    validate_native_trace_ref,
+)
 from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
@@ -1693,6 +1697,10 @@ def _trajectory_manifest(
         result["curriculum_binding"] = data["curriculum_binding"]
     if data.get("action_source") is not None:
         result["action_source"] = data["action_source"]
+    if data.get("external_rollout_binding") is not None:
+        result["external_rollout_binding"] = validate_external_rollout_binding(
+            data["external_rollout_binding"]
+        )
     result["action_source"] = resolve_manifest_action_source({"trajectory": result})
     return result
 

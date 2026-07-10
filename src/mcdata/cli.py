@@ -16,6 +16,10 @@ from mcdata.dataset_support.curriculum import (
 )
 from mcdata.dataset_support.curriculum_io import write_curriculum_plan
 from mcdata.doctor import run_doctor
+from mcdata.minestudio_rollout_import import (
+    MineStudioRolloutImportError,
+    import_minestudio_rollout,
+)
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.qa.visual_grid import VisualGridError, write_visual_grid
@@ -119,6 +123,33 @@ def make_trajectory(
     """Generate an action trajectory JSON file."""
     trajectory = generate_strategy(root.resolve() / "configs", strategy, out)
     console.print(f"Wrote {len(trajectory.get('events', []))} events to {out}")
+
+
+@app.command("import-minestudio-rollout")
+def import_minestudio_rollout_command(
+    rollout_dir: Path = typer.Argument(...),
+    expected_rollout_sha256: str = typer.Option(..., "--expected-rollout-sha256"),
+    expected_ticks: int = typer.Option(..., "--expected-ticks", min=1),
+    camera_calibration: Path = typer.Option(..., "--camera-calibration"),
+    trace_out: Path = typer.Option(..., "--trace-out"),
+    trajectory_out: Path = typer.Option(..., "--trajectory-out"),
+) -> None:
+    """Import one pinned MineStudio rollout without loading its simulator runtime."""
+    try:
+        result = import_minestudio_rollout(
+            rollout_dir.resolve(),
+            expected_rollout_sha256=expected_rollout_sha256,
+            expected_ticks=expected_ticks,
+            camera_calibration_path=camera_calibration.resolve(),
+            trace_out=trace_out.resolve(),
+            trajectory_out=trajectory_out.resolve(),
+        )
+    except MineStudioRolloutImportError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(
+        f"Imported {result['tick_count']} ticks: {result['trace_sha256']} "
+        f"({result['compatibility_status']})"
+    )
 
 
 @app.command("viz-trajectory")

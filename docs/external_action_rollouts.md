@@ -143,6 +143,9 @@ following:
   are mapped only from known trajectory type/execution-mode pairs; an unknown `external` trajectory
   fails rather than being mislabeled.
 
-Phase 1 is the adapter/schema/compiler/dataset contract and golden tests. Phase 2 adds a lightweight
-rollout recorder, a target-version compatibility smoke, semantic segmentation/effect binding, and a
-small accepted source-balanced cohort before any long or multi-style production run.
+Phase 1 is the adapter/schema/compiler/dataset contract and golden tests. The Phase 2 neutral runner
+and fail-closed import procedure are specified in
+[`minestudio_vpt_phase2_runbook.md`](minestudio_vpt_phase2_runbook.md). Its presence is not evidence
+that a heavy rollout or MC26.2 compatibility replay has already run. A target-version compatibility
+smoke, semantic segmentation/effect binding, and a small accepted source-balanced cohort remain
+required before any long or multi-style production run.

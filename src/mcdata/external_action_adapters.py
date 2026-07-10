@@ -72,6 +72,10 @@ class MineStudioVPTEnvAdapter:
                     "agent_action_to_env_action decoding before import"
                 )
             _reject_unknown_minestudio_controls(record, index)
+            if _active(record.get("drop", 0), f"action {index}.drop"):
+                raise ActionTraceError(
+                    f"MineStudio action {index}.drop cannot be represented by canonical trace v1"
+                )
             held = [
                 native
                 for source, native in _MINESTUDIO_KEYS.items()
@@ -192,6 +196,7 @@ def _reject_unknown_minestudio_controls(record: Mapping[str, Any], index: int) -
         "attack",
         "use",
         "inventory",
+        "drop",
         "camera",
         "source_tick",
         "semantic_annotations",

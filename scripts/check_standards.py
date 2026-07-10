@@ -51,6 +51,12 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "action_source": set(),
     "action_trace": {"action_source"},
     "external_action_adapters": {"action_trace"},
+    "minestudio_rollout_import": {
+        "action_trace",
+        "external_action_adapters",
+        "minestudio_rollout_support",
+    },
+    "minestudio_rollout_support": set(),
     "action_effect": {"action_jump"},
     "action_combat": {"action_placement"},
     "action_jump": set(),
