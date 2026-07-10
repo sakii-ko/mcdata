@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/navigation_surface.schema.json",
+  "title": "mcdata declarative navigation surface derivation artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "surface_id",
+    "terrain_instance_id",
+    "derivation",
+    "expected"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_kind": {"const": "derived_navigation_surface"},
+    "surface_id": {"$ref": "#/$defs/slug"},
+    "terrain_instance_id": {"$ref": "#/$defs/slug"},
+    "derivation": {"$ref": "#/$defs/derivation"},
+    "expected": {"$ref": "#/$defs/expected"}
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "integer_pair": {
+      "type": "array",
+      "prefixItems": [{"type": "integer"}, {"type": "integer"}],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "coordinate_triple": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer"},
+        {"type": "integer"},
+        {"type": "integer"}
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "origin"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "origin": {"$ref": "#/$defs/coordinate_triple"}
+      }
+    },
+    "probe_bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": {"$ref": "#/$defs/integer_pair"},
+        "y": {"$ref": "#/$defs/integer_pair"},
+        "z": {"$ref": "#/$defs/integer_pair"}
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "coordinate_frame",
+        "scene",
+        "probe_bounds",
+        "feet_y",
+        "support_allowlist",
+        "air_headroom_only",
+        "max_surfaces_per_xz",
+        "edge_policy"
+      ],
+      "properties": {
+        "policy": {"const": "declarative_scene_flat_surface_v1"},
+        "coordinate_frame": {"const": "minecraft_world_block_xyz"},
+        "scene": {"$ref": "#/$defs/scene"},
+        "probe_bounds": {"$ref": "#/$defs/probe_bounds"},
+        "feet_y": {"type": "integer"},
+        "support_allowlist": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "air_headroom_only": {"const": true},
+        "max_surfaces_per_xz": {"const": 1},
+        "edge_policy": {"const": "orthogonal_cardinal_height_delta_1_v1"}
+      }
+    },
+    "edge_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["walk", "jump_up", "drop_down"],
+      "properties": {
+        "walk": {"type": "integer", "minimum": 0},
+        "jump_up": {"type": "integer", "minimum": 0},
+        "drop_down": {"type": "integer", "minimum": 0}
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_count",
+        "traversable_node_count",
+        "edge_primitive_counts",
+        "surface_sha256"
+      ],
+      "properties": {
+        "node_count": {"type": "integer", "minimum": 1},
+        "traversable_node_count": {"type": "integer", "minimum": 1},
+        "edge_primitive_counts": {"$ref": "#/$defs/edge_counts"},
+        "surface_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

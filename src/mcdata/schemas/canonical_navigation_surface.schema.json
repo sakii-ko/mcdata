@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/canonical_navigation_surface.schema.json",
+  "title": "mcdata canonical controlled 2.5D navigation surface",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "coordinate_frame",
+    "edge_policy",
+    "max_surfaces_per_xz",
+    "surface_id",
+    "terrain_instance_id",
+    "support_allowlist",
+    "nodes",
+    "surface_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "coordinate_frame": {"const": "minecraft_world_block_xyz"},
+    "edge_policy": {"const": "orthogonal_cardinal_height_delta_1_v1"},
+    "max_surfaces_per_xz": {"const": 1},
+    "surface_id": {"$ref": "#/$defs/slug"},
+    "terrain_instance_id": {"$ref": "#/$defs/slug"},
+    "support_allowlist": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/node"}
+    },
+    "surface_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "coordinate_triple": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer"},
+        {"type": "integer"},
+        {"type": "integer"}
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "position",
+        "support_block",
+        "feet_block",
+        "head_block",
+        "headroom_blocks",
+        "fluid",
+        "hazard",
+        "traversable",
+        "rejection_codes"
+      ],
+      "properties": {
+        "position": {"$ref": "#/$defs/coordinate_triple"},
+        "support_block": {"type": "string", "minLength": 1},
+        "feet_block": {"type": "string", "minLength": 1},
+        "head_block": {"type": "string", "minLength": 1},
+        "headroom_blocks": {"type": "integer", "minimum": 0, "maximum": 2},
+        "fluid": {"type": "boolean"},
+        "hazard": {"type": "boolean"},
+        "traversable": {"type": "boolean"},
+        "rejection_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "unknown_block",
+              "unsupported_support_shape",
+              "support_not_in_full_block_allowlist",
+              "fluid",
+              "hazard",
+              "feet_not_air",
+              "head_not_air",
+              "insufficient_headroom"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

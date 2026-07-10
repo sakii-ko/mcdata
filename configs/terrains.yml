@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 
 identity_policy:
   hash_algorithm: "sha256"
@@ -16,7 +16,7 @@ terrain_families:
     instances:
       - instance_id: "showcase_plaza_flat_v1_mc26_2_seed1_render_matrix_base"
         status: "accepted"
-        identity_sha256: "f129e983c2317ac2ccafcbcc1dd28a632bb9304a0b8eefb70b93d0dfc36c5a90"
+        identity_sha256: "a4d834362e54b2e364b9ec1345bec62d18b50140d2f176f5b462c857ec94875b"
         minecraft:
           version: "26.2"
         world:
@@ -29,12 +29,16 @@ terrain_families:
             path: "configs/scene.yml"
             sha256: "eab271710e1dc321289e6d7cce81434d213c66b9240dcb0b8395c16344f8c957"
             origin: [0, 64, 0]
-          # Phase 1 has no immutable server-world export or canonical surface dump.
-          # Their strict slots stay unavailable instead of carrying invented hashes.
+          # No immutable server-world export is claimed. The surface is instead
+          # reproducibly derived from the content-addressed declarative scene.
           immutable_world_snapshot:
             status: "unavailable"
           navigation_surface:
-            status: "unavailable"
+            status: "available"
+            path: "configs/navigation_surfaces/showcase_plaza_flat_v1.json"
+            sha256: "569a71f06d697185e36ce2dffa624570afc4c6975707b75720868997932baa84"
+            surface_sha256: "c6d0a6e6cda4df3bd75cf006002c98da917163a7989e545ae7028633f85be5fb"
+            derivation_kind: "declarative_scene"
         # Camera yaw/pitch belongs to the action instance, not terrain identity.
         spawn: {x: 0, y: 64, z: -14}
         probe_bounds:
@@ -42,8 +46,11 @@ terrain_families:
           y: [63.0, 66.0]
           z: [-16, 16]
         capabilities:
-          navigation_model: "flat_2d_feedback_v1"
+          navigation_model: "canonical_surface_2_5d_v1"
           flat_full_block_surface_only: true
+          air_headroom_only: true
+          max_surfaces_per_xz: 1
+          edge_primitives: ["walk"]
           liquid_traversal: false
           vertical_edge_traversal: false
           step_or_slope_traversal: false

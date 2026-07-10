@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import shutil
 from pathlib import Path
 
 import pytest
@@ -40,6 +39,7 @@ def test_canonical_registry_has_one_real_accepted_flat_plaza() -> None:
     document = load_terrain_registry(REGISTRY_PATH, repository_root=ROOT)
     accepted = accepted_terrain_instances(document)
 
+    assert document["schema_version"] == 2
     assert len(accepted) == 1
     instance = accepted[0]
     assert instance["family_id"] == "showcase_plaza_flat_v1"
@@ -58,7 +58,13 @@ def test_canonical_registry_has_one_real_accepted_flat_plaza() -> None:
         "status": "unavailable"
     }
     assert instance["provenance"]["navigation_surface"] == {
-        "status": "unavailable"
+        "status": "available",
+        "path": "configs/navigation_surfaces/showcase_plaza_flat_v1.json",
+        "sha256": "569a71f06d697185e36ce2dffa624570afc4c6975707b75720868997932baa84",
+        "surface_sha256": (
+            "c6d0a6e6cda4df3bd75cf006002c98da917163a7989e545ae7028633f85be5fb"
+        ),
+        "derivation_kind": "declarative_scene",
     }
     assert document["blocked_candidates"] == [
         {
@@ -103,12 +109,15 @@ def test_render_world_state_variants_do_not_create_terrain_families() -> None:
     assert not any(token in accepted_family_ids for token in ("noon", "rain", "snow"))
 
 
-def test_flat_navigation_limits_are_explicit() -> None:
+def test_current_plaza_surface_capability_limits_are_explicit() -> None:
     _, instance = _instance(_document())
 
     assert instance["capabilities"] == {
-        "navigation_model": "flat_2d_feedback_v1",
+        "navigation_model": "canonical_surface_2_5d_v1",
         "flat_full_block_surface_only": True,
+        "air_headroom_only": True,
+        "max_surfaces_per_xz": 1,
+        "edge_primitives": ["walk"],
         "liquid_traversal": False,
         "vertical_edge_traversal": False,
         "step_or_slope_traversal": False,
@@ -132,6 +141,8 @@ def test_identity_hash_is_order_independent_and_binds_all_identity_axes() -> Non
         lambda value: value["world"].update(profile="another_world"),
         lambda value: value["provenance"]["scene"].update(sha256="a" * 64),
         lambda value: value["provenance"]["scene"].update(origin=[1, 64, 0]),
+        lambda value: value["provenance"]["navigation_surface"].update(sha256="a" * 64),
+        lambda value: value["provenance"]["navigation_surface"].update(surface_sha256="a" * 64),
         lambda value: value["spawn"].update(x=1),
         lambda value: value["probe_bounds"].update(x=[-15, 16]),
         lambda value: value["capabilities"].update(liquid_traversal=True),
@@ -165,28 +176,24 @@ def test_scene_origin_drift_fails_even_with_recomputed_identity_hash() -> None:
         validate_terrain_registry(document, repository_root=ROOT)
 
 
-def test_matching_nonzero_scene_xz_origin_still_fails_phase1(tmp_path: Path) -> None:
-    config_dir = tmp_path / "configs"
-    config_dir.mkdir()
-    for filename in ("profiles.yml", "actions.yml", "scene.yml"):
-        shutil.copyfile(ROOT / "configs" / filename, config_dir / filename)
-    scene_path = config_dir / "scene.yml"
-    scene_path.write_text(
-        scene_path.read_text(encoding="utf-8").replace(
-            "origin: [0, 64, 0]", "origin: [1, 64, 0]", 1
-        ),
-        encoding="utf-8",
-    )
+def test_navigation_surface_artifact_hash_drift_fails_even_with_rehashed_identity() -> None:
     document = _document()
     _, instance = _instance(document)
-    instance["provenance"]["scene"]["origin"] = [1, 64, 0]
-    instance["provenance"]["scene"]["sha256"] = hashlib.sha256(
-        scene_path.read_bytes()
-    ).hexdigest()
+    instance["provenance"]["navigation_surface"]["sha256"] = "a" * 64
     _rehash(document)
 
-    with pytest.raises(TerrainRegistryError, match="non-zero scene x/z origin"):
-        validate_terrain_registry(document, repository_root=tmp_path)
+    with pytest.raises(TerrainRegistryError, match="artifact SHA-256 mismatch"):
+        validate_terrain_registry(document, repository_root=ROOT)
+
+
+def test_navigation_surface_content_hash_drift_fails_even_with_rehashed_identity() -> None:
+    document = _document()
+    _, instance = _instance(document)
+    instance["provenance"]["navigation_surface"]["surface_sha256"] = "a" * 64
+    _rehash(document)
+
+    with pytest.raises(TerrainRegistryError, match="content SHA-256 mismatch"):
+        validate_terrain_registry(document, repository_root=ROOT)
 
 
 def test_config_binding_drift_fails_even_with_recomputed_identity_hash() -> None:
@@ -289,14 +296,24 @@ def test_unknown_or_timestamp_fields_fail_closed() -> None:
             validate_terrain_registry(document, repository_root=ROOT)
 
 
-def test_unavailable_snapshot_and_surface_cannot_carry_fake_hashes() -> None:
-    for artifact_name in ("immutable_world_snapshot", "navigation_surface"):
-        document = _document()
-        _, instance = _instance(document)
-        instance["provenance"][artifact_name]["sha256"] = "a" * 64
-        _rehash(document)
-        with pytest.raises(TerrainRegistryError, match="violates schema"):
-            validate_terrain_registry(document, repository_root=ROOT)
+def test_unavailable_snapshot_cannot_carry_a_fake_hash() -> None:
+    document = _document()
+    _, instance = _instance(document)
+    instance["provenance"]["immutable_world_snapshot"]["sha256"] = "a" * 64
+    _rehash(document)
+
+    with pytest.raises(TerrainRegistryError, match="violates schema"):
+        validate_terrain_registry(document, repository_root=ROOT)
+
+
+def test_navigation_surface_cannot_be_available_without_a_real_artifact() -> None:
+    document = _document()
+    _, instance = _instance(document)
+    instance["provenance"]["navigation_surface"]["path"] = "configs/missing.json"
+    _rehash(document)
+
+    with pytest.raises(TerrainRegistryError, match="provenance file is missing"):
+        validate_terrain_registry(document, repository_root=ROOT)
 
 
 def test_fake_immutable_snapshot_source_cannot_become_accepted() -> None:

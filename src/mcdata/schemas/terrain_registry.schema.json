@@ -11,7 +11,7 @@
     "blocked_candidates"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "identity_policy": {"$ref": "#/$defs/identity_policy"},
     "terrain_families": {
       "type": "array",
@@ -177,7 +177,7 @@
         "source_kind": {"const": "declarative_scene"},
         "scene": {"$ref": "#/$defs/scene_artifact"},
         "immutable_world_snapshot": {"$ref": "#/$defs/hash_artifact"},
-        "navigation_surface": {"$ref": "#/$defs/hash_artifact"}
+        "navigation_surface": {"$ref": "#/$defs/navigation_surface_artifact"}
       }
     },
     "scene_artifact": {
@@ -197,13 +197,16 @@
       "required": ["status"],
       "properties": {"status": {"const": "unavailable"}}
     },
-    "future_available_hash_artifact": {
+    "navigation_surface_artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "sha256"],
+      "required": ["status", "path", "sha256", "surface_sha256", "derivation_kind"],
       "properties": {
         "status": {"const": "available"},
-        "sha256": {"$ref": "#/$defs/sha256"}
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "surface_sha256": {"$ref": "#/$defs/sha256"},
+        "derivation_kind": {"const": "declarative_scene"}
       }
     },
     "capabilities": {
@@ -212,6 +215,9 @@
       "required": [
         "navigation_model",
         "flat_full_block_surface_only",
+        "air_headroom_only",
+        "max_surfaces_per_xz",
+        "edge_primitives",
         "liquid_traversal",
         "vertical_edge_traversal",
         "step_or_slope_traversal",
@@ -222,8 +228,17 @@
         "hazard_aware_routing"
       ],
       "properties": {
-        "navigation_model": {"const": "flat_2d_feedback_v1"},
+        "navigation_model": {"const": "canonical_surface_2_5d_v1"},
         "flat_full_block_surface_only": {"const": true},
+        "air_headroom_only": {"const": true},
+        "max_surfaces_per_xz": {"const": 1},
+        "edge_primitives": {
+          "type": "array",
+          "prefixItems": [{"const": "walk"}],
+          "items": false,
+          "minItems": 1,
+          "maxItems": 1
+        },
         "liquid_traversal": {"const": false},
         "vertical_edge_traversal": {"const": false},
         "step_or_slope_traversal": {"const": false},

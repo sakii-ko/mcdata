@@ -57,7 +57,9 @@
 | `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, action_curriculum, action_combat/action_placement, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe/placement/combat 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
-| `mcdata.terrain` | config, scene_model（纯校验/哈希；只读 canonical registry 与所绑定配置） | render、actions、qa、manifest、dataset（Phase 1 尚未 wiring） |
+| `mcdata.navigation_surface` | scene_model（纯 2.5D node/edge、scene 派生、稳定 A* 与内容哈希） | render、actions、qa、manifest、dataset（Phase 2 基础层尚未 wiring） |
+| `mcdata.navigation_surface_artifact` | config, scene_model, navigation_surface（只读 schema/artifact/provenance 校验） | render、actions、qa、manifest、dataset |
+| `mcdata.terrain` | config, scene_model, navigation_surface/navigation_surface_artifact（纯校验/哈希；只读 canonical registry 与所绑定 artifact/config） | render、actions、qa、manifest、dataset（Phase 2 基础层尚未 wiring） |
 | `mcdata.resourcepack_catalog` | config（只读候选、许可、lineage 与 split 契约） | packs、render、actions、qa、dataset（不下载资产，也不推断训练许可） |
 | `mcdata.action_curriculum` / `mcdata.action_jump` / `mcdata.action_combat` / `mcdata.action_placement` | curriculum 可依赖 jump/combat/placement；jump 只定义严格的 running key-hold 契约；combat 复用 placement 的通用 server receipt/log-prefix 校验；jump/placement 仅标准库 | 所有上层模块（taxonomy、L2–L4 计划/回执验证与证据归纳） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |

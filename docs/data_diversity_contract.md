@@ -236,24 +236,30 @@ cell-set Jaccard 偏高可以接受，但路线顺序、目标序列和视角统
 
 ## 8. 真实 blocker：当前 navigator 不是任意自然地形导航器
 
-当前 planner 的状态是 `(x,z)`，A* 只有四邻域水平移动；障碍也是二维 footprint。反馈控制虽然
+当前 runtime planner 的状态仍是 `(x,z)`，A* 只有四邻域水平移动；障碍也是二维 footprint。反馈控制虽然
 读取 `y`，但只把 `63 <= y <= 66` 当 fail-closed 安全门。它不知道每格 floor height、头部净空、
 台阶/坡度、可接受跌落、液体、岩浆、门、梯子、藤蔓或需要 jump/swim 的动作，也不会在三维
 地图上重规划。因此它能验证当前单层 plaza，却不能安全覆盖任意山地、自然洞穴、河流或建筑
 楼梯。把 `y` 阈值放宽不会解决规划问题，只会把跌落录进数据。
 
-解除 blocker 至少需要：
+Phase 2 已交付一个尚未 wiring 的纯基础层：`mcdata.navigation_surface` 能从当前 declarative scene
+稳定派生 `(x,feet_y,z)` 节点、full-block/air/headroom/fluid/hazard 判定、walk/jump-up/drop-down
+邻接与 capability-gated A*；registry 已用 artifact 文件 SHA 和派生 surface SHA 绑定唯一 plaza
+instance。当前 artifact 仍是 feet_y=64 的单层派生，不是 server snapshot/probe，也没有制造新
+terrain。详见 `docs/terrain_registry.md`。
 
-1. 可复现的 `(x,y,z)` navigation surface：每个节点记录支撑块、floor height、两格 headroom、
-   液体/火焰/仙人掌/粉雪等 hazard、边缘跌落和世界快照哈希；
-2. height-aware 邻接与 cost：平走、上/下台阶、jump、swim、门/梯子等动作原语有明确能力边界；
+解除 runtime / natural-terrain blocker 仍至少需要：
+
+1. 对每个新 terrain 取得真实 immutable snapshot/server probe，并生成多高度 canonical surface；
+2. 在已落地的 full-block walk/jump/drop 基础上审慎扩充 cost；swim、门、梯子等仍保持拒绝；
 3. 在线 policy 使用完整 xyz/yaw，跟踪三维 corridor，发现动态阻塞时有限重规划，并对 fall、
    submerge、stuck 和错误楼层 fail closed；
 4. QA 新增 vertical route completion、最大 step/fall、headroom/hazard violation、jump/swim
    事件配对和计划/实际三维偏差；
 5. 每个新 terrain 先做短 smoke 和路径可视化，再做 604 秒单路稳定性验证，最后才进入 pair。
 
-完成上述实现和真 GPU 验收前，A1 只能使用人工验证的单层安全 corridor，B 类保持 blocked。
+完成上述 wiring、真实 provenance 和真 GPU 验收前，A1 只能使用人工验证的单层安全 corridor，
+B 类保持 blocked。单测 synthetic step course 只验证基础层语义，不是 accepted terrain evidence。
 
 ## 9. 已落地的首批 action crossing
 
@@ -277,7 +283,7 @@ cell-set Jaccard 偏高可以接受，但路线顺序、目标序列和视角统
 ## 10. 推进顺序
 
 1. 用六条 feedback instances 在现有 plaza 上建立 action seed crossing，先验证长时稳定性；
-2. 实现 terrain registry、snapshot/scene provenance 和 `crossing_plan.json`；
+2. 在已落地 registry/scene/surface Phase 2 基础上补真实 snapshot/probe 与 `crossing_plan.json`；
 3. 交付 A1 的至少六个单层安全 terrain，每个先通过 scene/path/smoke/604s gate；
 4. 按第 4 节生成 sparse balanced pair cells，完成 source/target closure 和防泄漏 split；
 5. 单独实现 height-aware map/policy 后再开放 B 类自然高差地形；

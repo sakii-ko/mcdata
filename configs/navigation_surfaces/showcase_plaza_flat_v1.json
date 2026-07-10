@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "artifact_kind": "derived_navigation_surface",
+  "surface_id": "showcase_plaza_flat_v1_surface",
+  "terrain_instance_id": "showcase_plaza_flat_v1_mc26_2_seed1_render_matrix_base",
+  "derivation": {
+    "policy": "declarative_scene_flat_surface_v1",
+    "coordinate_frame": "minecraft_world_block_xyz",
+    "scene": {
+      "path": "configs/scene.yml",
+      "sha256": "eab271710e1dc321289e6d7cce81434d213c66b9240dcb0b8395c16344f8c957",
+      "origin": [0, 64, 0]
+    },
+    "probe_bounds": {
+      "x": [-16, 16],
+      "y": [63, 66],
+      "z": [-16, 16]
+    },
+    "feet_y": 64,
+    "support_allowlist": [
+      "minecraft:cut_sandstone",
+      "minecraft:dark_oak_planks",
+      "minecraft:deepslate_tiles",
+      "minecraft:grass_block",
+      "minecraft:mossy_stone_bricks",
+      "minecraft:mud_bricks",
+      "minecraft:polished_andesite",
+      "minecraft:polished_blackstone_bricks",
+      "minecraft:stone_bricks",
+      "minecraft:stripped_spruce_wood[axis=z]",
+      "minecraft:waxed_oxidized_cut_copper"
+    ],
+    "air_headroom_only": true,
+    "max_surfaces_per_xz": 1,
+    "edge_policy": "orthogonal_cardinal_height_delta_1_v1"
+  },
+  "expected": {
+    "node_count": 1089,
+    "traversable_node_count": 825,
+    "edge_primitive_counts": {
+      "walk": 3064,
+      "jump_up": 0,
+      "drop_down": 0
+    },
+    "surface_sha256": "c6d0a6e6cda4df3bd75cf006002c98da917163a7989e545ae7028633f85be5fb"
+  }
+}

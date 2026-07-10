@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from mcdata.config import ConfigError, load_profile, load_yaml
+from mcdata.navigation_surface import NavigationSurfaceError
+from mcdata.navigation_surface_artifact import load_navigation_surface_artifact
 from mcdata.scene_model import parse_scene
 
 
@@ -157,11 +159,45 @@ def _validate_provenance(instance: dict[str, Any], *, repository_root: Path) -> 
             f"Scene origin mismatch for {scene['path']!r}: "
             f"declared {scene['origin']}, configured {actual_origin}"
         )
-    if actual_origin[0] != 0 or actual_origin[2] != 0:
+    surface_record = provenance["navigation_surface"]
+    surface_path = _project_file(repository_root, surface_record["path"])
+    actual_artifact_sha = hashlib.sha256(surface_path.read_bytes()).hexdigest()
+    if surface_record["sha256"] != actual_artifact_sha:
         raise TerrainRegistryError(
-            "Phase 1 flat planner does not support a non-zero scene x/z origin: "
-            f"configured {actual_origin}"
+            f"Navigation surface artifact SHA-256 mismatch for {surface_record['path']!r}: "
+            f"declared {surface_record['sha256']}, computed {actual_artifact_sha}"
         )
+    try:
+        surface = load_navigation_surface_artifact(
+            surface_path,
+            repository_root=repository_root,
+            expected_terrain_instance_id=instance["instance_id"],
+        )
+    except NavigationSurfaceError as exc:
+        raise TerrainRegistryError(str(exc)) from exc
+    if surface_record["surface_sha256"] != surface.surface_sha256:
+        raise TerrainRegistryError(
+            "Navigation surface content SHA-256 mismatch: "
+            f"declared {surface_record['surface_sha256']}, computed {surface.surface_sha256}"
+        )
+
+    artifact = json.loads(surface_path.read_text(encoding="utf-8"))
+    derivation = artifact["derivation"]
+    expected_scene = {
+        "path": scene["path"],
+        "sha256": scene["sha256"],
+        "origin": scene["origin"],
+    }
+    if derivation["scene"] != expected_scene:
+        raise TerrainRegistryError(
+            "Navigation surface scene provenance does not match terrain scene provenance"
+        )
+    if derivation["probe_bounds"] != instance["probe_bounds"]:
+        raise TerrainRegistryError(
+            "Navigation surface probe bounds do not match terrain probe bounds"
+        )
+    if derivation["feet_y"] != instance["spawn"]["y"]:
+        raise TerrainRegistryError("Navigation surface feet_y does not match terrain spawn y")
 
 
 def _validate_config_bindings(instance: dict[str, Any], *, repository_root: Path) -> None:

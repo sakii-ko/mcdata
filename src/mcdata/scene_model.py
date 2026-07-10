@@ -64,15 +64,19 @@ def walk_obstacles(spec: SceneSpec) -> set[tuple[int, int]]:
     obstacles: set[tuple[int, int]] = set()
     for entry in spec.entries:
         if entry.walk_obstacle:
-            obstacles.update((x, z) for x, _y, z in _cells(entry.start, entry.end))
+            obstacles.update(_world_xz(spec.origin, entry))
             continue
         if entry.block is None or _is_non_solid(entry.block):
             continue
         for _x, rel_y, _z in _cells(entry.start, entry.end):
             if rel_y in {0, 1}:
-                obstacles.update((x, z) for x, _y, z in _cells(entry.start, entry.end))
+                obstacles.update(_world_xz(spec.origin, entry))
                 break
     return obstacles
+
+
+def _world_xz(origin: tuple[int, int, int], entry: SceneEntry) -> set[tuple[int, int]]:
+    return {(origin[0] + x, origin[2] + z) for x, _y, z in _cells(entry.start, entry.end)}
 
 
 def _parse_entry(data: dict[str, Any]) -> SceneEntry:
