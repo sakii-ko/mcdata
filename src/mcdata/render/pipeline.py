@@ -41,7 +41,11 @@ from mcdata.packs import install_asset_set, install_mods, load_resourcepack_sour
 from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.resourcepacks import discover_target_resource_format, materialize_resourcepacks
-from mcdata.render.options import write_iris_config, write_options
+from mcdata.render.options import (
+    canonicalize_iris_shader_options_sidecar,
+    write_iris_config,
+    write_options,
+)
 from mcdata.render.combat import CombatExecutor
 from mcdata.render.placement import PlacementExecutor
 from mcdata.render.probe import (
@@ -379,9 +383,41 @@ def launch_profile(
 
 def _refresh_run_resources(plan: RunPlan) -> RunPlan:
     resources = _resource_manifest(plan.work_dir, plan.profile)
+    _write_current_iris_config(plan.work_dir, plan.profile, resources)
     resources["resourcepack_runtime"] = None
     _verify_resourcepack_manifest_consistency(resources)
     return replace(plan, resources=resources)
+
+
+def _write_current_iris_config(
+    work_dir: Path,
+    profile: dict[str, Any],
+    resources: dict[str, Any],
+) -> str | None:
+    """Materialize current profile options before every run, not only bootstrap."""
+
+    shaderpack = _shaderpack_filename(resources)
+    write_iris_config(
+        work_dir,
+        shaderpack=shaderpack,
+        enabled=shaderpack is not None,
+        shader_options=profile.get("shader_options"),
+    )
+    return shaderpack
+
+
+def _shaderpack_filename(resources: dict[str, Any]) -> str | None:
+    shaderpacks = resources.get("shaderpacks", [])
+    if not isinstance(shaderpacks, list):
+        raise RuntimeError("Shader-pack resource manifest must be a list")
+    if not shaderpacks:
+        return None
+    if len(shaderpacks) != 1 or not isinstance(shaderpacks[0], dict):
+        raise RuntimeError("Exactly one shader pack is supported per run")
+    shaderpack = shaderpacks[0].get("filename")
+    if not isinstance(shaderpack, str):
+        raise RuntimeError("Shader-pack resource manifest lacks a filename")
+    return shaderpack
 
 
 def _execute_run_plan(plan: RunPlan) -> dict[str, Any]:
@@ -930,6 +966,9 @@ def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     if cleanup_failure and not worker_failure:
         worker_failure = cleanup_failure
     _terminate_running_processes(state, runlog)
+    sidecar_failure = _canonicalize_runtime_shader_sidecar(plan, runlog)
+    if sidecar_failure and not worker_failure:
+        worker_failure = sidecar_failure
     _write_position_log(plan, state, runlog)
     raise_worker_failure = bool(worker_failure and state.error is None)
     if worker_failure and state.error is None:
@@ -939,6 +978,41 @@ def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
         raise RuntimeError(worker_failure)
     if action_failure:
         raise RuntimeError(action_failure)
+
+
+def _canonicalize_runtime_shader_sidecar(
+    plan: RunPlan,
+    runlog: RunLogger,
+) -> str | None:
+    try:
+        shaderpack = _shaderpack_filename(plan.resources)
+        if shaderpack is None:
+            return None
+        sidecar = canonicalize_iris_shader_options_sidecar(
+            plan.work_dir,
+            shaderpack=shaderpack,
+        )
+        evidence = plan.run_dir / "shader_options.runtime.properties"
+        tmp = evidence.with_name(f".{evidence.name}.tmp")
+        try:
+            shutil.copy2(sidecar, tmp)
+            os.replace(tmp, evidence)
+        finally:
+            tmp.unlink(missing_ok=True)
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        message = (
+            f"Runtime Iris sidecar normalization failed: {type(exc).__name__}: {exc}"
+        )
+        runlog.log("shader_options", "canonicalize_failed", error=message)
+        return message
+    runlog.log(
+        "shader_options",
+        "canonicalized",
+        path=str(sidecar),
+        evidence_path=str(evidence),
+        sha256=_sha256(evidence),
+    )
+    return None
 
 
 def _join_replay_worker(state: RunState, runlog: RunLogger) -> str | None:

@@ -425,21 +425,21 @@ def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed(
             "MOON_PHASE_DARK",
         )
     } == {
-        "LIGHT_NIGHT_R": "0.80",
-        "LIGHT_NIGHT_G": "1.30",
-        "LIGHT_NIGHT_B": "1.80",
+        "LIGHT_NIGHT_R": "1.00",
+        "LIGHT_NIGHT_G": "1.60",
+        "LIGHT_NIGHT_B": "2.00",
         "LIGHT_NIGHT_I": "2.00",
-        "ATM_NIGHT_R": "0.80",
-        "ATM_NIGHT_G": "1.20",
-        "ATM_NIGHT_B": "1.60",
-        "ATM_NIGHT_I": "1.80",
+        "ATM_NIGHT_R": "1.00",
+        "ATM_NIGHT_G": "1.60",
+        "ATM_NIGHT_B": "2.00",
+        "ATM_NIGHT_I": "2.00",
         "LIGHTSHAFT_NIGHT_I": "200",
         "MOON_PHASE_INF_LIGHT": "true",
         "MOON_PHASE_INF_ATMOSPHERE": "true",
         "MOON_PHASE_INF_REFLECTION": "true",
-        "MOON_PHASE_FULL": "1.50",
-        "MOON_PHASE_PARTIAL": "1.30",
-        "MOON_PHASE_DARK": "1.10",
+        "MOON_PHASE_FULL": "2.00",
+        "MOON_PHASE_PARTIAL": "1.60",
+        "MOON_PHASE_DARK": "1.20",
     }
     assert "TM_EXPOSURE" not in profiles[0]["shader_options"]
 
@@ -528,6 +528,57 @@ def test_snow_surface_overlay_runs_after_base_scene_without_new_route_obstacles(
         "fill 6 63 -2 13 63 8 minecraft:ice replace minecraft:water",
     ]
     assert len(walk_obstacles(base_spec)) == 429
+
+
+def test_solas_bright_moon_fallback_is_an_unrendered_time_only_candidate(
+    tmp_path: Path,
+) -> None:
+    names = [
+        "lookdev_candidate_pair_legendary_solas_noon_1080p",
+        "lookdev_candidate_pair_legendary_solas_midnight_1080p",
+    ]
+    noon, midnight = [load_profile(ROOT / "configs", name) for name in names]
+    renderer_noon = {
+        key: value
+        for key, value in noon.items()
+        if key not in {"description", "world_state"}
+    }
+    renderer_midnight = {
+        key: value
+        for key, value in midnight.items()
+        if key not in {"description", "world_state"}
+    }
+
+    assert renderer_midnight == renderer_noon
+    assert noon["asset_set"] == midnight["asset_set"] == "legendary_rt_solas"
+    assert noon["world_state"]["time"] == "noon"
+    assert midnight["world_state"]["time"] == "midnight"
+    assert {
+        key: value
+        for key, value in midnight["world_state"].items()
+        if key != "time"
+    } == {
+        key: value for key, value in noon["world_state"].items() if key != "time"
+    }
+    assert noon["world_state"]["biome"]["id"] == "minecraft:plains"
+    assert "additions" not in noon["world_state"]["scene"]
+
+    sidecars = []
+    for name, profile in zip(names, (noon, midnight), strict=True):
+        work_dir = tmp_path / name
+        write_iris_config(
+            work_dir,
+            shaderpack="Solas Shader V3.7.zip",
+            enabled=True,
+            shader_options=profile["shader_options"],
+        )
+        sidecars.append(
+            (work_dir / "shaderpacks" / "Solas Shader V3.7.zip.txt").read_bytes()
+        )
+    assert sidecars[0] == sidecars[1]
+    assert sidecars[0] == (
+        ROOT / "tests" / "golden" / "solas_3_7_ultra_labpbr_options.txt"
+    ).read_bytes()
 
 
 def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:

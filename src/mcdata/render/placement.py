@@ -43,10 +43,14 @@ class PlacementExecutor:
     def prepare(self, events: list[dict[str, Any]]) -> dict[str, Any]:
         """Reset and provision the complete action arena before capture starts."""
         self._specs = placement_specs(events)
+        # Kill non-player entities before the final item sweep.  Entities such as
+        # item frames and armor stands may drop items when killed, so sweeping
+        # item entities first can leave a freshly-created drop behind and make
+        # the fail-closed ``dropped_items_empty`` probe time out.
         reset_commands = [
             f"clear {self._username}",
-            "kill @e[type=minecraft:item]",
             "kill @e[type=!minecraft:player]",
+            "kill @e[type=minecraft:item]",
         ]
         write_commands(self._proc, reset_commands)
         receipts = [

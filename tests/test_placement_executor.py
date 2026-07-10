@@ -76,8 +76,8 @@ def test_l3_executor_prepares_before_capture_dispatches_inputs_and_cleans_after(
     pre_capture_commands = proc.stdin.getvalue().splitlines()
     assert pre_capture_commands == [
         "clear mcdata_bot",
-        "kill @e[type=minecraft:item]",
         "kill @e[type=!minecraft:player]",
+        "kill @e[type=minecraft:item]",
         "setblock -12 65 -13 minecraft:air",
         "setblock -13 65 -13 minecraft:glass",
         "item replace entity mcdata_bot hotbar.0 with minecraft:gold_block 2",

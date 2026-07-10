@@ -844,10 +844,10 @@ profiles:
       ATM_MORNING_G: "1.00"
       ATM_MORNING_I: "1.20"
       ATM_MORNING_R: "1.20"
-      ATM_NIGHT_B: "1.60"
-      ATM_NIGHT_G: "1.20"
-      ATM_NIGHT_I: "1.80"
-      ATM_NIGHT_R: "0.80"
+      ATM_NIGHT_B: "2.00"
+      ATM_NIGHT_G: "1.60"
+      ATM_NIGHT_I: "2.00"
+      ATM_NIGHT_R: "1.00"
       ATM_NOON_I: "1.10"
       ATM_RAIN_B: "1.00"
       ATM_RAIN_G: "0.90"
@@ -869,10 +869,10 @@ profiles:
       LIGHT_MORNING_G: "1.10"
       LIGHT_MORNING_I: "1.30"
       LIGHT_MORNING_R: "1.30"
-      LIGHT_NIGHT_B: "1.80"
-      LIGHT_NIGHT_G: "1.30"
+      LIGHT_NIGHT_B: "2.00"
+      LIGHT_NIGHT_G: "1.60"
       LIGHT_NIGHT_I: "2.00"
-      LIGHT_NIGHT_R: "0.80"
+      LIGHT_NIGHT_R: "1.00"
       LIGHT_NOON_I: "1.30"
       LIGHT_RAIN_B: "1.00"
       LIGHT_RAIN_G: "0.90"
@@ -884,12 +884,12 @@ profiles:
       LIGHTSHAFT_RAIN_I: "110"
       LIGHTSHAFT_SUNSET_SATURATION: "0.50"
       MOTION_BLUR_EFFECT: "-1"
-      MOON_PHASE_DARK: "1.10"
-      MOON_PHASE_FULL: "1.50"
+      MOON_PHASE_DARK: "1.20"
+      MOON_PHASE_FULL: "2.00"
       MOON_PHASE_INF_ATMOSPHERE: "true"
       MOON_PHASE_INF_LIGHT: "true"
       MOON_PHASE_INF_REFLECTION: "true"
-      MOON_PHASE_PARTIAL: "1.30"
+      MOON_PHASE_PARTIAL: "1.60"
       NORMAL_MAP_STRENGTH: "100"
       POM: "true"
       POM_ALLOW_CUTOUT: "false"
@@ -1622,3 +1622,16 @@ profiles:
     world_state:
       <<: *lookdev_pair_snow_clear_noon_state
       weather: "rain"
+
+  lookdev_candidate_pair_legendary_solas_noon_1080p: &lookdev_candidate_pair_legendary_solas_profile
+    <<: *legendary_rt_solas_profile
+    description: "Unrendered controlled fallback candidate: Legendary RT and fixed Solas preset under clear noon sun."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+
+  lookdev_candidate_pair_legendary_solas_midnight_1080p:
+    <<: *lookdev_candidate_pair_legendary_solas_profile
+    description: "Unrendered controlled fallback target: change only time to midnight to assess Solas moonlight directionality."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+      time: "midnight"
