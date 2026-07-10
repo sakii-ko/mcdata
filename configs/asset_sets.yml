@@ -124,6 +124,13 @@ asset_sets:
     resourcepacks: []
     shaderpack: null
 
+  faithful_high_no_shader:
+    description: "Faithful 32x + Fresh Animations without shaders for a texture-only high-quality preview."
+    resourcepacks:
+      - faithful-32x
+      - fresh-animations
+    shaderpack: null
+
   faithful_bsl:
     description: "Faithful 32x plus BSL shader, intended as medium-quality water/shading pass."
     resourcepacks:
