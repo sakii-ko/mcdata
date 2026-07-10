@@ -19,6 +19,7 @@ SCENE_RECEIPT_PATTERNS = (
     "Changed the block",
     "No blocks were filled",
 )
+MAX_BIOME_VOLUME = 32768
 
 
 def apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
@@ -30,6 +31,7 @@ def apply_world_state(proc: subprocess.Popen, profile: dict[str, Any]) -> None:
         *_gamerule_commands(gamerules),
         *_time_weather_commands(state),
         *_scene_commands(state.get("scene", {}) if isinstance(state.get("scene"), dict) else {}),
+        *_biome_commands(state.get("biome", {}) if isinstance(state.get("biome"), dict) else {}),
     ]
     if state.get("clear_non_player_entities"):
         commands.append("kill @e[type=!minecraft:player]")
@@ -135,6 +137,37 @@ def _time_weather_commands(state: dict[str, Any]) -> list[str]:
     return commands
 
 
+def _biome_commands(biome: dict[str, Any]) -> list[str]:
+    if not biome:
+        return []
+    biome_id = biome.get("id")
+    precipitation = biome.get("precipitation")
+    regions = biome.get("regions")
+    if not isinstance(biome_id, str) or not biome_id.strip():
+        raise ValueError("world_state.biome.id must be a non-empty string")
+    if precipitation not in {"rain", "snow"}:
+        raise ValueError("world_state.biome.precipitation must be rain or snow")
+    if not isinstance(regions, list) or not regions:
+        raise ValueError("world_state.biome.regions must be a non-empty list")
+    commands = []
+    for index, value in enumerate(regions):
+        if not isinstance(value, dict):
+            raise ValueError(f"world_state.biome.regions[{index}] must be a mapping")
+        start = _coordinate_triple(value.get("from"), f"biome region {index} from")
+        end = _coordinate_triple(value.get("to"), f"biome region {index} to")
+        volume = 1
+        for left, right in zip(start, end, strict=True):
+            volume *= abs(right - left) + 1
+        if volume > MAX_BIOME_VOLUME:
+            raise ValueError(
+                f"world_state.biome.regions[{index}] volume {volume} exceeds {MAX_BIOME_VOLUME}"
+            )
+        commands.append(
+            f"fillbiome {start[0]} {start[1]} {start[2]} {end[0]} {end[1]} {end[2]} {biome_id}"
+        )
+    return commands
+
+
 def _tp_command(target: str, player: dict[str, Any]) -> str:
     return (
         f"tp {target} "
@@ -161,3 +194,13 @@ def _num(value: Any) -> str:
     if isinstance(value, float):
         return f"{value:.3f}".rstrip("0").rstrip(".")
     return str(value)
+
+
+def _coordinate_triple(value: Any, label: str) -> tuple[int, int, int]:
+    if (
+        not isinstance(value, list)
+        or len(value) != 3
+        or any(type(item) is not int for item in value)
+    ):
+        raise ValueError(f"{label} must contain exactly three integers")
+    return value[0], value[1], value[2]

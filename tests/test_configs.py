@@ -365,6 +365,74 @@ def test_unbound_profiles_emit_verified_cinematic_labpbr_options(tmp_path: Path)
     assert actual == expected
 
 
+def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed() -> None:
+    names = [
+        "lookdev_pair_legendary_unbound_noon_1080p",
+        "lookdev_pair_legendary_unbound_golden_hour_1080p",
+        "lookdev_pair_legendary_unbound_midnight_1080p",
+        "lookdev_pair_legendary_unbound_rain_1080p",
+        "lookdev_pair_legendary_unbound_snow_clear_1080p",
+        "lookdev_pair_legendary_unbound_snow_1080p",
+    ]
+    profiles = [load_profile(ROOT / "configs", name) for name in names]
+    renderer_contracts = [
+        {key: value for key, value in profile.items() if key not in {"description", "world_state"}}
+        for profile in profiles
+    ]
+
+    assert renderer_contracts[1:] == renderer_contracts[:-1]
+    assert {profile["asset_set"] for profile in profiles} == {"legendary_rt_unbound"}
+    assert all(
+        profile["shader_options"] == profiles[0]["shader_options"] for profile in profiles[1:]
+    )
+    assert {
+        key: profiles[0]["shader_options"][key]
+        for key in (
+            "LIGHT_NOON_I",
+            "LIGHT_MORNING_I",
+            "LIGHT_NIGHT_I",
+            "LIGHT_RAIN_I",
+            "IMPROVED_RAIN_DEFINE",
+            "WEATHER_TEX_OPACITY",
+        )
+    } == {
+        "LIGHT_NOON_I": "1.30",
+        "LIGHT_MORNING_I": "1.30",
+        "LIGHT_NIGHT_I": "1.50",
+        "LIGHT_RAIN_I": "0.80",
+        "IMPROVED_RAIN_DEFINE": "1",
+        "WEATHER_TEX_OPACITY": "150",
+    }
+    capture_specs = {
+        (profile["width"], profile["height"], profile["capture_fps"]) for profile in profiles
+    }
+    assert capture_specs == {(1920, 1080, 24)}
+
+    noon, golden, midnight, rain, snow_clear, snow = [
+        profile["world_state"] for profile in profiles
+    ]
+
+    def without_time(state: dict) -> dict:
+        return {key: value for key, value in state.items() if key != "time"}
+
+    def without_weather(state: dict) -> dict:
+        return {key: value for key, value in state.items() if key != "weather"}
+
+    assert noon["time"] == "noon"
+    assert golden["time"] == 12000
+    assert midnight["time"] == "midnight"
+    assert without_time(golden) == without_time(noon)
+    assert without_time(midnight) == without_time(noon)
+    assert rain["weather"] == "rain"
+    assert without_weather(rain) == without_weather(noon)
+    assert snow_clear["biome"] == snow["biome"]
+    assert snow_clear["biome"]["id"] == "minecraft:snowy_plains"
+    assert snow_clear["biome"]["precipitation"] == "snow"
+    assert snow_clear["weather"] == "clear"
+    assert snow["weather"] == "rain"
+    assert without_weather(snow) == without_weather(snow_clear)
+
+
 def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:
     profile = load_profile(
         ROOT / "configs", "lookdev_legendary_rt_bliss_1080p"

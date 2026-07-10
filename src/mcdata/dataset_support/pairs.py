@@ -22,6 +22,8 @@ EDIT_AXES = {
     "snow_weather",
 }
 
+GOLDEN_HOUR_TICK = 12000
+
 
 def _validate_manifest_schema(document: dict[str, Any]) -> None:
     try:
@@ -159,13 +161,26 @@ def _is_explicit_snow_biome(value: Any) -> bool:
     )
 
 
+def _time_of_day_semantic(value: Any) -> str | None:
+    if value == "noon":
+        return "noon"
+    if value == "midnight":
+        return "midnight"
+    if type(value) is int and value == GOLDEN_HOUR_TICK:
+        return "golden_hour"
+    return None
+
+
 def _axis_values(edit_axis: str, source: dict[str, Any], target: dict[str, Any]) -> tuple[Any, Any]:
     if edit_axis == "material_style":
         return source["material_style"], target["material_style"]
     if edit_axis == "shader_quality":
         return source["shader_quality"], target["shader_quality"]
     if edit_axis == "time_of_day":
-        return source["time_of_day"], target["time_of_day"]
+        return (
+            _time_of_day_semantic(source["time_of_day"]),
+            _time_of_day_semantic(target["time_of_day"]),
+        )
     source_weather, target_weather = source["weather"], target["weather"]
     if edit_axis == "snow_weather":
         source_weather = "snow" if source_weather == "rain" else source_weather
@@ -188,8 +203,17 @@ def _validate_axis(edit_axis: str, source: dict[str, Any], target: dict[str, Any
                 "shader_quality requires a no-shader source and shader-enabled target"
             )
     elif edit_axis == "time_of_day":
-        if {source["time_of_day"], target["time_of_day"]} != {"noon", "midnight"}:
-            raise DatasetValidationError("time_of_day requires a noon/midnight pair")
+        semantic_pair = {
+            _time_of_day_semantic(source["time_of_day"]),
+            _time_of_day_semantic(target["time_of_day"]),
+        }
+        if semantic_pair not in (
+            {"noon", "golden_hour"},
+            {"noon", "midnight"},
+        ):
+            raise DatasetValidationError(
+                "time_of_day requires noon paired with midnight or numeric tick 12000 (golden_hour)"
+            )
     elif edit_axis == "weather":
         if {source["weather"], target["weather"]} != {"clear", "rain"}:
             raise DatasetValidationError("weather requires a clear/rain pair")

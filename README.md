@@ -182,6 +182,31 @@ against the actual episode manifests and rejects compound or provenance-drifting
 marked `accepted` only when the expected profile set, manifests, actual artifact hashes, captures,
 resource-pack runtime gates, route/alignment QA, pair gates, and explicit visual review all pass.
 
+The controlled high-quality lighting/weather seed matrix uses the following profiles with one
+fixed Legendary RT 128x + Complementary Unbound renderer preset:
+
+- `lookdev_pair_legendary_unbound_noon_1080p`
+- `lookdev_pair_legendary_unbound_golden_hour_1080p` (exact tick `12000`)
+- `lookdev_pair_legendary_unbound_midnight_1080p`
+- `lookdev_pair_legendary_unbound_rain_1080p`
+- `lookdev_pair_legendary_unbound_snow_clear_1080p`
+- `lookdev_pair_legendary_unbound_snow_1080p`
+
+Render every endpoint with the same scene, route/strategy, capture settings, commit, and lane
+contract. Copy
+`docs/examples/lookdev_lighting_weather_edit_pairs.template.json` into the completed dataset root
+as `edit_pairs.json`, then replace its `${..._EPISODE_ID}` tokens with the corresponding manifest
+`run_id` values before running `dataset-index`. The index normalizes tick `12000` to
+`golden_hour`; the snow pair keeps one explicitly applied snowy-plains biome and changes only the
+underlying clear/rain weather command (reported semantically as clear/snow).
+
+The shader options intentionally remain identical across all six profiles. Bright moonlight,
+golden color, rain fog, and snow atmosphere therefore come only from Unbound's response to the
+declared time/weather state. The shared all-weather values were checked against the actual Unbound
+5.8.1 option enums; `TM_EXPOSURE` and `ATM_FOG_MULT` remain at shader defaults to avoid global
+overexposure. Per-condition shader tuning may look stronger, but it would create a compound edit
+and must not be mixed into these single-axis pairs.
+
 ## Notes
 
 This machine currently only needs to be able to bootstrap and dry-run. True rendering requires

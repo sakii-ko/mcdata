@@ -840,17 +840,49 @@ profiles:
     world_profile: "render_matrix_base"
     shader_options: &unbound_cinematic_options
       ANISOTROPIC_FILTER: "16"
+      ATM_MORNING_B: "0.80"
+      ATM_MORNING_G: "1.00"
+      ATM_MORNING_I: "1.20"
+      ATM_MORNING_R: "1.20"
+      ATM_NIGHT_B: "1.40"
+      ATM_NIGHT_G: "1.10"
+      ATM_NIGHT_I: "1.30"
+      ATM_NIGHT_R: "0.80"
+      ATM_NOON_I: "1.10"
+      ATM_RAIN_B: "1.00"
+      ATM_RAIN_G: "0.90"
+      ATM_RAIN_I: "0.90"
+      ATM_RAIN_R: "0.80"
       BLOCK_REFLECT_QUALITY: "3"
       BLOOM_ENABLED: "1"
       CHROMA_ABERRATION: "0"
       CLOUD_QUALITY: "3"
       CLOUD_SHADOWS: "true"
+      CLOUD_UNBOUND_RAIN_ADD: "0.60"
       COLORED_LIGHTING: "512"
       DETAIL_QUALITY: "3"
       DIRECTIONAL_BLOCKLIGHT: "7"
       ENTITY_SHADOW: "1"
       FXAA_DEFINE: "1"
+      IMPROVED_RAIN_DEFINE: "1"
+      LIGHT_MORNING_B: "0.80"
+      LIGHT_MORNING_G: "1.10"
+      LIGHT_MORNING_I: "1.30"
+      LIGHT_MORNING_R: "1.30"
+      LIGHT_NIGHT_B: "1.40"
+      LIGHT_NIGHT_G: "1.10"
+      LIGHT_NIGHT_I: "1.50"
+      LIGHT_NIGHT_R: "0.80"
+      LIGHT_NOON_I: "1.30"
+      LIGHT_RAIN_B: "1.00"
+      LIGHT_RAIN_G: "0.90"
+      LIGHT_RAIN_I: "0.80"
+      LIGHT_RAIN_R: "0.80"
+      LIGHTSHAFT_DAY_I: "150"
+      LIGHTSHAFT_NIGHT_I: "140"
       LIGHTSHAFT_QUALI_DEFINE: "4"
+      LIGHTSHAFT_RAIN_I: "110"
+      LIGHTSHAFT_SUNSET_SATURATION: "0.50"
       MOTION_BLUR_EFFECT: "-1"
       NORMAL_MAP_STRENGTH: "100"
       POM: "true"
@@ -871,6 +903,7 @@ profiles:
       WATER_REFRACTION_INTENSITY: "2.0"
       WATER_REFLECT_QUALITY: "2"
       WATER_STYLE_DEFINE: "3"
+      WEATHER_TEX_OPACITY: "150"
       WORLD_BLUR: "0"
       WORLD_SPACE_PLAYER_REF: "1"
       WORLD_SPACE_REFLECTIONS: "1"
@@ -1485,3 +1518,68 @@ profiles:
     shader_options:
       <<: *solas_max_realism_options
       MATERIAL_FORMAT: "0"
+
+  lookdev_pair_legendary_unbound_noon_1080p: &lookdev_pair_legendary_unbound_profile
+    <<: *legendary_rt_unbound_profile
+    description: "Controlled edit-pair source: Legendary RT and fixed Unbound preset under clear noon sun."
+    world_state: &lookdev_pair_plains_clear_noon_state
+      time: "noon"
+      weather: "clear"
+      biome: &lookdev_pair_plains_biome
+        id: "minecraft:plains"
+        precipitation: "rain"
+        regions: &lookdev_pair_biome_regions
+          - {from: [-32, 60, -32], to: [31, 67, 31]}
+          - {from: [-32, 68, -32], to: [31, 75, 31]}
+          - {from: [-32, 76, -32], to: [31, 83, 31]}
+          - {from: [-32, 84, -32], to: [31, 91, 31]}
+          - {from: [-32, 92, -32], to: [31, 99, 31]}
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  lookdev_pair_legendary_unbound_golden_hour_1080p:
+    <<: *lookdev_pair_legendary_unbound_profile
+    description: "Controlled time edit target: fixed renderer at tick 12000 for warm, low-angle golden-hour light."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+      time: 12000
+
+  lookdev_pair_legendary_unbound_midnight_1080p:
+    <<: *lookdev_pair_legendary_unbound_profile
+    description: "Controlled time edit target: fixed renderer at midnight for Unbound's cool moonlight response."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+      time: "midnight"
+
+  lookdev_pair_legendary_unbound_rain_1080p:
+    <<: *lookdev_pair_legendary_unbound_profile
+    description: "Controlled weather edit target: fixed noon renderer with Unbound rain, wetness, and atmosphere."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+      weather: "rain"
+
+  lookdev_pair_legendary_unbound_snow_clear_1080p: &lookdev_pair_legendary_unbound_snow_clear_profile
+    <<: *lookdev_pair_legendary_unbound_profile
+    description: "Controlled snow-pair source: clear noon in one fixed snowy-plains biome volume."
+    world_state: &lookdev_pair_snow_clear_noon_state
+      <<: *lookdev_pair_plains_clear_noon_state
+      biome:
+        id: "minecraft:snowy_plains"
+        precipitation: "snow"
+        regions: *lookdev_pair_biome_regions
+
+  lookdev_pair_legendary_unbound_snow_1080p:
+    <<: *lookdev_pair_legendary_unbound_snow_clear_profile
+    description: "Controlled snow-weather edit target: snowfall in the identical fixed snowy-plains biome volume."
+    world_state:
+      <<: *lookdev_pair_snow_clear_noon_state
+      weather: "rain"

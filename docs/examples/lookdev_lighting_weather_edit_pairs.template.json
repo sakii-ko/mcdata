@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "pairs": [
+    {
+      "prompt": "Turn the same clear noon scene into warm, low-angle golden-hour light.",
+      "source_episode": "${NOON_EPISODE_ID}",
+      "target_episode": "${GOLDEN_HOUR_EPISODE_ID}",
+      "edit_axis": "time_of_day"
+    },
+    {
+      "prompt": "Turn the same clear noon scene into a bright, cool moonlit midnight.",
+      "source_episode": "${NOON_EPISODE_ID}",
+      "target_episode": "${MIDNIGHT_EPISODE_ID}",
+      "edit_axis": "time_of_day"
+    },
+    {
+      "prompt": "Make the same clear noon scene rainy, misty, and wet.",
+      "source_episode": "${NOON_EPISODE_ID}",
+      "target_episode": "${RAIN_EPISODE_ID}",
+      "edit_axis": "weather"
+    },
+    {
+      "prompt": "Make snow fall in the same clear snowy-biome scene.",
+      "source_episode": "${SNOW_CLEAR_EPISODE_ID}",
+      "target_episode": "${SNOW_EPISODE_ID}",
+      "edit_axis": "snow_weather"
+    }
+  ]
+}

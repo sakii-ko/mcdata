@@ -421,6 +421,7 @@ def test_dataset_index_accepts_all_single_edit_axes(tmp_path: Path) -> None:
         ("styled", {}, "styled", None),
         ("shader", {}, "base", "ultra"),
         ("night", {"time": "midnight"}, "base", None),
+        ("golden_hour", {"time": 12000}, "base", None),
         ("rain", {"weather": "rain"}, "base", None),
         ("snow_clear", {"biome": snow_biome}, "base", None),
         ("snowfall", {"biome": snow_biome, "weather": "rain"}, "base", None),
@@ -452,6 +453,12 @@ def test_dataset_index_accepts_all_single_edit_axes(tmp_path: Path) -> None:
                 "prompt": "Turn noon into midnight.",
                 "source_episode": "episode-base",
                 "target_episode": "episode-night",
+                "edit_axis": "time_of_day",
+            },
+            {
+                "prompt": "Turn noon into warm golden-hour light.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-golden_hour",
                 "edit_axis": "time_of_day",
             },
             {
@@ -488,8 +495,38 @@ def test_dataset_index_accepts_all_single_edit_axes(tmp_path: Path) -> None:
         "weather",
         "snow_weather",
     }
+    time_axis_values = {
+        (item["axis_values"]["source"], item["axis_values"]["target"])
+        for item in index["pairs"]
+        if item["edit_axis"] == "time_of_day"
+    }
+    assert time_axis_values == {
+        ("noon", "golden_hour"),
+        ("noon", "midnight"),
+    }
     assert by_axis["snow_weather"]["axis_values"]["target"] == "snow"
     assert all(item["invariants"]["qa_passed"] is True for item in index["pairs"])
+
+
+def test_dataset_rejects_arbitrary_numeric_time_of_day(tmp_path: Path) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    manifest_path = tmp_path / "run_matrix_night" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["world"]["state"]["time"] = 11999
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+
+    with pytest.raises(DatasetValidationError, match="numeric tick 12000"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
 
 
 @pytest.mark.parametrize(

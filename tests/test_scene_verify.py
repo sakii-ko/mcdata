@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from mcdata.render.scene import (
+    _biome_commands,
     apply_join_state,
     apply_world_state,
     expected_scene_fill_count,
@@ -115,3 +116,41 @@ def test_apply_join_state_pregrants_recipes_before_capture_warmup() -> None:
         "recipe give @a *",
         "tp @a 1 64 -2 90 18",
     ]
+
+
+def test_apply_world_state_sets_numeric_time_and_controlled_biome_regions() -> None:
+    proc = SimpleNamespace(stdin=StringIO())
+    profile = {
+        "world_state": {
+            "time": 12000,
+            "weather": "rain",
+            "biome": {
+                "id": "minecraft:snowy_plains",
+                "precipitation": "snow",
+                "regions": [
+                    {"from": [-32, 60, -32], "to": [31, 67, 31]},
+                    {"from": [-32, 68, -32], "to": [31, 75, 31]},
+                ],
+            },
+        }
+    }
+
+    apply_world_state(proc, profile)
+
+    assert proc.stdin.getvalue().splitlines() == [
+        "time set 12000",
+        "weather rain 999999",
+        "fillbiome -32 60 -32 31 67 31 minecraft:snowy_plains",
+        "fillbiome -32 68 -32 31 75 31 minecraft:snowy_plains",
+    ]
+
+
+def test_biome_command_rejects_region_over_server_limit() -> None:
+    with pytest.raises(ValueError, match="volume 65536 exceeds 32768"):
+        _biome_commands(
+            {
+                "id": "minecraft:snowy_plains",
+                "precipitation": "snow",
+                "regions": [{"from": [-32, 60, -32], "to": [31, 75, 31]}],
+            }
+        )
