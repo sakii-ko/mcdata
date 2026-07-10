@@ -150,6 +150,18 @@ def test_route_reference_skips_yaw_inside_turn_window_but_keeps_position_check()
     assert result["samples"][0]["yaw_skipped"] is True
 
 
+def test_yaw_ignore_windows_cover_look_holds_but_not_ordinary_pauses() -> None:
+    trajectory = {
+        "events": [
+            {"t": 1.0, "mouse_dx": 600, "mouse_dy": 20, "duration": 0.35},
+            {"t": 1.55, "pause": True, "look_hold": True, "duration": 3.5},
+            {"t": 6.0, "pause": True, "duration": 2.0},
+        ]
+    }
+
+    assert route._yaw_ignore_windows(trajectory) == [(0.5, 1.85), (1.05, 5.55)]
+
+
 def test_run_markdown_includes_route_reference_header(tmp_path: Path) -> None:
     out = tmp_path / "qa"
     qa_report = {

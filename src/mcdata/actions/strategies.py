@@ -132,12 +132,15 @@ def _astar_walk(spec: dict[str, Any]) -> dict[str, Any]:
     event_spec = dict(spec)
     event_spec["goals"] = goals
     events, duration = _walk_events(route, event_spec)
-    return {
+    trajectory = {
         "type": "astar_walk",
         "duration_sec": round(duration, 3),
         "route": [{"x": x, "z": z} for x, z in route],
         "events": events,
     }
+    if "initial_heading_deg" in spec:
+        trajectory["initial_heading_deg"] = float(spec["initial_heading_deg"])
+    return trajectory
 
 
 def _roam(spec: dict[str, Any]) -> dict[str, Any]:
@@ -227,7 +230,7 @@ def _walk_events(
     goal_indices = _route_goal_indices(route, goals)
     events: list[dict[str, Any]] = []
     t = initial_pause_sec
-    heading = 0
+    heading = float(spec.get("initial_heading_deg", 0))
     if look_pitch_px:
         events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": look_pitch_px, "duration": 0.4})
         t += 0.4 + scan_pause_sec
@@ -418,11 +421,38 @@ def _apply_waypoint_actions(
         if pause_sec > 0:
             events.append({"t": round(t, 3), "duration": round(pause_sec, 3), "pause": True})
             t += pause_sec
+        look_dx_px = int(action.get("look_dx_px", 0))
         look_dy_px = int(action.get("look_dy_px", 0))
-        if look_dy_px:
-            events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": look_dy_px, "duration": 0.35})
+        if look_dx_px or look_dy_px:
+            events.append(
+                {
+                    "t": round(t, 3),
+                    "mouse_dx": look_dx_px,
+                    "mouse_dy": look_dy_px,
+                    "duration": 0.35,
+                }
+            )
             t += 0.35 + scan_pause_sec
-            events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": -look_dy_px, "duration": 0.35})
+            look_hold_sec = float(action.get("look_hold_sec", 0))
+            if look_hold_sec > 0:
+                hold_event = {
+                    "t": round(t, 3),
+                    "duration": round(look_hold_sec, 3),
+                    "pause": True,
+                    "look_hold": True,
+                }
+                if action.get("moment"):
+                    hold_event["look_moment"] = str(action["moment"])
+                events.append(hold_event)
+                t += look_hold_sec
+            events.append(
+                {
+                    "t": round(t, 3),
+                    "mouse_dx": -look_dx_px,
+                    "mouse_dy": -look_dy_px,
+                    "duration": 0.35,
+                }
+            )
             t += 0.35 + scan_pause_sec
     return t
 

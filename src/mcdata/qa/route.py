@@ -135,10 +135,11 @@ def simulate_track(trajectory: dict[str, Any]) -> list[dict[str, float]]:
         )
     if not route:
         return []
-    points = [{"t": 0.0, "x": route[0][0], "z": route[0][1], "yaw": 0.0}]
+    initial_yaw = _normalize_yaw(float(trajectory.get("initial_heading_deg", 0.0)))
+    points = [{"t": 0.0, "x": route[0][0], "z": route[0][1], "yaw": initial_yaw}]
     turn_events = _turn_events(trajectory)
     turn_idx = 0
-    current_yaw = 0.0
+    current_yaw = initial_yaw
     current_position = route[0]
     previous_move_end = 0.0
     for move, span in zip(move_spans, route_spans):
@@ -396,7 +397,11 @@ def _yaw_ignore_windows(
 ) -> list[tuple[float, float]]:
     windows = []
     for event in trajectory.get("events", []):
-        if "mouse_dx" not in event and "mouse_dy" not in event:
+        if (
+            "mouse_dx" not in event
+            and "mouse_dy" not in event
+            and event.get("look_hold") is not True
+        ):
             continue
         start = float(event.get("t", 0.0))
         duration = float(event.get("duration", 0.0) or 0.0)

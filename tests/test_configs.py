@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 EXPECTED_SCENE_COMMAND_COUNT = 127
 EXPECTED_SCENE_COMMANDS_SHA256 = (
-    "12a2f3d5a75a80548fea9d037b3cb22551e7371ec90019f7bbb44a76c1269c8a"
+    "840c0955ad63439135dd096fcfd54f57c11ad342b8ae3de9872372a91950aaac"
 )
 
 
@@ -513,8 +513,11 @@ def test_scene_reflecting_basins_are_contained_beside_a_full_block_bridge() -> N
     assert "fill -13 63 -2 -6 63 8 minecraft:water" in commands
     assert "fill 6 63 -2 13 63 8 minecraft:water" in commands
     assert "fill -4 63 -3 4 63 9 minecraft:dark_oak_planks" in commands
-    assert "fill -14 64 -3 -14 65 9 minecraft:polished_blackstone_bricks" in commands
-    assert "fill 14 64 -3 14 65 9 minecraft:polished_blackstone_bricks" in commands
+    assert "fill -14 64 -3 -14 64 9 minecraft:polished_blackstone_bricks" in commands
+    assert "fill 14 64 -3 14 64 9 minecraft:polished_blackstone_bricks" in commands
+    assert not any(
+        command.endswith("65 9 minecraft:polished_blackstone_bricks") for command in commands
+    )
 
 
 def test_showcase_scene_has_a_continuous_varied_walk_surface() -> None:

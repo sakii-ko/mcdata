@@ -195,6 +195,32 @@ def test_waypoint_actions_insert_pause_and_look_events() -> None:
     assert len(look_events) == len(spec["waypoint_actions"])
 
 
+def test_lookdev_showcase_walks_and_holds_horizontal_water_views() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["lookdev_showcase_60s"]
+    trajectory = _build_configured("lookdev_showcase_60s", spec)
+    events = trajectory["events"]
+    water_turns = [event for event in events if abs(event.get("mouse_dy", 0)) == 20]
+    held_views = [event for event in events if event.get("look_hold") is True]
+    first_forward = next(
+        event for event in events if event.get("key") == "w" and event.get("action") == "down"
+    )
+
+    assert trajectory["type"] == "astar_walk"
+    assert trajectory["initial_heading_deg"] == 90
+    assert 58 <= trajectory["duration_sec"] <= 59.2
+    assert len(trajectory["route"]) >= 100
+    assert not any(event.get("mouse_dx") for event in events if event["t"] < first_forward["t"])
+    assert [event["mouse_dx"] for event in water_turns] == [600, -600, 600, -600]
+    assert [event["look_moment"] for event in held_views] == [
+        "material_closeup",
+        "water_reflection_alt",
+        "water_reflection",
+        "scene_wide",
+        "gallery_wide",
+        "material_closeup_alt",
+    ]
+
+
 def test_turn_calibration_probe_is_eight_600px_turns() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["turn_calibration_probe"]
     trajectory = build_trajectory("turn_calibration_probe", spec)

@@ -19,8 +19,8 @@ scene:
     - {kind: fill, block: "minecraft:dark_oak_planks", from: [-4, -1, -3], to: [4, -1, 9], region: reflection_bridge}
     - {kind: fill, block: "minecraft:stripped_spruce_wood[axis=z]", from: [-1, -1, -3], to: [1, -1, 9], region: reflection_bridge_inlay}
 
-    # Two source-filled reflecting basins flank a broad bridge. Full-block rims
-    # and a solid prismarine floor contain all water deterministically.
+    # Two source-filled reflecting basins flank a broad bridge. One-block rims
+    # expose the water from player eye height while containing it deterministically.
     - {kind: fill, block: "minecraft:dark_prismarine", from: [-13, -2, -2], to: [-6, -2, 8], region: west_basin_floor}
     - {kind: fill, block: "minecraft:dark_prismarine", from: [6, -2, -2], to: [13, -2, 8], region: east_basin_floor}
     - {kind: fill, block: "minecraft:sea_lantern", from: [-13, -2, 1], to: [-6, -2, 1], region: west_basin_light}
@@ -29,14 +29,14 @@ scene:
     - {kind: fill, block: "minecraft:sea_lantern", from: [6, -2, 5], to: [13, -2, 5], region: east_basin_light}
     - {kind: fill, block: "minecraft:water", from: [-13, -1, -2], to: [-6, -1, 8], region: west_reflecting_basin, walk_obstacle: true}
     - {kind: fill, block: "minecraft:water", from: [6, -1, -2], to: [13, -1, 8], region: east_reflecting_basin, walk_obstacle: true}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-14, 0, -3], to: [-14, 1, 9], region: west_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-5, 0, -3], to: [-5, 1, 9], region: west_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, -3], to: [-6, 1, -3], region: west_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, 9], to: [-6, 1, 9], region: west_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [14, 0, -3], to: [14, 1, 9], region: east_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [5, 0, -3], to: [5, 1, 9], region: east_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, -3], to: [13, 1, -3], region: east_basin_rim}
-    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, 9], to: [13, 1, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-14, 0, -3], to: [-14, 0, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-5, 0, -3], to: [-5, 0, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, -3], to: [-6, 0, -3], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, 9], to: [-6, 0, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [14, 0, -3], to: [14, 0, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [5, 0, -3], to: [5, 0, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, -3], to: [13, 0, -3], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, 9], to: [13, 0, 9], region: east_basin_rim}
     - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-14, 0, -3], to: [-14, 3, -3], region: basin_pillar}
     - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-14, 0, 9], to: [-14, 3, 9], region: basin_pillar}
     - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-5, 0, -3], to: [-5, 3, -3], region: basin_pillar}

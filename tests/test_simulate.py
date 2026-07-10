@@ -46,6 +46,23 @@ def test_interpolate_track_uses_circular_yaw_delta() -> None:
     assert interpolate_track(track, 0.5) == {"t": 0.5, "x": 0.0, "z": 0.0, "yaw": 180.0}
 
 
+def test_simulate_track_uses_declared_initial_heading_without_a_turn_event() -> None:
+    trajectory = {
+        "initial_heading_deg": 90,
+        "route": [{"x": 0, "z": 0}, {"x": -1, "z": 0}, {"x": -2, "z": 0}],
+        "events": [
+            {"t": 1.0, "key": "w", "action": "down"},
+            {"t": 3.0, "key": "w", "action": "up"},
+        ],
+    }
+
+    assert simulate_track(trajectory) == [
+        {"t": 0.0, "x": 0.0, "yaw": 90.0, "z": 0.0},
+        {"t": 1.0, "x": 0.0, "yaw": 90.0, "z": 0.0},
+        {"t": 3.0, "x": -2.0, "yaw": 90.0, "z": 0.0},
+    ]
+
+
 def test_simulate_track_requires_route_spans_to_match_forward_spans() -> None:
     trajectory = {
         "route": [{"x": 0, "z": 0}, {"x": 1, "z": 0}, {"x": 2, "z": 0}],

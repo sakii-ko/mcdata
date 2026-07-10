@@ -169,6 +169,66 @@ strategies:
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
 
+  lookdev_showcase_60s:
+    type: "astar_walk"
+    start: [0, -14]
+    goals:
+      - [-10, -12]
+      - [-3, 3]
+      - [-3, 8]
+      - [0, 10]
+      - [15, 11]
+      - [16, -5]
+      - [3, -5]
+      - [10, -12]
+      - [0, -14]
+    bounds: [-16, 16, -14, 14]
+    obstacle_clearance: 1
+    blocked_rects: *showcase_blocked_rects
+    blocked: *showcase_blocked
+    waypoint_actions:
+      - at: [-10, -12]
+        moment: "material_closeup"
+        pause_sec: 0.4
+        look_dy_px: 45
+        look_hold_sec: 2.0
+      - at: [-3, 3]
+        moment: "water_reflection_alt"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+      - at: [-3, 8]
+        moment: "water_reflection"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+      - at: [0, 10]
+        moment: "scene_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 2.5
+      - at: [15, 11]
+        moment: "gallery_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 2.5
+      - at: [10, -12]
+        moment: "material_closeup_alt"
+        pause_sec: 0.4
+        look_dy_px: -25
+        look_hold_sec: 0.4
+    turn_px_per_degree: 6.6667
+    seconds_per_block: 0.231630565
+    walk_startup_comp_sec: 0.000889052
+    initial_heading_deg: 90
+    look_pitch_px: 30
+    initial_pause_sec: 1.0
+    scan_pause_sec: 0.2
+
   glass_edge_loop:
     type: "astar_walk"
     start: [0, -14]
