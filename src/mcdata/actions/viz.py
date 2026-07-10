@@ -56,6 +56,7 @@ def render_trajectory_map(
             label="deliberate jump",
         )
     _draw_placement_targets(ax, trajectory, route)
+    _draw_combat_targets(ax, trajectory, route)
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel("x")
     ax.set_ylabel("z")
@@ -107,6 +108,48 @@ def _draw_placement_targets(
                 [source[0], target[0]],
                 [source[1], target[1]],
                 color="#e6a700",
+                linewidth=1.2,
+                linestyle=":",
+                zorder=4,
+            )
+
+
+def _draw_combat_targets(
+    ax: Any,
+    trajectory: dict[str, Any],
+    route: list[tuple[int, int]],
+) -> None:
+    combats = [
+        event
+        for event in trajectory.get("events", [])
+        if isinstance(event, dict)
+        and event.get("semantic_action") == "controlled_combat"
+        and isinstance(event.get("combat"), dict)
+    ]
+    targets = [
+        (float(event["combat"]["spawn"][0]), float(event["combat"]["spawn"][2]))
+        for event in combats
+    ]
+    if not targets:
+        return
+    ax.scatter(
+        [point[0] for point in targets],
+        [point[1] for point in targets],
+        marker="X",
+        color="#b2182b",
+        edgecolor="#ffffff",
+        s=125,
+        zorder=7,
+        label="controlled combat target",
+    )
+    for event, target in zip(combats, targets, strict=True):
+        route_index = event.get("route_index")
+        if isinstance(route_index, int) and 0 <= route_index < len(route):
+            source = route[route_index]
+            ax.plot(
+                [source[0], target[0]],
+                [source[1], target[1]],
+                color="#b2182b",
                 linewidth=1.2,
                 linestyle=":",
                 zorder=4,

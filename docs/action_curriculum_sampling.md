@@ -33,8 +33,8 @@ mcdata curriculum-plan runs/accepted/dataset_index.json \
 
 推荐的逐级实验形状可以是 `1/0/0/0`、`0.7/0.3/0/0`、`0.5/0.3/0.2/0`、
 `0.4/0.3/0.2/0.1`；这些只是训练实验参数，不是采集器硬编码的默认值。任何正比例 bucket
-在过滤后没有 accepted edit pair 都会失败，因此 L3/L4 数据尚未真正通过执行与证据闸门时，
-不能提前生成假计划。
+在过滤后没有 accepted edit pair 都会失败，因此 L3/L4 的 CPU executor 即使已完成，只要尚未通过
+真 GPU showcase、独立复算与视频目检，也不能提前生成假计划。
 
 `--samples` 是该 epoch 展开的 pair 样本数，不是 episode 或 frame 数。整数计数由最大余数法得到；
 余数相同时按固定顺序 `l1, l1_l2, l1_l2_l3, l1_l2_l3_l4` 决胜。桶内先完整遍历一次

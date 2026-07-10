@@ -40,7 +40,8 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "scene_model": {"config"},
     "terrain": {"config", "scene_model"},
     "resourcepack_catalog": {"config"},
-    "action_curriculum": {"action_placement"},
+    "action_curriculum": {"action_combat", "action_placement"},
+    "action_combat": {"action_placement"},
     "action_placement": set(),
     "net": set(),
     "mojang": {"net"},
@@ -54,11 +55,14 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "runlog": {"paths"},
     "settings": {"config", "paths"},
     "schemas": set(),
-    "actions": {"config", "paths", "scene_model", "action_placement"},
+    "actions": {
+        "config", "paths", "scene_model", "action_combat", "action_placement",
+    },
     "actions.replay": set(),  # replay must stay dependency-free (runtime input backend)
     "render": {
         "config", "paths", "packs", "resourcepacks", "mojang", "modrinth", "net", "scene_model",
-        "manifest", "runlog", "settings", "action_curriculum", "action_placement",
+        "manifest", "runlog", "settings", "action_curriculum", "action_combat",
+        "action_placement",
         "actions.replay", "qa.probe", "render",
     },  # "render" target covers render-internal modules: pipeline/server/scene/probe/options.
     "qa": {"paths", "qa"},

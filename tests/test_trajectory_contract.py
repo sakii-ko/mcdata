@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -396,6 +397,81 @@ def test_l3_place_showcase_keeps_l2_route_and_uses_real_aim_restore_events() -> 
             -aim["mouse_dx"],
             -aim["mouse_dy"],
         )
+
+
+def test_l4_combat_showcase_is_cumulative_and_keeps_the_same_60s_route() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    l3 = _build_configured(
+        "curriculum_l3_place_showcase_60s",
+        strategies["curriculum_l3_place_showcase_60s"],
+    )
+    l4 = _build_configured(
+        "curriculum_l4_combat_showcase_60s",
+        strategies["curriculum_l4_combat_showcase_60s"],
+    )
+    combats = [
+        event
+        for event in l4["events"]
+        if event.get("semantic_action") == "controlled_combat"
+    ]
+    placements = [
+        event
+        for event in l4["events"]
+        if event.get("semantic_action") == "deterministic_block_placement"
+    ]
+    jumps = [
+        event
+        for event in l4["events"]
+        if event.get("semantic_action") == "deliberate_jump"
+    ]
+
+    assert planned_action_contract(l4) == {
+        "taxonomy_version": 1,
+        "planned_level": 4,
+        "planned_capabilities": [
+            "navigation",
+            "deliberate_jump",
+            "deterministic_block_placement",
+            "controlled_combat",
+        ],
+        "bucket": "l1_l2_l3_l4",
+    }
+    assert l4["route"] == l3["route"]
+    assert l4["duration_sec"] == l3["duration_sec"] == 59.034
+    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
+    assert [event["route_index"] for event in placements] == [12, 60]
+    assert len(combats) == 1 and combats[0]["route_index"] == 77
+    spec = combats[0]["combat"]
+    assert spec["target_entity"] == "minecraft:iron_golem"
+    assert spec["target_uuid"] == "4d434441-5441-4c34-8000-000000000004"
+    assert spec["spawn"] == [16.5, 64.0, -6.5]
+    assert spec["hotbar_slot"] == 3
+    assert spec["weapon"] == "minecraft:wooden_sword"
+    route_cells = {(point["x"], point["z"]) for point in l4["route"]}
+    assert (spec["spawn"][0], spec["spawn"][2]) not in route_cells
+    assert min(
+        abs(spec["spawn"][0] - x) + abs(spec["spawn"][2] - z)
+        for x, z in route_cells
+    ) == 2
+    combat_index = l4["events"].index(combats[0])
+    aim = l4["events"][combat_index - 1]
+    restore = l4["events"][combat_index + 1]
+    assert aim["combat_aim"] is True
+    assert restore["combat_aim_restore"] is True
+    assert (aim["mouse_dx"], aim["mouse_dy"]) == (0, -20)
+    assert (restore["mouse_dx"], restore["mouse_dy"]) == (0, 20)
+
+
+def test_l4_checked_in_trajectory_and_documented_copy_are_identical() -> None:
+    golden = (ROOT / "tests/golden/curriculum_l4_combat_showcase_60s.json").read_bytes()
+    documented = (
+        ROOT / "docs/trajectories/curriculum_l4_combat_showcase_60s.json"
+    ).read_bytes()
+
+    assert documented == golden
+    assert hashlib.sha256(golden).hexdigest() == (
+        "613cd580ae2acc696471d8dcd63692bb7127f93862429c4e3995620836853b0b"
+    )
 
 
 def test_turn_calibration_probe_is_eight_600px_turns() -> None:

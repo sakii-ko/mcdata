@@ -56,13 +56,13 @@
 
 ### 2.2 Action
 
-加入本轮 seed 402–406 与 L2/L3 showcase 后，配置共有 28 个 strategy：
+加入本轮 seed 402–406 与 L2/L3/L4 showcase 后，配置共有 29 个 strategy：
 
 | action 类别 | 数量 | 当前用途与限制 |
 |---|---:|---|
 | `feedback_roam` | 6 | seeds 401–406；604 秒目标、两格净空、闭环、在线位置/yaw 反馈；正式长录首选 |
 | open-loop `roam` | 6 | seeds 101–106；约 57–73 秒；确定但长时会累积误差 |
-| scripted `astar_walk` | 7 | showcase、L2 jump、L3 placement、材质、水面、玻璃、灯光定点巡游；约 34–59 秒 |
+| scripted `astar_walk` | 8 | showcase、L2 jump、L3 placement、L4 combat、材质、水面、玻璃、灯光定点巡游；约 34–59 秒 |
 | fixed-camera `look_scan` | 3 | pan/look-dev legacy；不能代表游走数据 |
 | calibration/scripted/scene probe | 3 | 标定和 QA，不进入普通训练分布 |
 | grid/random/external hook | 3 | legacy 或未接 policy；未通过当前场景的正式 pair 验收 |
@@ -85,9 +85,13 @@
 fail-closed executor：`curriculum_l3_place_showcase_60s` 与 L2 共享同一 117 点 route/59.034 秒预算，
 保留四次 jump，并在 route indices 12/60 做两次固定 target/support/face 的真实选槽与右键放置。
 arena reset 与 hotbar 在 capture 前完成，capture 内禁止 teleport，target world probe 与 cleanup 在
-capture 后完成；receipt line 和 `server.log` prefix SHA-256 全部进入 replay evidence。L4 combat 仍是
-`unsupported_contract_only`。在 L3 真 GPU showcase、独立 manifest 复算和视频目检通过前，accepted
-L3 桶仍保持为空；L4 在执行器完成前也保持为空。dataset index 的 `action_buckets` 只保存每组精确、
+capture 后完成；receipt line 和 `server.log` prefix SHA-256 全部进入 replay evidence。L4 已有
+累积式 fail-closed executor：同路线/时长继续保留四次 jump 和两次 placement，在 route index 77
+加入固定 UUID/tag、NoAI、20 HP、1.0 抗击退的 iron-golem sparring target；玩家真实选木剑槽并左键，
+5 秒有效期内用 `execute on attacker` 证明攻击者身份，capture 后再证明 `0 < health_after < health_before`
+并清理实体、武器和掉落物。任何 server probe/score、objective create/remove receipt、日志前缀或
+低层动作缺失都拒绝。L3/L4 在各自真 GPU showcase、独立 manifest 复算、route QA 和视频目检通过前，
+accepted 桶仍保持为空。dataset index 的 `action_buckets` 只保存每组精确、
 稳定排序的 episode ID 和数量，不复制 capture；训练可以先用 L1，再逐步调整四组采样比例。
 
 新 run manifest 从 v3 开始必须显式保存 action curriculum。已经完成的 v2 capture 不重录、不

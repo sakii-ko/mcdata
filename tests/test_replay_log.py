@@ -129,6 +129,56 @@ def test_replay_dispatches_real_slot_and_use_inputs_but_leaves_l3_pending_probe(
     ]
 
 
+def test_replay_dispatches_l4_through_semantic_executor_and_leaves_probe_pending(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    trajectory = tmp_path / "trajectory.json"
+    event = {
+        "t": 0.0,
+        "semantic_action": "controlled_combat",
+        "combat": {"action_id": "spar_golem"},
+    }
+    trajectory.write_text(json.dumps({"events": [event]}), encoding="utf-8")
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _window_name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda _backend, *, warned=None: [])
+    sent: list[dict] = []
+    monkeypatch.setattr(
+        replay,
+        "_send_event_xdotool",
+        lambda primitive, **_kwargs: sent.append(dict(primitive)) or True,
+    )
+
+    class Executor:
+        def dispatch(self, _event, send_input):
+            inputs = [
+                {"key": "3", "action": "tap"},
+                {"mouse_button": 1, "action": "click"},
+            ]
+            assert all(send_input(item) for item in inputs)
+            return {"attacker_verified": True}
+
+    replay.replay_trajectory(
+        trajectory,
+        start_event=_AlreadyStarted(),
+        run_dir=tmp_path,
+        semantic_executor=Executor(),
+        episode_reset_evidence={"kind": "l4_test_reset"},
+    )
+
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "replay_log.jsonl").read_text().splitlines()
+    ]
+    assert records[1]["execution_status"] == "input_dispatched_pending_probe"
+    assert records[1]["semantic_evidence"] == {"attacker_verified": True}
+    assert sent == [
+        {"key": "3", "action": "tap"},
+        {"mouse_button": 1, "action": "click"},
+    ]
+
+
 def test_xdotool_right_click_uses_mouse_button_three(monkeypatch) -> None:
     calls: list[list[str]] = []
 
@@ -142,14 +192,23 @@ def test_xdotool_right_click_uses_mouse_button_three(monkeypatch) -> None:
     assert calls == [["xdotool", "click", "3"]]
 
 
-@pytest.mark.parametrize("tag", ["placement_aim", "placement_aim_restore"])
-def test_failed_placement_camera_input_never_claims_execution(
+@pytest.mark.parametrize(
+    ("tag", "label"),
+    [
+        ("placement_aim", "Placement"),
+        ("placement_aim_restore", "Placement"),
+        ("combat_aim", "Combat"),
+        ("combat_aim_restore", "Combat"),
+    ],
+)
+def test_failed_advanced_camera_input_never_claims_execution(
     tag: str,
+    label: str,
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(replay, "_send_backend_event", lambda *_args, **_kwargs: False)
 
-    with pytest.raises(RuntimeError, match="Placement camera .* input dispatch failed"):
+    with pytest.raises(RuntimeError, match=f"{label} camera .* input dispatch failed"):
         replay._dispatch_replay_event(
             {"mouse_dx": 600, "mouse_dy": -150, tag: True},
             backend="xdotool",

@@ -252,7 +252,7 @@ def _dispatch_replay_event(
     execution_status = _event_execution_status(event, semantic_executor=semantic_executor)
     if execution_status == "input_dispatched_pending_probe":
         if semantic_executor is None:
-            raise RuntimeError("placement input executor disappeared before dispatch")
+            raise RuntimeError("semantic input executor disappeared before dispatch")
         evidence = semantic_executor.dispatch(
             event,
             lambda primitive: _send_backend_event(
@@ -270,26 +270,34 @@ def _dispatch_replay_event(
             warned=warned,
             stop_event=stop_event,
         )
-        if dispatched is False and (
-            event.get("placement_aim") is True
-            or event.get("placement_aim_restore") is True
-        ):
-            phase = "aim" if event.get("placement_aim") is True else "restore"
-            raise RuntimeError(f"Placement camera {phase} input dispatch failed")
+        camera_family = _advanced_camera_family(event)
+        if dispatched is False and camera_family is not None:
+            family, phase = camera_family
+            raise RuntimeError(f"{family} camera {phase} input dispatch failed")
         _update_held(held, event)
     return execution_status, None
 
 
 def _event_execution_status(event: dict, *, semantic_executor: SemanticEventExecutor | None = None) -> str:
-    if event.get("semantic_action") == "deterministic_block_placement":
+    if event.get("semantic_action") in {
+        "deterministic_block_placement",
+        "controlled_combat",
+    }:
         if semantic_executor is not None:
             return "input_dispatched_pending_probe"
-        return "unsupported_contract_only"
-    if event.get("semantic_action") == "controlled_combat":
         return "unsupported_contract_only"
     if "key" in event or "mouse_dx" in event or "mouse_dy" in event or "mouse_button" in event:
         return "executed"
     return "non_input"
+
+
+def _advanced_camera_family(event: dict) -> tuple[str, str] | None:
+    for prefix, label in (("placement", "Placement"), ("combat", "Combat")):
+        if event.get(f"{prefix}_aim") is True:
+            return label, "aim"
+        if event.get(f"{prefix}_aim_restore") is True:
+            return label, "restore"
+    return None
 
 
 def _focus_window(window_name: str, *, warned: set[tuple[str, ...]] | None = None) -> None:

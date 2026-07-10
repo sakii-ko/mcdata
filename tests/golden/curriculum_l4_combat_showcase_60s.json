@@ -1,0 +1,1075 @@
+{
+  "action_curriculum": {
+    "capabilities": [
+      "navigation",
+      "deliberate_jump",
+      "deterministic_block_placement",
+      "controlled_combat"
+    ],
+    "planned_level": 4,
+    "taxonomy_version": 1
+  },
+  "duration_sec": 59.034,
+  "events": [
+    {
+      "duration": 0.4,
+      "mouse_dx": 0,
+      "mouse_dy": 30,
+      "t": 1.0
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 1.6
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 3.917
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 3.917
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 4.467
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 4.931
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 12,
+      "t": 4.931
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": 45,
+      "route_index": 12,
+      "t": 5.331
+    },
+    {
+      "duration": 0.8,
+      "look_hold": true,
+      "look_moment": "material_closeup",
+      "pause": true,
+      "route_index": 12,
+      "t": 5.881
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": -45,
+      "route_index": 12,
+      "t": 6.681
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 610,
+      "mouse_dy": -150,
+      "placement_aim": true,
+      "route_index": 12,
+      "t": 7.231
+    },
+    {
+      "duration": 0.25,
+      "placement": {
+        "action_id": "place_gold_west",
+        "aim_dx_px": 610,
+        "aim_dy_px": -150,
+        "block": "minecraft:gold_block",
+        "face": "east",
+        "hotbar_slot": 1,
+        "input_duration_sec": 0.25,
+        "input_settle_sec": 0.1,
+        "item_count": 2,
+        "receipt_timeout_sec": 3.0,
+        "support": [
+          -13,
+          65,
+          -13
+        ],
+        "support_block": "minecraft:glass",
+        "target": [
+          -12,
+          65,
+          -13
+        ]
+      },
+      "route_index": 12,
+      "semantic_action": "deterministic_block_placement",
+      "t": 7.781
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -610,
+      "mouse_dy": 150,
+      "placement_aim_restore": true,
+      "route_index": 12,
+      "t": 8.031
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "route_index": 12,
+      "semantic_action": "deliberate_jump",
+      "t": 8.581
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 8.581
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 10.204
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 10.204
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 10.754
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 12.376
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 12.376
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 12.926
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 14.78
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 34,
+      "t": 14.78
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 20,
+      "route_index": 34,
+      "t": 15.18
+    },
+    {
+      "duration": 3.5,
+      "look_hold": true,
+      "look_moment": "water_reflection_alt",
+      "pause": true,
+      "route_index": 34,
+      "t": 15.73
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -20,
+      "route_index": 34,
+      "t": 19.23
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "route_index": 34,
+      "semantic_action": "deliberate_jump",
+      "t": 19.78
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 19.78
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 20.939
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 39,
+      "t": 20.939
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 20,
+      "route_index": 39,
+      "t": 21.339
+    },
+    {
+      "duration": 3.5,
+      "look_hold": true,
+      "look_moment": "water_reflection",
+      "pause": true,
+      "route_index": 39,
+      "t": 21.889
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -20,
+      "route_index": 39,
+      "t": 25.389
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "route_index": 39,
+      "semantic_action": "deliberate_jump",
+      "t": 25.939
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 25.939
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 26.403
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 26.403
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 26.953
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 27.649
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 44,
+      "t": 27.649
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -30,
+      "route_index": 44,
+      "t": 28.049
+    },
+    {
+      "duration": 0.4,
+      "look_hold": true,
+      "look_moment": "scene_wide",
+      "pause": true,
+      "route_index": 44,
+      "t": 28.599
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 30,
+      "route_index": 44,
+      "t": 28.999
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 29.549
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 30.099
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 30.331
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 30.331
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 30.881
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 34.357
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 60,
+      "t": 34.357
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -30,
+      "route_index": 60,
+      "t": 34.757
+    },
+    {
+      "duration": 1.0,
+      "look_hold": true,
+      "look_moment": "gallery_wide",
+      "pause": true,
+      "route_index": 60,
+      "t": 35.307
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 30,
+      "route_index": 60,
+      "t": 36.307
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 610,
+      "mouse_dy": -150,
+      "placement_aim": true,
+      "route_index": 60,
+      "t": 36.857
+    },
+    {
+      "duration": 0.25,
+      "placement": {
+        "action_id": "place_emerald_north",
+        "aim_dx_px": 610,
+        "aim_dy_px": -150,
+        "block": "minecraft:emerald_block",
+        "face": "north",
+        "hotbar_slot": 2,
+        "input_duration_sec": 0.25,
+        "input_settle_sec": 0.1,
+        "item_count": 2,
+        "receipt_timeout_sec": 3.0,
+        "support": [
+          14,
+          65,
+          14
+        ],
+        "support_block": "minecraft:glass",
+        "target": [
+          14,
+          65,
+          13
+        ]
+      },
+      "route_index": 60,
+      "semantic_action": "deterministic_block_placement",
+      "t": 37.407
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -610,
+      "mouse_dy": 150,
+      "placement_aim_restore": true,
+      "route_index": 60,
+      "t": 37.657
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 38.207
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 38.439
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 38.439
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 38.989
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 42.696
+    },
+    {
+      "combat_aim": true,
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": -20,
+      "route_index": 77,
+      "t": 42.696
+    },
+    {
+      "combat": {
+        "action_id": "spar_iron_golem_east",
+        "aim_dx_px": 0,
+        "aim_dy_px": -20,
+        "attack_probe_delay_sec": 0.25,
+        "hotbar_slot": 3,
+        "initial_health": 20.0,
+        "input_duration_sec": 1.0,
+        "input_settle_sec": 0.1,
+        "item_count": 1,
+        "knockback_resistance": 1.0,
+        "receipt_timeout_sec": 3.0,
+        "rotation": [
+          0.0,
+          0.0
+        ],
+        "spawn": [
+          16.5,
+          64.0,
+          -6.5
+        ],
+        "target_entity": "minecraft:iron_golem",
+        "target_tag": "mcdata_l4_sparring_target",
+        "target_uuid": "4d434441-5441-4c34-8000-000000000004",
+        "weapon": "minecraft:wooden_sword"
+      },
+      "duration": 1.0,
+      "route_index": 77,
+      "semantic_action": "controlled_combat",
+      "t": 43.246
+    },
+    {
+      "combat_aim_restore": true,
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": 20,
+      "route_index": 77,
+      "t": 44.246
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 44.796
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 45.346
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 48.358
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 48.358
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 48.908
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 50.531
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 50.531
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 51.081
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 52.703
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 104,
+      "t": 52.703
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": -25,
+      "route_index": 104,
+      "t": 53.103
+    },
+    {
+      "duration": 0.4,
+      "look_hold": true,
+      "look_moment": "material_closeup_alt",
+      "pause": true,
+      "route_index": 104,
+      "t": 53.653
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 0,
+      "mouse_dy": 25,
+      "route_index": 104,
+      "t": 54.053
+    },
+    {
+      "action": "tap",
+      "key": "space",
+      "route_index": 104,
+      "semantic_action": "deliberate_jump",
+      "t": 54.603
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 54.603
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 55.153
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 55.703
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 58.02
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 58.02
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 58.57
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 59.034
+    }
+  ],
+  "initial_heading_deg": 90.0,
+  "route": [
+    {
+      "x": 0,
+      "z": -14
+    },
+    {
+      "x": -1,
+      "z": -14
+    },
+    {
+      "x": -2,
+      "z": -14
+    },
+    {
+      "x": -3,
+      "z": -14
+    },
+    {
+      "x": -4,
+      "z": -14
+    },
+    {
+      "x": -5,
+      "z": -14
+    },
+    {
+      "x": -6,
+      "z": -14
+    },
+    {
+      "x": -7,
+      "z": -14
+    },
+    {
+      "x": -8,
+      "z": -14
+    },
+    {
+      "x": -9,
+      "z": -14
+    },
+    {
+      "x": -10,
+      "z": -14
+    },
+    {
+      "x": -10,
+      "z": -13
+    },
+    {
+      "x": -10,
+      "z": -12
+    },
+    {
+      "x": -10,
+      "z": -11
+    },
+    {
+      "x": -10,
+      "z": -10
+    },
+    {
+      "x": -10,
+      "z": -9
+    },
+    {
+      "x": -10,
+      "z": -8
+    },
+    {
+      "x": -10,
+      "z": -7
+    },
+    {
+      "x": -10,
+      "z": -6
+    },
+    {
+      "x": -10,
+      "z": -5
+    },
+    {
+      "x": -9,
+      "z": -5
+    },
+    {
+      "x": -8,
+      "z": -5
+    },
+    {
+      "x": -7,
+      "z": -5
+    },
+    {
+      "x": -6,
+      "z": -5
+    },
+    {
+      "x": -5,
+      "z": -5
+    },
+    {
+      "x": -4,
+      "z": -5
+    },
+    {
+      "x": -3,
+      "z": -5
+    },
+    {
+      "x": -3,
+      "z": -4
+    },
+    {
+      "x": -3,
+      "z": -3
+    },
+    {
+      "x": -3,
+      "z": -2
+    },
+    {
+      "x": -3,
+      "z": -1
+    },
+    {
+      "x": -3,
+      "z": 0
+    },
+    {
+      "x": -3,
+      "z": 1
+    },
+    {
+      "x": -3,
+      "z": 2
+    },
+    {
+      "x": -3,
+      "z": 3
+    },
+    {
+      "x": -3,
+      "z": 4
+    },
+    {
+      "x": -3,
+      "z": 5
+    },
+    {
+      "x": -3,
+      "z": 6
+    },
+    {
+      "x": -3,
+      "z": 7
+    },
+    {
+      "x": -3,
+      "z": 8
+    },
+    {
+      "x": -3,
+      "z": 9
+    },
+    {
+      "x": -3,
+      "z": 10
+    },
+    {
+      "x": -2,
+      "z": 10
+    },
+    {
+      "x": -1,
+      "z": 10
+    },
+    {
+      "x": 0,
+      "z": 10
+    },
+    {
+      "x": 0,
+      "z": 11
+    },
+    {
+      "x": 1,
+      "z": 11
+    },
+    {
+      "x": 2,
+      "z": 11
+    },
+    {
+      "x": 3,
+      "z": 11
+    },
+    {
+      "x": 4,
+      "z": 11
+    },
+    {
+      "x": 5,
+      "z": 11
+    },
+    {
+      "x": 6,
+      "z": 11
+    },
+    {
+      "x": 7,
+      "z": 11
+    },
+    {
+      "x": 8,
+      "z": 11
+    },
+    {
+      "x": 9,
+      "z": 11
+    },
+    {
+      "x": 10,
+      "z": 11
+    },
+    {
+      "x": 11,
+      "z": 11
+    },
+    {
+      "x": 12,
+      "z": 11
+    },
+    {
+      "x": 13,
+      "z": 11
+    },
+    {
+      "x": 14,
+      "z": 11
+    },
+    {
+      "x": 15,
+      "z": 11
+    },
+    {
+      "x": 16,
+      "z": 11
+    },
+    {
+      "x": 16,
+      "z": 10
+    },
+    {
+      "x": 16,
+      "z": 9
+    },
+    {
+      "x": 16,
+      "z": 8
+    },
+    {
+      "x": 16,
+      "z": 7
+    },
+    {
+      "x": 16,
+      "z": 6
+    },
+    {
+      "x": 16,
+      "z": 5
+    },
+    {
+      "x": 16,
+      "z": 4
+    },
+    {
+      "x": 16,
+      "z": 3
+    },
+    {
+      "x": 16,
+      "z": 2
+    },
+    {
+      "x": 16,
+      "z": 1
+    },
+    {
+      "x": 16,
+      "z": 0
+    },
+    {
+      "x": 16,
+      "z": -1
+    },
+    {
+      "x": 16,
+      "z": -2
+    },
+    {
+      "x": 16,
+      "z": -3
+    },
+    {
+      "x": 16,
+      "z": -4
+    },
+    {
+      "x": 16,
+      "z": -5
+    },
+    {
+      "x": 15,
+      "z": -5
+    },
+    {
+      "x": 14,
+      "z": -5
+    },
+    {
+      "x": 13,
+      "z": -5
+    },
+    {
+      "x": 12,
+      "z": -5
+    },
+    {
+      "x": 11,
+      "z": -5
+    },
+    {
+      "x": 10,
+      "z": -5
+    },
+    {
+      "x": 9,
+      "z": -5
+    },
+    {
+      "x": 8,
+      "z": -5
+    },
+    {
+      "x": 7,
+      "z": -5
+    },
+    {
+      "x": 6,
+      "z": -5
+    },
+    {
+      "x": 5,
+      "z": -5
+    },
+    {
+      "x": 4,
+      "z": -5
+    },
+    {
+      "x": 3,
+      "z": -5
+    },
+    {
+      "x": 3,
+      "z": -6
+    },
+    {
+      "x": 3,
+      "z": -7
+    },
+    {
+      "x": 3,
+      "z": -8
+    },
+    {
+      "x": 3,
+      "z": -9
+    },
+    {
+      "x": 3,
+      "z": -10
+    },
+    {
+      "x": 3,
+      "z": -11
+    },
+    {
+      "x": 3,
+      "z": -12
+    },
+    {
+      "x": 4,
+      "z": -12
+    },
+    {
+      "x": 5,
+      "z": -12
+    },
+    {
+      "x": 6,
+      "z": -12
+    },
+    {
+      "x": 7,
+      "z": -12
+    },
+    {
+      "x": 8,
+      "z": -12
+    },
+    {
+      "x": 9,
+      "z": -12
+    },
+    {
+      "x": 10,
+      "z": -12
+    },
+    {
+      "x": 9,
+      "z": -12
+    },
+    {
+      "x": 8,
+      "z": -12
+    },
+    {
+      "x": 7,
+      "z": -12
+    },
+    {
+      "x": 6,
+      "z": -12
+    },
+    {
+      "x": 5,
+      "z": -12
+    },
+    {
+      "x": 4,
+      "z": -12
+    },
+    {
+      "x": 3,
+      "z": -12
+    },
+    {
+      "x": 2,
+      "z": -12
+    },
+    {
+      "x": 1,
+      "z": -12
+    },
+    {
+      "x": 0,
+      "z": -12
+    },
+    {
+      "x": 0,
+      "z": -13
+    },
+    {
+      "x": 0,
+      "z": -14
+    }
+  ],
+  "type": "astar_walk"
+}

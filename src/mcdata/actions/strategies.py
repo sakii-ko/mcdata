@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mcdata.actions.feedback import build_feedback_roam
+from mcdata.actions.combat_events import append_controlled_combat
 from mcdata.actions.pathing import (
     astar as _astar,
     astar_route as _astar_route,
@@ -476,6 +477,13 @@ def _apply_waypoint_actions(
         )
         append_deliberate_jump(
             events, t, action.get("deliberate_jump", False), route_index=route_index
+        )
+        t = append_controlled_combat(
+            events,
+            t,
+            action.get("controlled_combat"),
+            route_index=route_index,
+            scan_pause_sec=scan_pause_sec,
         )
     return t
 

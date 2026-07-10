@@ -6,6 +6,16 @@ import math
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_combat import (
+    COMBAT_SEMANTIC,
+    CombatEvidenceError,
+    combat_spec,
+    combat_specs,
+    validate_combat_event_sequences,
+    validate_combat_input_evidence,
+    validate_combat_post_capture_evidence,
+    validate_combat_reset_evidence,
+)
 from mcdata.action_placement import (
     PLACEMENT_SEMANTIC,
     PlacementEvidenceError,
@@ -15,6 +25,7 @@ from mcdata.action_placement import (
     validate_placement_event_sequences,
     validate_placement_input_evidence,
     validate_post_capture_evidence,
+    validate_server_log_binding,
 )
 
 TAXONOMY_VERSION = 1
@@ -247,11 +258,29 @@ def _validate_trajectory_semantics(trajectory: dict[str, Any], planned_level: in
                 placement_spec(event)
             except PlacementEvidenceError as exc:
                 raise ActionCurriculumError(str(exc)) from exc
+        if semantic == COMBAT_SEMANTIC:
+            try:
+                combat_spec(event)
+            except CombatEvidenceError as exc:
+                raise ActionCurriculumError(str(exc)) from exc
     try:
-        placement_specs(events)
+        placements = placement_specs(events)
         validate_placement_event_sequences(events)
     except PlacementEvidenceError as exc:
         raise ActionCurriculumError(str(exc)) from exc
+    try:
+        combats = combat_specs(events)
+        validate_combat_event_sequences(events)
+    except CombatEvidenceError as exc:
+        raise ActionCurriculumError(str(exc)) from exc
+    if combats:
+        placement_ids = {str(spec["action_id"]) for spec in placements}
+        placement_slots = {int(spec["hotbar_slot"]) for spec in placements}
+        combat = combats[0]
+        if str(combat["action_id"]) in placement_ids:
+            raise ActionCurriculumError("L3/L4 semantic action_ids must be disjoint")
+        if int(combat["hotbar_slot"]) in placement_slots:
+            raise ActionCurriculumError("L3/L4 hotbar slots must be disjoint")
 
 
 def _open_loop_counts(
@@ -270,24 +299,35 @@ def _open_loop_counts(
         for event in trajectory.get("events", [])
         if event.get("semantic_action") == PLACEMENT_SEMANTIC
     ]
+    combat_events = [
+        event
+        for event in trajectory.get("events", [])
+        if event.get("semantic_action") == COMBAT_SEMANTIC
+    ]
     dispatched_placements: list[dict[str, Any]] = []
-    post_capture_evidence: list[dict[str, Any]] = []
+    dispatched_combats: list[dict[str, Any]] = []
+    dispatched_combat_evidence: list[dict[str, Any]] = []
+    post_capture_controls: list[tuple[str, dict[str, Any]]] = []
     for index, record in enumerate(records[1:], 1):
         event = record.get("event")
         if not isinstance(event, dict):
             raise ActionCurriculumError(f"replay record {index} has no event object")
         if "replay_control" in event:
-            if event.get("replay_control") == "l3_post_capture_verification":
+            control = event.get("replay_control")
+            if control in {
+                "l3_post_capture_verification",
+                "l4_post_capture_verification",
+            }:
                 if index != len(records) - 1:
                     raise ActionCurriculumError(
-                        "L3 post-capture verification must be the final replay record"
+                        "semantic post-capture verification must be the final replay record"
                     )
                 evidence = record.get("semantic_evidence")
                 if not isinstance(evidence, dict):
                     raise ActionCurriculumError(
-                        "L3 post-capture replay control has no semantic evidence"
+                        "semantic post-capture replay control has no evidence"
                     )
-                post_capture_evidence.append(evidence)
+                post_capture_controls.append((str(control), evidence))
             continue
         scheduled_t = record.get("scheduled_t")
         actual_t = record.get("actual_t")
@@ -317,22 +357,61 @@ def _open_loop_counts(
         if observed_status == "executed":
             _count_executed_event(counts, event)
         elif observed_status == "input_dispatched_pending_probe":
-            try:
-                validate_placement_input_evidence(record.get("semantic_evidence"), event)
-            except PlacementEvidenceError as exc:
-                raise ActionCurriculumError(str(exc)) from exc
-            dispatched_placements.append(event)
+            if event.get("semantic_action") == PLACEMENT_SEMANTIC:
+                try:
+                    validate_placement_input_evidence(
+                        record.get("semantic_evidence"), event
+                    )
+                except PlacementEvidenceError as exc:
+                    raise ActionCurriculumError(str(exc)) from exc
+                dispatched_placements.append(event)
+            elif event.get("semantic_action") == COMBAT_SEMANTIC:
+                evidence = record.get("semantic_evidence")
+                try:
+                    validate_combat_input_evidence(
+                        evidence,
+                        event,
+                        replay_log_path=replay_log_path,
+                    )
+                except CombatEvidenceError as exc:
+                    raise ActionCurriculumError(str(exc)) from exc
+                dispatched_combats.append(event)
+                dispatched_combat_evidence.append(evidence)
+            else:
+                raise ActionCurriculumError(
+                    "pending-probe status is not bound to an advanced semantic action"
+                )
     planned_events = trajectory.get("events", [])
     if observed_events != planned_events:
         raise ActionCurriculumError("replay evidence does not exactly match trajectory events")
-    _apply_verified_placement_counts(
-        counts,
-        placement_events=placement_events,
-        dispatched_placements=dispatched_placements,
-        start_record=records[0],
-        post_capture_evidence=post_capture_evidence,
-        replay_log_path=replay_log_path,
-    )
+    if dispatched_combats:
+        _apply_verified_l4_counts(
+            counts,
+            placement_events=placement_events,
+            combat_events=combat_events,
+            dispatched_placements=dispatched_placements,
+            dispatched_combats=dispatched_combats,
+            dispatched_combat_evidence=dispatched_combat_evidence,
+            start_record=records[0],
+            post_capture_controls=post_capture_controls,
+            replay_log_path=replay_log_path,
+        )
+    else:
+        l3_evidence = [
+            evidence
+            for control, evidence in post_capture_controls
+            if control == "l3_post_capture_verification"
+        ]
+        if len(l3_evidence) != len(post_capture_controls):
+            raise ActionCurriculumError("L4 evidence exists without dispatched combat input")
+        _apply_verified_placement_counts(
+            counts,
+            placement_events=placement_events,
+            dispatched_placements=dispatched_placements,
+            start_record=records[0],
+            post_capture_evidence=l3_evidence,
+            replay_log_path=replay_log_path,
+        )
     return counts
 
 
@@ -373,6 +452,172 @@ def _apply_verified_placement_counts(
             "L3 final server-log prefix must extend the episode-reset prefix"
         )
     counts[PLACEMENT_SEMANTIC] = len(placement_events)
+
+
+def _apply_verified_l4_counts(
+    counts: dict[str, int],
+    *,
+    placement_events: list[dict[str, Any]],
+    combat_events: list[dict[str, Any]],
+    dispatched_placements: list[dict[str, Any]],
+    dispatched_combats: list[dict[str, Any]],
+    dispatched_combat_evidence: list[dict[str, Any]],
+    start_record: dict[str, Any],
+    post_capture_controls: list[tuple[str, dict[str, Any]]],
+    replay_log_path: Path,
+) -> None:
+    if not placement_events or dispatched_placements != placement_events:
+        raise ActionCurriculumError("L4 replay did not dispatch every cumulative L3 input")
+    if dispatched_combats != combat_events or len(combat_events) != 1:
+        raise ActionCurriculumError("L4 replay did not dispatch its exact combat encounter")
+    if len(post_capture_controls) != 1 or post_capture_controls[0][0] != (
+        "l4_post_capture_verification"
+    ):
+        raise ActionCurriculumError(
+            "L4 replay must contain exactly one L4 post-capture verification"
+        )
+    reset = start_record.get("episode_reset_evidence")
+    final = post_capture_controls[0][1]
+    try:
+        _validate_l4_cumulative_evidence(
+            reset,
+            final,
+            placement_events=placement_events,
+            combat_events=combat_events,
+            replay_log_path=replay_log_path,
+        )
+    except (PlacementEvidenceError, CombatEvidenceError) as exc:
+        raise ActionCurriculumError(str(exc)) from exc
+    reset_size = _server_prefix_size(reset)
+    attacker_sizes = [
+        _server_prefix_size(evidence) for evidence in dispatched_combat_evidence
+    ]
+    final_size = _server_prefix_size(final)
+    if not (
+        len(attacker_sizes) == 1
+        and reset_size < attacker_sizes[0] < final_size
+    ):
+        raise ActionCurriculumError(
+            "L4 server-log prefixes must order reset < player-attacker < final"
+        )
+    counts[PLACEMENT_SEMANTIC] = len(placement_events)
+    counts[COMBAT_SEMANTIC] = len(combat_events)
+
+
+def _validate_l4_cumulative_evidence(
+    reset: Any,
+    final: Any,
+    *,
+    placement_events: list[dict[str, Any]],
+    combat_events: list[dict[str, Any]],
+    replay_log_path: Path,
+) -> None:
+    reset_fields = {
+        "kind",
+        "action_ids",
+        "reset_command_count",
+        "probe_command_count",
+        "placement",
+        "combat",
+        "server_log",
+    }
+    final_fields = {
+        "kind",
+        "action_ids",
+        "probe_command_count",
+        "cleanup_command_count",
+        "placement",
+        "combat",
+        "server_log",
+    }
+    if not isinstance(reset, dict) or set(reset) != reset_fields:
+        raise CombatEvidenceError("L4 cumulative reset evidence has an unstable field set")
+    if not isinstance(final, dict) or set(final) != final_fields:
+        raise CombatEvidenceError("L4 cumulative final evidence has an unstable field set")
+    if reset.get("kind") != "l4_cumulative_episode_reset":
+        raise CombatEvidenceError("L4 cumulative reset kind is invalid")
+    if final.get("kind") != "l4_cumulative_post_capture_verification":
+        raise CombatEvidenceError("L4 cumulative final kind is invalid")
+    expected_ids = [
+        *(str(spec["action_id"]) for spec in placement_specs(placement_events)),
+        str(combat_specs(combat_events)[0]["action_id"]),
+    ]
+    if reset.get("action_ids") != expected_ids or final.get("action_ids") != expected_ids:
+        raise CombatEvidenceError("L4 cumulative action set does not match trajectory")
+    validate_episode_reset_evidence(
+        reset.get("placement"),
+        placement_events,
+        replay_log_path=replay_log_path,
+    )
+    validate_combat_reset_evidence(
+        reset.get("combat"),
+        combat_events,
+        replay_log_path=replay_log_path,
+    )
+    validate_post_capture_evidence(
+        final.get("placement"),
+        placement_events,
+        replay_log_path=replay_log_path,
+    )
+    validate_combat_post_capture_evidence(
+        final.get("combat"),
+        combat_events,
+        replay_log_path=replay_log_path,
+    )
+    _validate_l4_aggregate_counts(reset, final)
+    validate_server_log_binding(
+        reset.get("server_log"),
+        [],
+        replay_log_path=replay_log_path,
+    )
+    validate_server_log_binding(
+        final.get("server_log"),
+        [],
+        replay_log_path=replay_log_path,
+    )
+    reset_size = _server_prefix_size(reset)
+    final_size = _server_prefix_size(final)
+    combat_reset_size = _server_prefix_size(reset["combat"])
+    combat_final_size = _server_prefix_size(final["combat"])
+    if not (
+        _server_prefix_size(reset["placement"]) < combat_reset_size <= reset_size
+        and reset_size < final_size
+        and _server_prefix_size(final["placement"]) < combat_final_size <= final_size
+    ):
+        raise CombatEvidenceError("L4 cumulative server-log prefix ordering is invalid")
+
+
+def _validate_l4_aggregate_counts(reset: dict[str, Any], final: dict[str, Any]) -> None:
+    if reset.get("reset_command_count") != (
+        reset["placement"]["reset_command_count"]
+        + reset["combat"]["reset_command_count"]
+    ):
+        raise CombatEvidenceError("L4 cumulative reset command count is invalid")
+    if reset.get("probe_command_count") != (
+        reset["placement"]["probe_command_count"]
+        + reset["combat"]["probe_command_count"]
+    ):
+        raise CombatEvidenceError("L4 cumulative reset probe count is invalid")
+    if final.get("probe_command_count") != (
+        final["placement"]["probe_command_count"]
+        + final["combat"]["probe_command_count"]
+    ):
+        raise CombatEvidenceError("L4 cumulative final probe count is invalid")
+    if final.get("cleanup_command_count") != (
+        final["placement"]["cleanup_command_count"]
+        + final["combat"]["cleanup_command_count"]
+    ):
+        raise CombatEvidenceError("L4 cumulative cleanup command count is invalid")
+
+
+def _server_prefix_size(evidence: Any) -> int:
+    try:
+        value = evidence["server_log"]["prefix_size_bytes"]
+    except (KeyError, TypeError) as exc:
+        raise CombatEvidenceError("L4 evidence has no server-log prefix size") from exc
+    if type(value) is not int or value <= 0:
+        raise CombatEvidenceError("L4 evidence server-log prefix size is invalid")
+    return value
 
 
 def _feedback_counts(
@@ -430,7 +675,7 @@ def _count_executed_event(counts: dict[str, int], event: dict[str, Any]) -> None
 
 
 def _expected_execution_status(event: dict[str, Any]) -> str:
-    if event.get("semantic_action") in {PLACEMENT_SEMANTIC, "controlled_combat"}:
+    if event.get("semantic_action") in {PLACEMENT_SEMANTIC, COMBAT_SEMANTIC}:
         return "unsupported_contract_only"
     if "key" in event or "mouse_dx" in event or "mouse_dy" in event:
         return "executed"
@@ -438,7 +683,7 @@ def _expected_execution_status(event: dict[str, Any]) -> str:
 
 
 def _validate_execution_status(event: dict[str, Any], status: Any, *, index: int) -> None:
-    if event.get("semantic_action") == PLACEMENT_SEMANTIC:
+    if event.get("semantic_action") in {PLACEMENT_SEMANTIC, COMBAT_SEMANTIC}:
         if status in {"unsupported_contract_only", "input_dispatched_pending_probe"}:
             return
     elif status == _expected_execution_status(event):

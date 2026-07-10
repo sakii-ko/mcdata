@@ -11,6 +11,11 @@ from mcdata.action_curriculum import (
     summarize_action_run,
     validate_action_summary,
 )
+from mcdata.action_combat import (
+    COMBAT_FINAL_PHASES,
+    COMBAT_RESET_PHASES,
+    expected_combat_input_events,
+)
 from mcdata.action_placement import (
     EPISODE_RESET_BASE_PHASES,
     expected_input_events,
@@ -140,6 +145,76 @@ def _l3_trajectory() -> dict:
     }
 
 
+def _combat_event(*, t: float = 3.2, route_index: int = 1) -> dict:
+    return {
+        "t": t,
+        "duration": 1.0,
+        "semantic_action": "controlled_combat",
+        "route_index": route_index,
+        "combat": {
+            "action_id": "spar_golem",
+            "target_entity": "minecraft:iron_golem",
+            "target_tag": "mcdata_l4_target",
+            "target_uuid": "4d434441-5441-4c34-8000-000000000004",
+            "spawn": [16.5, 64.0, -6.5],
+            "rotation": [0.0, 0.0],
+            "initial_health": 20.0,
+            "knockback_resistance": 1.0,
+            "weapon": "minecraft:wooden_sword",
+            "hotbar_slot": 3,
+            "item_count": 1,
+            "aim_dx_px": 0,
+            "aim_dy_px": -20,
+            "input_settle_sec": 0.1,
+            "attack_probe_delay_sec": 0.25,
+            "input_duration_sec": 1.0,
+            "receipt_timeout_sec": 3.0,
+        },
+    }
+
+
+def _combat_triplet(*, t: float = 3.2, route_index: int = 1) -> list[dict]:
+    event = _combat_event(t=t, route_index=route_index)
+    spec = event["combat"]
+    return [
+        {
+            "t": round(t - 0.55, 3),
+            "mouse_dx": spec["aim_dx_px"],
+            "mouse_dy": spec["aim_dy_px"],
+            "duration": 0.35,
+            "combat_aim": True,
+            "route_index": route_index,
+        },
+        event,
+        {
+            "t": round(t + spec["input_duration_sec"], 3),
+            "mouse_dx": -spec["aim_dx_px"],
+            "mouse_dy": -spec["aim_dy_px"],
+            "duration": 0.35,
+            "combat_aim_restore": True,
+            "route_index": route_index,
+        },
+    ]
+
+
+def _l4_trajectory() -> dict:
+    return {
+        "type": "scripted",
+        "duration_sec": 5,
+        "action_curriculum": {
+            "taxonomy_version": 1,
+            "planned_level": 4,
+            "capabilities": [
+                "navigation",
+                "deliberate_jump",
+                "deterministic_block_placement",
+                "controlled_combat",
+            ],
+        },
+        "events": [*_l3_trajectory()["events"], *_combat_triplet()],
+    }
+
+
 def _receipt(action_id: str, phase: str) -> tuple[dict, str]:
     marker = receipt_marker(action_id, phase)
     line = f"[Server thread/INFO]: [Server] {marker}"
@@ -153,6 +228,17 @@ def _prefix_binding(text: str) -> dict:
         "prefix_size_bytes": len(payload),
         "prefix_sha256": hashlib.sha256(payload).hexdigest(),
     }
+
+
+def _score_query(holder: str, value: int) -> tuple[dict, str]:
+    line = f"[Server thread/INFO]: {holder} has {value} [mcdata_l4]"
+    return {
+        "holder": holder,
+        "objective": "mcdata_l4",
+        "value": value,
+        "line": line,
+        "probe_attempts": 1,
+    }, line
 
 
 def _write_verified_l3_replay(tmp_path: Path, trajectory: dict) -> Path:
@@ -249,6 +335,241 @@ def _write_verified_l3_replay(tmp_path: Path, trajectory: dict) -> Path:
     replay_path = tmp_path / "replay_log.jsonl"
     replay_path.write_text(
         "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8"
+    )
+    return replay_path
+
+
+def _write_verified_l4_replay(tmp_path: Path, trajectory: dict) -> Path:
+    placement_events = [
+        event
+        for event in trajectory["events"]
+        if event.get("semantic_action") == "deterministic_block_placement"
+    ]
+    combat_event = next(
+        event
+        for event in trajectory["events"]
+        if event.get("semantic_action") == "controlled_combat"
+    )
+    placement = placement_specs(placement_events)[0]
+    combat = combat_event["combat"]
+    placement_reset_phases = [
+        *EPISODE_RESET_BASE_PHASES,
+        f"arena_{placement['action_id']}",
+        f"inventory_{placement['action_id']}",
+    ]
+    placement_reset_pairs = [
+        _receipt("episode_reset", phase) for phase in placement_reset_phases
+    ]
+    placement_reset_text = "".join(line + "\n" for _, line in placement_reset_pairs)
+    objective_created = "[Server thread/INFO]: Created new objective [mcdata_l4]"
+    combat_reset_pairs = [
+        _receipt(combat["action_id"], phase) for phase in COMBAT_RESET_PHASES
+    ]
+    reset_score_pairs = [
+        _score_query("#target_count", 1),
+        _score_query("#health_before", 2000),
+        _score_query("#knockback", 1000),
+        _score_query("#mob_spawning", 0),
+    ]
+    combat_reset_text = (
+        objective_created
+        + "\n"
+        + "".join(line + "\n" for _, line in combat_reset_pairs)
+        + "".join(line + "\n" for _, line in reset_score_pairs)
+    )
+    reset_text = placement_reset_text + combat_reset_text
+    placement_reset = {
+        "kind": "l3_episode_reset",
+        "action_ids": [placement["action_id"]],
+        "reset_command_count": 6,
+        "probe_command_count": len(placement_reset_pairs),
+        "receipts": [receipt for receipt, _ in placement_reset_pairs],
+        "server_log": _prefix_binding(placement_reset_text),
+    }
+    combat_reset = {
+        "kind": "l4_combat_reset",
+        **{
+            key: combat[key]
+            for key in (
+                "action_id",
+                "target_entity",
+                "target_tag",
+                "target_uuid",
+                "spawn",
+                "rotation",
+                "weapon",
+                "hotbar_slot",
+            )
+        },
+        "initial_health_score": 2000,
+        "knockback_score": 1000,
+        "mob_spawning_score": 0,
+        "reset_command_count": 4,
+        "probe_command_count": 4 + len(combat_reset_pairs) + len(reset_score_pairs),
+        "objective_created": {
+            "objective": "mcdata_l4",
+            "line": objective_created,
+        },
+        "receipts": [receipt for receipt, _ in combat_reset_pairs],
+        "score_queries": [query for query, _ in reset_score_pairs],
+        "server_log": _prefix_binding(reset_text),
+    }
+    root_reset = {
+        "kind": "l4_cumulative_episode_reset",
+        "action_ids": [placement["action_id"], combat["action_id"]],
+        "reset_command_count": 10,
+        "probe_command_count": (
+            placement_reset["probe_command_count"]
+            + combat_reset["probe_command_count"]
+        ),
+        "placement": placement_reset,
+        "combat": combat_reset,
+        "server_log": _prefix_binding(reset_text),
+    }
+    records = [{"event": "start", "mono": 1.0, "episode_reset_evidence": root_reset}]
+    server_text = reset_text
+    for event in trajectory["events"]:
+        semantic = event.get("semantic_action")
+        status = (
+            "input_dispatched_pending_probe"
+            if semantic in {"deterministic_block_placement", "controlled_combat"}
+            else (
+                "executed"
+                if "key" in event or "mouse_dx" in event or "mouse_dy" in event
+                else "non_input"
+            )
+        )
+        record = {
+            "scheduled_t": event["t"],
+            "actual_t": event["t"],
+            "event": event,
+            "execution_status": status,
+        }
+        if semantic == "deterministic_block_placement":
+            record["semantic_evidence"] = {
+                "kind": "deterministic_block_placement_input",
+                "action_id": placement["action_id"],
+                "block": placement["block"],
+                "hotbar_slot": placement["hotbar_slot"],
+                "target": placement["target"],
+                "support": placement["support"],
+                "face": placement["face"],
+                "input_events": expected_input_events(placement),
+            }
+        elif semantic == "controlled_combat":
+            attacker_query, attacker_line = _score_query("#attacker_ok", 1)
+            attacker_receipt, receipt_line = _receipt(
+                combat["action_id"], "player_attacker"
+            )
+            server_text += attacker_line + "\n" + receipt_line + "\n"
+            record["semantic_evidence"] = {
+                "kind": "controlled_combat_input",
+                **{
+                    key: combat[key]
+                    for key in (
+                        "action_id",
+                        "target_entity",
+                        "target_tag",
+                        "target_uuid",
+                        "spawn",
+                        "weapon",
+                        "hotbar_slot",
+                    )
+                },
+                "input_events": expected_combat_input_events(combat),
+                "probe_command_count": 4,
+                "attacker_receipt": attacker_receipt,
+                "attacker_score_query": attacker_query,
+                "server_log": _prefix_binding(server_text),
+            }
+        records.append(record)
+    placement_final_pairs = [
+        _receipt(placement["action_id"], phase)
+        for phase in ("block_placed", "cleanup_complete")
+    ]
+    server_text += "".join(line + "\n" for _, line in placement_final_pairs)
+    placement_final = {
+        "kind": "l3_post_capture_verification",
+        "action_ids": [placement["action_id"]],
+        "probe_command_count": 2,
+        "cleanup_command_count": 3,
+        "placements": [
+            {
+                "action_id": placement["action_id"],
+                "block": placement["block"],
+                "target": placement["target"],
+                "support": placement["support"],
+                "face": placement["face"],
+                "receipts": [receipt for receipt, _ in placement_final_pairs],
+            }
+        ],
+        "server_log": _prefix_binding(server_text),
+    }
+    final_score_pairs = [
+        _score_query("#target_count_after", 1),
+        _score_query("#health_after", 1600),
+        _score_query("#spawn_mobs_final", 0),
+    ]
+    combat_final_pairs = [
+        _receipt(combat["action_id"], phase) for phase in COMBAT_FINAL_PHASES
+    ]
+    objective_removed = "[Server thread/INFO]: Removed objective [mcdata_l4]"
+    server_text += (
+        "".join(line + "\n" for _, line in final_score_pairs)
+        + "".join(line + "\n" for _, line in combat_final_pairs)
+        + objective_removed
+        + "\n"
+    )
+    combat_final = {
+        "kind": "l4_combat_post_capture_verification",
+        **{
+            key: combat[key]
+            for key in (
+                "action_id",
+                "target_entity",
+                "target_tag",
+                "target_uuid",
+                "spawn",
+                "rotation",
+                "weapon",
+                "hotbar_slot",
+            )
+        },
+        "initial_health_score": 2000,
+        "remaining_health_score": 1600,
+        "probe_command_count": 3 + len(final_score_pairs) + len(combat_final_pairs),
+        "cleanup_command_count": 4,
+        "objective_removed": {
+            "objective": "mcdata_l4",
+            "line": objective_removed,
+        },
+        "receipts": [receipt for receipt, _ in combat_final_pairs],
+        "score_queries": [query for query, _ in final_score_pairs],
+        "server_log": _prefix_binding(server_text),
+    }
+    root_final = {
+        "kind": "l4_cumulative_post_capture_verification",
+        "action_ids": [placement["action_id"], combat["action_id"]],
+        "probe_command_count": (
+            placement_final["probe_command_count"]
+            + combat_final["probe_command_count"]
+        ),
+        "cleanup_command_count": 7,
+        "placement": placement_final,
+        "combat": combat_final,
+        "server_log": _prefix_binding(server_text),
+    }
+    records.append(
+        {
+            "event": {"replay_control": "l4_post_capture_verification"},
+            "semantic_evidence": root_final,
+        }
+    )
+    (tmp_path / "server.log").write_text(server_text, encoding="utf-8")
+    replay_path = tmp_path / "replay_log.jsonl"
+    replay_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
     )
     return replay_path
 
@@ -465,34 +786,136 @@ def test_l3_contract_event_without_executor_cannot_claim_execution(tmp_path: Pat
         )
 
 
-def test_l4_contract_event_stays_unsupported(tmp_path: Path) -> None:
-    trajectory = {
-        "type": "scripted",
-        "duration_sec": 2,
-        "action_curriculum": {
-            "taxonomy_version": 1,
-            "planned_level": 4,
-            "capabilities": [
-                "navigation",
-                "deliberate_jump",
-                "deterministic_block_placement",
-                "controlled_combat",
-            ],
-        },
-        "events": [
-            {"t": 0.0, "key": "w", "action": "tap"},
-            {
-                "t": 1.0,
-                "semantic_action": "controlled_combat",
-            },
-        ],
-    }
+def test_l4_mouse_dispatch_without_executor_evidence_cannot_claim_combat(
+    tmp_path: Path,
+) -> None:
+    trajectory = _l4_trajectory()
     trajectory_path = tmp_path / "trajectory.json"
     replay_path = tmp_path / "replay_log.jsonl"
     _write_json(trajectory_path, trajectory)
-    _write_replay(replay_path, trajectory["events"], ["executed", "executed"])
+    statuses = [
+        "executed"
+        if event.get("semantic_action") == "controlled_combat"
+        else (
+            "unsupported_contract_only"
+            if event.get("semantic_action") == "deterministic_block_placement"
+            else (
+                "executed"
+                if "key" in event or "mouse_dx" in event or "mouse_dy" in event
+                else "non_input"
+            )
+        )
+        for event in trajectory["events"]
+    ]
+    _write_replay(replay_path, trajectory["events"], statuses)
 
     with pytest.raises(ActionCurriculumError, match="execution status"):
+        summarize_action_run(
+            trajectory_path,
+            replay_path,
+            execution_mode="open_loop_event_replay",
+        )
+
+
+def test_verified_l4_requires_cumulative_inputs_attacker_health_and_cleanup(
+    tmp_path: Path,
+) -> None:
+    trajectory = _l4_trajectory()
+    trajectory_path = tmp_path / "trajectory.json"
+    _write_json(trajectory_path, trajectory)
+    replay_path = _write_verified_l4_replay(tmp_path, trajectory)
+
+    result = summarize_action_run(
+        trajectory_path,
+        replay_path,
+        execution_mode="open_loop_event_replay",
+    )
+
+    assert result["bucket"] == "l1_l2_l3_l4"
+    assert result["observed_level"] == 4
+    assert result["observed_semantic_action_counts"] == {
+        "navigation_move": 1,
+        "navigation_camera": 4,
+        "deliberate_jump": 1,
+        "deterministic_block_placement": 1,
+        "controlled_combat": 1,
+    }
+
+
+def test_l4_root_prefix_may_include_a_concurrent_position_probe_line(
+    tmp_path: Path,
+) -> None:
+    trajectory = _l4_trajectory()
+    trajectory_path = tmp_path / "trajectory.json"
+    _write_json(trajectory_path, trajectory)
+    replay_path = _write_verified_l4_replay(tmp_path, trajectory)
+    records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+    log_path = tmp_path / "server.log"
+    text = log_path.read_text() + "[Server thread/INFO]: mcdata_bot has Pos probe data\n"
+    log_path.write_text(text)
+    records[-1]["semantic_evidence"]["server_log"] = _prefix_binding(text)
+    replay_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    result = summarize_action_run(
+        trajectory_path,
+        replay_path,
+        execution_mode="open_loop_event_replay",
+    )
+
+    assert result["observed_level"] == 4
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    [
+        ("attacker", "score query is invalid"),
+        ("health", "does not prove health decrease"),
+        ("uuid", "does not match trajectory"),
+        ("objective", "objective mutation evidence is invalid"),
+        ("late_control", "final replay record"),
+        ("prefix", "prefix hash does not match"),
+    ],
+)
+def test_l4_evidence_tampering_fails_closed(
+    tmp_path: Path,
+    tamper: str,
+    message: str,
+) -> None:
+    trajectory = _l4_trajectory()
+    trajectory_path = tmp_path / "trajectory.json"
+    _write_json(trajectory_path, trajectory)
+    replay_path = _write_verified_l4_replay(tmp_path, trajectory)
+    records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+    combat_record = next(
+        record
+        for record in records
+        if isinstance(record.get("event"), dict)
+        and record["event"].get("semantic_action") == "controlled_combat"
+    )
+    final = records[-1]["semantic_evidence"]
+    if tamper == "attacker":
+        query = combat_record["semantic_evidence"]["attacker_score_query"]
+        query["value"] = 0
+    elif tamper == "health":
+        final["combat"]["remaining_health_score"] = 2000
+    elif tamper == "uuid":
+        final["combat"]["target_uuid"] = "4d434441-5441-4c34-8000-000000000005"
+    elif tamper == "objective":
+        final["combat"]["objective_removed"]["line"] = "removed maybe"
+    elif tamper == "late_control":
+        records.append({"event": {"replay_control": "late"}})
+    elif tamper == "prefix":
+        log = tmp_path / "server.log"
+        log.write_text(log.read_text().replace("player_attacker", "player_attackex"))
+    replay_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ActionCurriculumError, match=message):
         summarize_action_run(
             trajectory_path,
             replay_path,
@@ -707,6 +1130,42 @@ def test_l3_placement_camera_sequence_is_strictly_bound(
                 "route_index": 0,
             }
         )
+
+    with pytest.raises(ActionCurriculumError, match=message):
+        planned_action_contract(trajectory)
+
+
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    [
+        ("hostile", "iron-golem sparring target"),
+        ("slot", "hotbar slots must be disjoint"),
+        ("missing_aim", "combat_aim event has an unstable field set"),
+        ("restore", "combat_aim_restore event does not match"),
+        ("zero_aim", "real camera input"),
+    ],
+)
+def test_l4_plan_is_fixed_cumulative_and_strictly_aim_bound(
+    tamper: str,
+    message: str,
+) -> None:
+    trajectory = _l4_trajectory()
+    combat = next(
+        event
+        for event in trajectory["events"]
+        if event.get("semantic_action") == "controlled_combat"
+    )
+    index = trajectory["events"].index(combat)
+    if tamper == "hostile":
+        combat["combat"]["target_entity"] = "minecraft:husk"
+    elif tamper == "slot":
+        combat["combat"]["hotbar_slot"] = 1
+    elif tamper == "missing_aim":
+        trajectory["events"].pop(index - 1)
+    elif tamper == "restore":
+        trajectory["events"][index + 1]["mouse_dy"] += 1
+    elif tamper == "zero_aim":
+        combat["combat"]["aim_dy_px"] = 0
 
     with pytest.raises(ActionCurriculumError, match=message):
         planned_action_contract(trajectory)

@@ -198,8 +198,12 @@ an L1 episode into L2. L3 now has a deterministic placement executor: it resets/
 action arena before capture, sends real camera/hotbar/right-click input without teleport during
 capture, and verifies/cleans the exact target blocks afterward. Unique server receipts and
 `server.log` prefix hashes are bound into `replay_log.jsonl`; input dispatch alone remains
-insufficient. L4 combat is still `unsupported_contract_only`. The L3 bucket remains empty until its
-true-GPU 60-second showcase, independent manifest recomputation, and video review pass.
+insufficient. L4 now composes that L3 executor with one fixed-UUID, NoAI iron-golem sparring
+encounter. It provisions a fixed wooden-sword slot, sends a real left click, immediately proves via
+the server's `on attacker` relation that the player caused the hit, then proves a positive health
+decrease and exact entity/equipment/drop cleanup. It never uses an in-capture teleport or server
+damage command. L3/L4 buckets remain empty until their true-GPU 60-second showcases, independent
+manifest recomputation, route QA, and video review pass.
 
 New runs write manifest schema v3, where `action_curriculum` is required. Dataset index v2 also
 accepts legacy manifest v2 captures: when—and only when—the v2 manifest has no action claim, the

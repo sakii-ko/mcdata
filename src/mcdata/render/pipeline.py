@@ -36,6 +36,7 @@ from mcdata.paths import ProjectPaths, ensure_dir
 from mcdata.qa.probe import probe_video
 from mcdata.resourcepacks import discover_target_resource_format, materialize_resourcepacks
 from mcdata.render.options import write_iris_config, write_options
+from mcdata.render.combat import CombatExecutor
 from mcdata.render.placement import PlacementExecutor
 from mcdata.render.probe import (
     start_position_probe,
@@ -122,7 +123,7 @@ class RunState:
     replay_start_mono: float | None = None
     capture_cmd: list[str] | None = None
     resourcepack_runtime: dict[str, object] | None = None
-    placement_executor: PlacementExecutor | None = None
+    placement_executor: PlacementExecutor | CombatExecutor | None = None
     placement_reset_evidence: dict[str, Any] | None = None
     placement_finalized: bool = False
     worker_error: BaseException | None = None
@@ -714,7 +715,20 @@ def _replay_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
         for event in trajectory.get("events", [])
         if isinstance(event, dict)
     )
-    if has_placement:
+    has_combat = any(
+        event.get("semantic_action") == "controlled_combat"
+        for event in trajectory.get("events", [])
+        if isinstance(event, dict)
+    )
+    if has_combat:
+        if not plan.capture or not plan.with_server or state.server_proc is None:
+            raise RuntimeError("L4 combat replay requires capture with a managed server")
+        state.placement_executor = CombatExecutor(
+            state.server_proc,
+            server_log_path=plan.run_dir / "server.log",
+            username=str(plan.profile.get("username")),
+        )
+    elif has_placement:
         if not plan.capture or not plan.with_server or state.server_proc is None:
             raise RuntimeError("L3 block placement replay requires capture with a managed server")
         state.placement_executor = PlacementExecutor(
@@ -949,7 +963,7 @@ def _cleanup_rejected_placement_actions(
         "rejected_cleanup_verified",
         action_ids=evidence["action_ids"],
         cleanup_command_count=evidence["cleanup_command_count"],
-        receipt_count=len(evidence["receipts"]),
+        receipt_count=_semantic_receipt_count(evidence),
     )
     return None
 
@@ -1145,7 +1159,7 @@ def _prepare_placement_actions(
         "pre_capture_reset_verified",
         action_ids=state.placement_reset_evidence["action_ids"],
         reset_command_count=state.placement_reset_evidence["reset_command_count"],
-        receipt_count=len(state.placement_reset_evidence["receipts"]),
+        receipt_count=_semantic_receipt_count(state.placement_reset_evidence),
     )
 
 
@@ -1169,7 +1183,11 @@ def _finalize_placement_actions(
 
     append_replay_control(
         plan.run_dir / "replay_log.jsonl",
-        "l3_post_capture_verification",
+        getattr(
+            state.placement_executor,
+            "post_capture_control",
+            "l3_post_capture_verification",
+        ),
         semantic_evidence=evidence,
     )
     state.placement_finalized = True
@@ -1178,7 +1196,26 @@ def _finalize_placement_actions(
         "post_capture_verified_and_cleaned",
         action_ids=evidence["action_ids"],
         cleanup_command_count=evidence["cleanup_command_count"],
-        receipt_count=sum(len(item["receipts"]) for item in evidence["placements"]),
+        receipt_count=_semantic_receipt_count(evidence),
+    )
+
+
+def _semantic_receipt_count(evidence: dict[str, Any]) -> int:
+    if "receipt_count" in evidence:
+        return int(evidence["receipt_count"])
+    if isinstance(evidence.get("receipts"), list):
+        return len(evidence["receipts"])
+    if isinstance(evidence.get("placements"), list):
+        return sum(
+            len(item.get("receipts", []))
+            for item in evidence["placements"]
+            if isinstance(item, dict)
+        )
+    return sum(
+        _semantic_receipt_count(value)
+        for key in ("placement", "combat")
+        for value in (evidence.get(key),)
+        if isinstance(value, dict)
     )
 
 

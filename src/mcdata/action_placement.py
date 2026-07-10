@@ -320,6 +320,30 @@ def server_log_binding(log_path: Path) -> dict[str, Any]:
     }
 
 
+def validate_receipts(
+    value: Any,
+    action_id: str,
+    phases: list[str],
+) -> list[dict[str, Any]]:
+    """Validate exact server say receipts and return the narrowed list."""
+    _validate_receipts(value, action_id, phases)
+    return value
+
+
+def validate_server_log_binding(
+    value: Any,
+    receipts: list[dict[str, Any]],
+    *,
+    replay_log_path: Path,
+) -> None:
+    """Validate a bound server-log prefix and every evidence line inside it."""
+    _validate_server_log_binding(
+        value,
+        receipts,
+        replay_log_path=replay_log_path,
+    )
+
+
 def _validate_receipts(value: Any, action_id: str, phases: list[str]) -> None:
     if not isinstance(value, list) or len(value) != len(phases):
         raise PlacementEvidenceError("placement receipt count is invalid")
