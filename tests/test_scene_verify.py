@@ -52,7 +52,7 @@ def test_expected_scene_fill_count_excludes_forceload() -> None:
     assert expected_scene_fill_count(profile) == 24
 
 
-def test_apply_world_state_freezes_ticks_and_clears_stale_item_entities() -> None:
+def test_apply_world_state_freezes_ticks_and_clears_stale_entities() -> None:
     proc = SimpleNamespace(stdin=StringIO())
     profile = {
         "world_state": {
@@ -67,6 +67,7 @@ def test_apply_world_state_freezes_ticks_and_clears_stale_item_entities() -> Non
                     {"kind": "setblock", "block": "minecraft:stone", "at": [1, 0, 2]}
                 ],
             },
+            "clear_non_player_entities": True,
             "clear_dropped_items": True,
         }
     }
@@ -78,6 +79,7 @@ def test_apply_world_state_freezes_ticks_and_clears_stale_item_entities() -> Non
         "time set noon",
         "weather clear 60",
         "setblock 1 64 2 minecraft:stone",
+        "kill @e[type=!minecraft:player]",
         "kill @e[type=minecraft:item]",
     ]
 
