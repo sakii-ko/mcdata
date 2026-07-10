@@ -116,6 +116,54 @@ scene:
 
 - dev_check 全绿；`docs/iterations/ITER-03-report.md`（要求同前）；分支不自行 merge；交接用 `collab_handoff.sh`（确认 notify 输出成功——上轮 T4 的 handoff 消息 planner 未收到，本轮留意）。
 
+## ITER-04：反馈式长时漫游 + 高辨识度 PBR 视觉 —— 🚧 进行中（2026-07-10）
+
+分支：`iter/04-feedback-roam-visuals`。
+
+用户验收指出两项实质问题：上一轮 10 分钟预览只有固定左右 pan，不是自动寻路游走；
+Faithful 32x + 默认 Complementary 的材质差异和水反质量也不足。此前被拒绝的 16 圈长
+A* 证明，重复开环键鼠轨迹会累积亚格误差，最终撞入水池或跌出平台；本轮禁止恢复该方案，
+也禁止用隐藏 teleport 冒充真实行走。
+
+### T0 — 无 teleport 的反馈式 waypoint navigator
+
+1. 新增 `feedback_roam` 策略：固定 seed 采样可达目标并用 A* 生成路线；轨迹记录 route、
+   goals 和控制参数，计划时长至少 604 秒，障碍净空至少两格。
+2. render 层新增在线 navigator：以服务端位置/yaw 探针为反馈，逐段追踪 route waypoint，
+   只通过真实键鼠输入行走和转向；支持横向偏差纠正、卡住释放/重对准/有限重试。
+3. fail closed：位置响应过期、y 不在 63..66、偏离路线超过硬阈值、连续卡住恢复失败时，
+   立即释放移动键并使 run 失败；禁止静默站住直到视频结束。
+4. 每个 run 保存结构化 navigation log 和实际输入；同一 N-way cohort 共享相同规划轨迹
+   SHA，但报告明确区分“同一反馈策略/路线”与旧式“逐字节相同开环输入”。
+5. QA 新增路线覆盖、移动占比、停滞、恢复次数、最大偏差和跨档位置对齐；600 秒 smoke
+   必须持续移动，不能只在前一分钟完成路线后静止。
+
+### T1 — 高辨识度材质、PBR 与水反
+
+1. 首选候选为官方 26.2 的 Patrix 32x #89 完整免费组件（Basic + Addon + Bonus +
+   Models），并安装作者要求的 Continuity、Entity Model Features、Entity Texture Features。
+   若完整组件实机失败，降级必须在报告中显式记录，不能静默只用 Basic。
+2. 光影首选官方 26.2 的 Solas 3.7；显式固定 HIGH/ULTRA、LabPBR、反射、折射、焦散和
+   水体相关选项。配置产物、实际 active shader 日志和代表帧共同作为证据，不能只证明 ZIP
+   被选中。
+3. 在正式长录前并排 smoke Patrix+Solas、Patrix+Unbound 及至少一个现实材质备选，人工
+   选择材质细节、水面、曝光和夜间可读性最好的组合。
+4. 丰富 showcase 场景的石材、木材、植被、玻璃、水体、发光和 PBR 可见表面；扩大安全
+   地面和路线边界，避免高质量 pack 只拍到单调白色测试地板。
+5. 三档 profile 保持同一出生点、世界状态、反馈路线和采集规格，只改变资源/光影；正式
+   预览目标 1920x1080、24fps（L40S Xorg 同步切换到 1080p）。
+
+### 风险与完成定义
+
+- 反馈控制会让各档实际微调输入不再逐字节相同；该批次只能在跨档位置对齐通过后标为
+  `policy_aligned_rendering_matrix`，不得冒充旧的 strict open-loop cohort。长期逐帧严格方案
+  仍是“导航录制一次 + ReplayMod 离线重渲染”。
+- Patrix 高于 32x 的版本需要用户提供合法付费资产；本轮只自动使用作者公开的免费文件，
+  不绕过授权。
+- 完成定义：本地 dev_check 0 failure；真 GPU 先通过 60 秒三档 smoke，再通过至少一条
+  600 秒反馈漫游稳定性验证；最终三档 10 分钟视频均为 1080p/24fps/14400 帧，移动占比、
+  route、y 范围、跨档对齐、资源 runtime、shader 选项、自动 QA 和人工视觉 review 全部 PASS。
+
 ## Backlog（ITER-02+，暂不执行）
 
 1. ~~launch_profile 编排层分解~~ ✅ ITER-02 T4 完成（RunPlan/RunState + 阶段函数）。pipeline.py 文件级拆分（plan/phases 分文件）为可选 polish，触碰该文件时顺路。
