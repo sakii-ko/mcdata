@@ -172,6 +172,18 @@ def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
     assert trajectory["navigation"]["hard_deviation_blocks"] > trajectory["navigation"][
         "soft_deviation_blocks"
     ]
+    navigation = trajectory["navigation"]
+    capped_turn_rate = (
+        navigation["max_turn_px"]
+        / navigation["turn_px_per_degree"]
+        / (navigation["control_interval_sec"] * (navigation["turn_confirmation_samples"] + 1))
+    )
+    assert 200 <= capped_turn_rate <= 300
+    assert navigation["min_moving_control_ratio"] == 0.5
+    assert navigation["max_recovery_count"] == 3
+    assert navigation["long_run_gate_duration_sec"] == 600
+    assert navigation["min_long_run_progress_blocks"] == 1200
+    assert navigation["min_10s_movement_blocks"] == 10
 
     route = [(point["x"], point["z"]) for point in trajectory["route"]]
     directions = [

@@ -190,13 +190,18 @@ def _navigation_parameters(spec: dict[str, Any], seconds_per_block: float) -> di
         "max_recovery_attempts": int(spec.get("max_recovery_attempts", 3)),
         "recovery_hold_sec": float(spec.get("recovery_hold_sec", 0.2)),
         "turn_px_per_degree": float(spec.get("turn_px_per_degree", 6.6667)),
-        "turn_gain": float(spec.get("turn_gain", 0.35)),
+        "turn_gain": float(spec.get("turn_gain", 1.0)),
         "turn_confirmation_samples": int(spec.get("turn_confirmation_samples", 1)),
         "turn_response_timeout_sec": float(spec.get("turn_response_timeout_sec", 1.0)),
         "turn_min_improvement_deg": float(spec.get("turn_min_improvement_deg", 2.0)),
-        "max_turn_px": int(spec.get("max_turn_px", 100)),
+        "max_turn_px": int(spec.get("max_turn_px", 360)),
         "progress_timeout_sec": float(spec.get("progress_timeout_sec", 3.0)),
         "progress_min_distance_blocks": float(spec.get("progress_min_distance_blocks", 0.25)),
+        "min_moving_control_ratio": float(spec.get("min_moving_control_ratio", 0.5)),
+        "max_recovery_count": int(spec.get("max_recovery_count", 3)),
+        "long_run_gate_duration_sec": float(spec.get("long_run_gate_duration_sec", 600.0)),
+        "min_long_run_progress_blocks": float(spec.get("min_long_run_progress_blocks", 1200.0)),
+        "min_10s_movement_blocks": float(spec.get("min_10s_movement_blocks", 10.0)),
         "y_min": float(spec.get("y_min", 63.0)),
         "y_max": float(spec.get("y_max", 66.0)),
         "seconds_per_block": seconds_per_block,
@@ -223,6 +228,9 @@ def _validate_navigation(navigation: dict[str, Any]) -> None:
         "max_turn_px",
         "progress_timeout_sec",
         "progress_min_distance_blocks",
+        "long_run_gate_duration_sec",
+        "min_long_run_progress_blocks",
+        "min_10s_movement_blocks",
         "seconds_per_block",
     )
     for key in positive:
@@ -234,12 +242,16 @@ def _validate_navigation(navigation: dict[str, Any]) -> None:
         raise RuntimeError("feedback_roam stuck_distance_blocks must not be negative")
     if navigation["max_recovery_attempts"] < 1:
         raise RuntimeError("feedback_roam max_recovery_attempts must be at least 1")
+    if navigation["max_recovery_count"] < 0:
+        raise RuntimeError("feedback_roam max_recovery_count must not be negative")
     if navigation["hard_deviation_blocks"] <= navigation["soft_deviation_blocks"]:
         raise RuntimeError("feedback_roam hard_deviation_blocks must exceed soft_deviation_blocks")
     if navigation["move_yaw_limit_deg"] < navigation["yaw_tolerance_deg"]:
         raise RuntimeError("feedback_roam move_yaw_limit_deg must cover yaw_tolerance_deg")
     if navigation["turn_gain"] > 1:
         raise RuntimeError("feedback_roam turn_gain must not exceed 1")
+    if not 0 < navigation["min_moving_control_ratio"] <= 1:
+        raise RuntimeError("feedback_roam min_moving_control_ratio must be in (0, 1]")
     if navigation["turn_confirmation_samples"] < 0:
         raise RuntimeError("feedback_roam turn_confirmation_samples must not be negative")
     if navigation["position_stale_sec"] < navigation["control_interval_sec"]:

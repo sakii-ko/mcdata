@@ -45,8 +45,9 @@ def check_feedback_route(
         expected_duration_sec,
         observed_span=position_metrics["observed_span"],
         navigation_span=navigation_metrics["navigation_span"],
-        hard_deviation=float(settings.get("hard_deviation_blocks", 2.0)),
+        settings=settings,
         max_route_segment=navigation_metrics["max_route_segment"],
+        route_distance=max(0, len(trajectory.get("route", [])) - 1),
     )
     passed = _feedback_passed(
         position_metrics,
@@ -112,6 +113,8 @@ def _navigation_metrics(
     stop_count = sum(1 for item in navigation if item.get("event") == "stop")
     return {
         "control_count": len(controls),
+        "moving_control_count": len(moving_controls),
+        "moving_control_ratio": len(moving_controls) / len(controls) if controls else None,
         "moving_yaw_count": len(moving_yaw_errors),
         "max_moving_yaw": max(moving_yaw_errors, default=None),
         "mean_moving_yaw": (
@@ -137,8 +140,9 @@ def _scoring_thresholds(
     *,
     observed_span: float,
     navigation_span: float,
-    hard_deviation: float,
+    settings: dict[str, Any],
     max_route_segment: int,
+    route_distance: int,
 ) -> dict[str, Any]:
     scored_span = expected_duration_sec or max(navigation_span, observed_span)
     duration_ratio = (
@@ -146,15 +150,34 @@ def _scoring_thresholds(
         if expected_duration_sec is not None and expected_duration_sec > 0
         else None
     )
-    minimum_distance = max(2.0, (expected_duration_sec or scored_span) * 1.0)
+    base_minimum_distance = max(2.0, (expected_duration_sec or scored_span) * 1.0)
+    long_run_duration = float(settings.get("long_run_gate_duration_sec", 600.0))
+    long_run_active = bool(
+        expected_duration_sec is not None and expected_duration_sec >= long_run_duration
+    )
+    long_run_progress = (
+        float(settings.get("min_long_run_progress_blocks", 1200.0)) if long_run_active else 0.0
+    )
+    minimum_distance = max(base_minimum_distance, long_run_progress)
     return {
-        "route_threshold": hard_deviation + 0.75,
+        "route_threshold": float(settings.get("hard_deviation_blocks", 2.0)) + 0.75,
         "scored_span": scored_span,
         "duration_ratio": duration_ratio,
         "minimum_samples": max(2, math.floor((expected_duration_sec or 0.0) * 2.0)),
         "minimum_distance": minimum_distance,
         "minimum_cells": max(3, math.floor((expected_duration_sec or scored_span) / 10.0)),
-        "minimum_route_progress": max(1.0, minimum_distance - max_route_segment),
+        "minimum_route_progress": max(
+            1.0,
+            base_minimum_distance - max_route_segment,
+            long_run_progress,
+        ),
+        "minimum_moving_control_ratio": float(settings.get("min_moving_control_ratio", 0.5)),
+        "maximum_recovery_count": int(settings.get("max_recovery_count", 3)),
+        "minimum_10s_movement": float(settings.get("min_10s_movement_blocks", 10.0)),
+        "maximum_position_step": 3.0,
+        "long_run_active": long_run_active,
+        "long_run_duration": long_run_duration,
+        "planned_route_distance": route_distance,
     }
 
 
@@ -169,11 +192,13 @@ def _feedback_passed(
     position_duration_ok = (
         duration_ratio is None or position["observed_span"] / thresholds["scored_span"] >= 0.95
     )
-    window_movement = position["minimum_10s_movement"]
     return bool(
         position["count"] >= thresholds["minimum_samples"]
         and navigation["control_count"]
+        and navigation["moving_control_ratio"] is not None
+        and navigation["moving_control_ratio"] >= thresholds["minimum_moving_control_ratio"]
         and navigation["failure_count"] == 0
+        and navigation["recovery_count"] <= thresholds["maximum_recovery_count"]
         and navigation["terminal_stop"]
         and navigation["progress_ordered"]
         and navigation["route_progress"] >= thresholds["minimum_route_progress"]
@@ -184,13 +209,20 @@ def _feedback_passed(
         and position["total_movement"] >= thresholds["minimum_distance"]
         and position["unique_cells"] >= thresholds["minimum_cells"]
         and position["max_step"] is not None
-        and position["max_step"] <= 3.0
+        and position["max_step"] <= thresholds["maximum_position_step"]
         and navigation["max_moving_yaw"] is not None
         and navigation["max_moving_yaw"] <= move_yaw_limit + 0.01
         and (duration_ratio is None or duration_ratio >= 0.95)
         and position_duration_ok
-        and (window_movement is None or window_movement >= 2.0)
+        and _window_movement_passed(position, thresholds)
     )
+
+
+def _window_movement_passed(position: dict[str, Any], thresholds: dict[str, Any]) -> bool:
+    observed = position["minimum_10s_movement"]
+    if thresholds["scored_span"] < 10.0:
+        return observed is None or observed >= thresholds["minimum_10s_movement"]
+    return observed is not None and observed >= thresholds["minimum_10s_movement"]
 
 
 def _feedback_result(
@@ -206,6 +238,7 @@ def _feedback_result(
 ) -> dict[str, Any]:
     scored_span = thresholds["scored_span"]
     movement_rate = position["total_movement"] / scored_span if scored_span > 0 else 0.0
+    planned_route_distance = thresholds["planned_route_distance"]
     return {
         "mode": "online_position_yaw_feedback",
         "passed": passed,
@@ -229,11 +262,16 @@ def _feedback_result(
         "minimum_movement_distance_blocks": thresholds["minimum_distance"],
         "movement_rate_blocks_per_sec": movement_rate,
         "max_position_step_blocks": position["max_step"],
+        "max_position_step_threshold_blocks": thresholds["maximum_position_step"],
         "unique_occupied_cells": position["unique_cells"],
         "minimum_unique_cells": thresholds["minimum_cells"],
         "navigation_control_count": navigation["control_count"],
+        "moving_control_count": navigation["moving_control_count"],
+        "moving_control_ratio": navigation["moving_control_ratio"],
+        "minimum_moving_control_ratio": thresholds["minimum_moving_control_ratio"],
         "waypoints_reached": navigation["waypoint_count"],
         "recovery_count": navigation["recovery_count"],
+        "maximum_recovery_count": thresholds["maximum_recovery_count"],
         "failure_count": navigation["failure_count"],
         "navigation_span_sec": navigation["navigation_span"],
         "expected_duration_sec": expected_duration_sec,
@@ -242,8 +280,17 @@ def _feedback_result(
             position["observed_span"] / scored_span if scored_span > 0 else None
         ),
         "minimum_10s_movement_blocks": position["minimum_10s_movement"],
+        "minimum_10s_movement_threshold_blocks": thresholds["minimum_10s_movement"],
         "ordered_route_progress_blocks": navigation["route_progress"],
         "minimum_route_progress_blocks": thresholds["minimum_route_progress"],
+        "planned_route_distance_blocks": planned_route_distance,
+        "route_progress_coverage_ratio": (
+            navigation["route_progress"] / planned_route_distance
+            if planned_route_distance > 0
+            else None
+        ),
+        "long_run_gate_active": thresholds["long_run_active"],
+        "long_run_gate_duration_sec": thresholds["long_run_duration"],
         "route_progress_ordered": navigation["progress_ordered"],
         "terminal_stop": navigation["terminal_stop"],
         "terminal_stop_count": navigation["stop_count"],

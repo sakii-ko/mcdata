@@ -111,13 +111,18 @@ strategies:
     max_recovery_attempts: 3
     recovery_hold_sec: 0.2
     turn_px_per_degree: 6.6667
-    turn_gain: 0.35
+    turn_gain: 1.0
     turn_confirmation_samples: 1
     turn_response_timeout_sec: 1.0
     turn_min_improvement_deg: 2.0
-    max_turn_px: 100
+    max_turn_px: 360
     progress_timeout_sec: 3.0
     progress_min_distance_blocks: 0.25
+    min_moving_control_ratio: 0.50
+    max_recovery_count: 3
+    long_run_gate_duration_sec: 600
+    min_long_run_progress_blocks: 1200
+    min_10s_movement_blocks: 10.0
     y_min: 63.0
     y_max: 66.0
 

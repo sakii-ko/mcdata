@@ -18,6 +18,21 @@ def test_bilinear_filter_supports_pillow_without_resampling(monkeypatch) -> None
     importlib.reload(report)
 
 
+def test_requested_capture_duration_comes_from_manifest_command(tmp_path: Path) -> None:
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"capture": {"ffmpeg_cmd": ["ffmpeg", "-t", "600"]}}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert report.requested_capture_duration(tmp_path, 590.0) == 600.0
+
+
+def test_requested_capture_duration_falls_back_for_incomplete_manifest(tmp_path: Path) -> None:
+    (tmp_path / "manifest.json").write_text("{}\n", encoding="utf-8")
+
+    assert report.requested_capture_duration(tmp_path, 60.0) == 60.0
+
+
 def test_position_alignment_passes_with_small_offsets(tmp_path: Path) -> None:
     left = _positions(tmp_path, "left", [(0, 64, 0), (1, 64, 1)])
     right = _positions(tmp_path, "right", [(0.5, 64, 0.5), (2, 64, 1)])

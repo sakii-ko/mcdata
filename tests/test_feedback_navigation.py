@@ -74,11 +74,11 @@ def _navigation_config() -> NavigationConfig:
         max_recovery_attempts=3,
         recovery_hold_sec=0.2,
         turn_px_per_degree=6.6667,
-        turn_gain=0.35,
+        turn_gain=1.0,
         turn_confirmation_samples=1,
         turn_response_timeout_sec=1.0,
         turn_min_improvement_deg=2.0,
-        max_turn_px=100,
+        max_turn_px=360,
         progress_timeout_sec=3.0,
         progress_min_distance_blocks=0.25,
         y_min=63.0,
@@ -86,7 +86,10 @@ def _navigation_config() -> NavigationConfig:
     )
 
 
-def test_proportional_turn_controller_converges_with_two_pose_delay() -> None:
+@pytest.mark.parametrize(("target_yaw", "expected_sequence"), [(90.0, 5), (179.0, 9)])
+def test_proportional_turn_controller_converges_with_two_pose_delay(
+    target_yaw: float, expected_sequence: int
+) -> None:
     config = _navigation_config()
     state = _NavigationState()
     yaw = 0.0
@@ -95,7 +98,7 @@ def test_proportional_turn_controller_converges_with_two_pose_delay() -> None:
     for sequence in range(1, 41):
         yaw += sum(delta for apply_at, delta in pending if apply_at == sequence)
         pending = [item for item in pending if item[0] > sequence]
-        error = shortest_yaw_delta(yaw, 90.0)
+        error = shortest_yaw_delta(yaw, target_yaw)
         if abs(error) <= config.yaw_tolerance_deg:
             break
         turn_sent = sequence >= state.next_turn_sequence
@@ -112,8 +115,19 @@ def test_proportional_turn_controller_converges_with_two_pose_delay() -> None:
             state=state,
         )
 
-    assert abs(shortest_yaw_delta(yaw, 90.0)) <= config.yaw_tolerance_deg
-    assert sequence <= 30
+    assert abs(shortest_yaw_delta(yaw, target_yaw)) <= config.yaw_tolerance_deg
+    assert sequence == expected_sequence
+
+
+def test_turn_rate_matches_normal_gameplay_without_dropping_confirmation() -> None:
+    config = _navigation_config()
+
+    degrees_per_step = config.max_turn_px / config.turn_px_per_degree
+    seconds_per_step = config.control_interval_sec * (config.turn_confirmation_samples + 1)
+    capped_rate = degrees_per_step / seconds_per_step
+
+    assert 200.0 <= capped_rate <= 300.0
+    assert config.turn_confirmation_samples == 1
 
 
 def test_turn_response_watchdog_rejects_ignored_mouse_input() -> None:

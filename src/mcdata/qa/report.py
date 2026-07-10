@@ -48,6 +48,18 @@ def resolve_video(input_path: Path) -> tuple[Path, Path]:
     return input_path, input_path.parent
 
 
+def requested_capture_duration(run_dir: Path, fallback: float) -> float:
+    manifest_path = run_dir / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        command = manifest["capture"]["ffmpeg_cmd"]
+        duration_index = command.index("-t") + 1
+        duration = float(command[duration_index])
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError, IndexError):
+        return fallback
+    return duration if duration > 0 else fallback
+
+
 def write_run_report(
     input_path: Path,
     *,
@@ -60,7 +72,9 @@ def write_run_report(
     out = out_dir or default_out_dir
     out.mkdir(parents=True, exist_ok=True)
     probe = summarize_probe(video)
-    timestamps = uniform_timestamps(float(probe.get("duration_sec") or 0), frames)
+    observed_duration = float(probe.get("duration_sec") or 0)
+    requested_duration = requested_capture_duration(default_out_dir, observed_duration)
+    timestamps = uniform_timestamps(observed_duration, frames)
     images = extract_frames_at(video, timestamps)
     frame_metrics = []
     warnings: list[str] = []
@@ -80,12 +94,21 @@ def write_run_report(
             {"timestamp_sec": timestamp, "brightness": brightness, "border": border}
         )
 
-    expected = {"fps": 24.0, "width": probe.get("width"), "height": probe.get("height")}
+    expected = {
+        "fps": 24.0,
+        "width": probe.get("width"),
+        "height": probe.get("height"),
+        "duration_sec": requested_duration,
+    }
     if abs(float(probe.get("fps") or 0) - 24.0) > 0.01:
         warnings.append(f"fps is {probe.get('fps')}, expected 24")
+    if abs(observed_duration - requested_duration) > 0.05:
+        warnings.append(
+            f"duration is {observed_duration}, expected requested capture {requested_duration}"
+        )
     route_reference = route_reference_report(
         default_out_dir,
-        expected_duration_sec=float(probe.get("duration_sec") or 0),
+        expected_duration_sec=requested_duration,
     )
     if route_reference and not route_reference.get("passed"):
         warnings.append("route reference check failed")
@@ -225,13 +248,27 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"`{_format_optional_float(route_reference.get('movement_distance_blocks'))}`",
                 f"- route_unique_occupied_cells: `{route_reference.get('unique_occupied_cells')}`",
                 f"- route_waypoints_reached: `{route_reference.get('waypoints_reached')}`",
+                "- route_moving_control_ratio: "
+                f"`{_format_optional_float(route_reference.get('moving_control_ratio'))}`",
+                "- route_minimum_moving_control_ratio: "
+                f"`{_format_optional_float(route_reference.get('minimum_moving_control_ratio'))}`",
                 f"- route_recovery_count: `{route_reference.get('recovery_count')}`",
+                "- route_maximum_recovery_count: "
+                f"`{route_reference.get('maximum_recovery_count')}`",
+                "- route_minimum_10s_movement_blocks: "
+                f"`{_format_optional_float(route_reference.get('minimum_10s_movement_blocks'))}`",
+                "- route_minimum_10s_movement_threshold_blocks: "
+                "`"
+                f"{_format_optional_float(route_reference.get('minimum_10s_movement_threshold_blocks'))}"
+                "`",
                 "- route_navigation_duration_ratio: "
                 f"`{_format_optional_float(route_reference.get('navigation_duration_ratio'))}`",
                 "- route_position_duration_ratio: "
                 f"`{_format_optional_float(route_reference.get('position_duration_ratio'))}`",
                 "- route_ordered_progress_blocks: "
                 f"`{_format_optional_float(route_reference.get('ordered_route_progress_blocks'))}`",
+                "- route_minimum_progress_blocks: "
+                f"`{_format_optional_float(route_reference.get('minimum_route_progress_blocks'))}`",
                 f"- route_terminal_stop: `{route_reference.get('terminal_stop')}`",
                 "",
             ]
