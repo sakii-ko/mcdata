@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/terrain_registry.schema.json",
+  "title": "mcdata canonical terrain registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "identity_policy",
+    "terrain_families",
+    "blocked_candidates"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "identity_policy": {"$ref": "#/$defs/identity_policy"},
+    "terrain_families": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {"$ref": "#/$defs/accepted_family"}
+    },
+    "blocked_candidates": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/blocked_candidate"}
+    }
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "coordinate_pair": {
+      "type": "array",
+      "prefixItems": [{"type": "number"}, {"type": "number"}],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "coordinate_triple": {
+      "type": "array",
+      "prefixItems": [
+        {"type": "integer"},
+        {"type": "integer"},
+        {"type": "integer"}
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "identity_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hash_algorithm",
+        "canonical_encoding",
+        "render_world_state_variants_are_terrain_identity",
+        "excluded_render_world_state_dimensions"
+      ],
+      "properties": {
+        "hash_algorithm": {"const": "sha256"},
+        "canonical_encoding": {"const": "utf8_json_sorted_keys_compact"},
+        "render_world_state_variants_are_terrain_identity": {"const": false},
+        "excluded_render_world_state_dimensions": {
+          "type": "array",
+          "prefixItems": [
+            {"const": "time"},
+            {"const": "weather"},
+            {"const": "precipitation_biome"},
+            {"const": "collision_preserving_surface_overlay"}
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "accepted_family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family_id", "status", "instances"],
+      "properties": {
+        "family_id": {"const": "showcase_plaza_flat_v1"},
+        "status": {"const": "accepted"},
+        "instances": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {"$ref": "#/$defs/accepted_instance"}
+        }
+      }
+    },
+    "accepted_instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "status",
+        "identity_sha256",
+        "minecraft",
+        "world",
+        "provenance",
+        "spawn",
+        "probe_bounds",
+        "capabilities",
+        "config_bindings"
+      ],
+      "properties": {
+        "instance_id": {
+          "const": "showcase_plaza_flat_v1_mc26_2_seed1_render_matrix_base"
+        },
+        "status": {"const": "accepted"},
+        "identity_sha256": {"$ref": "#/$defs/sha256"},
+        "minecraft": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version"],
+          "properties": {
+            "version": {"type": "string", "minLength": 1}
+          }
+        },
+        "world": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seed", "profile"],
+          "properties": {
+            "seed": {"type": "integer"},
+            "profile": {"type": "string", "minLength": 1}
+          }
+        },
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "spawn": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "z": {"type": "number"}
+          }
+        },
+        "probe_bounds": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": {"$ref": "#/$defs/coordinate_pair"},
+            "y": {"$ref": "#/$defs/coordinate_pair"},
+            "z": {"$ref": "#/$defs/coordinate_pair"}
+          }
+        },
+        "capabilities": {"$ref": "#/$defs/capabilities"},
+        "config_bindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profile", "action_strategy"],
+          "properties": {
+            "profile": {"$ref": "#/$defs/slug"},
+            "action_strategy": {"$ref": "#/$defs/slug"}
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_kind",
+        "scene",
+        "immutable_world_snapshot",
+        "navigation_surface"
+      ],
+      "properties": {
+        "source_kind": {"const": "declarative_scene"},
+        "scene": {"$ref": "#/$defs/scene_artifact"},
+        "immutable_world_snapshot": {"$ref": "#/$defs/hash_artifact"},
+        "navigation_surface": {"$ref": "#/$defs/hash_artifact"}
+      }
+    },
+    "scene_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "path", "sha256", "origin"],
+      "properties": {
+        "status": {"const": "available"},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "origin": {"$ref": "#/$defs/coordinate_triple"}
+      }
+    },
+    "hash_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {"status": {"const": "unavailable"}}
+    },
+    "future_available_hash_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "sha256"],
+      "properties": {
+        "status": {"const": "available"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "navigation_model",
+        "flat_full_block_surface_only",
+        "liquid_traversal",
+        "vertical_edge_traversal",
+        "step_or_slope_traversal",
+        "drop_traversal",
+        "gap_jump_traversal",
+        "swimming",
+        "climbing",
+        "hazard_aware_routing"
+      ],
+      "properties": {
+        "navigation_model": {"const": "flat_2d_feedback_v1"},
+        "flat_full_block_surface_only": {"const": true},
+        "liquid_traversal": {"const": false},
+        "vertical_edge_traversal": {"const": false},
+        "step_or_slope_traversal": {"const": false},
+        "drop_traversal": {"const": false},
+        "gap_jump_traversal": {"const": false},
+        "swimming": {"const": false},
+        "climbing": {"const": false},
+        "hazard_aware_routing": {"const": false}
+      }
+    },
+    "blocked_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family_id", "status", "blocker_codes"],
+      "properties": {
+        "family_id": {"$ref": "#/$defs/slug"},
+        "status": {"const": "blocked"},
+        "blocker_codes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "immutable_world_snapshot_missing",
+              "navigation_surface_hash_missing",
+              "height_aware_probe_missing",
+              "vertical_policy_missing",
+              "liquid_hazard_policy_missing"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

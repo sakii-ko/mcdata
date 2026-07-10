@@ -1,0 +1,69 @@
+schema_version: 1
+
+identity_policy:
+  hash_algorithm: "sha256"
+  canonical_encoding: "utf8_json_sorted_keys_compact"
+  render_world_state_variants_are_terrain_identity: false
+  excluded_render_world_state_dimensions:
+    - "time"
+    - "weather"
+    - "precipitation_biome"
+    - "collision_preserving_surface_overlay"
+
+terrain_families:
+  - family_id: "showcase_plaza_flat_v1"
+    status: "accepted"
+    instances:
+      - instance_id: "showcase_plaza_flat_v1_mc26_2_seed1_render_matrix_base"
+        status: "accepted"
+        identity_sha256: "f129e983c2317ac2ccafcbcc1dd28a632bb9304a0b8eefb70b93d0dfc36c5a90"
+        minecraft:
+          version: "26.2"
+        world:
+          seed: 1
+          profile: "render_matrix_base"
+        provenance:
+          source_kind: "declarative_scene"
+          scene:
+            status: "available"
+            path: "configs/scene.yml"
+            sha256: "eab271710e1dc321289e6d7cce81434d213c66b9240dcb0b8395c16344f8c957"
+            origin: [0, 64, 0]
+          # Phase 1 has no immutable server-world export or canonical surface dump.
+          # Their strict slots stay unavailable instead of carrying invented hashes.
+          immutable_world_snapshot:
+            status: "unavailable"
+          navigation_surface:
+            status: "unavailable"
+        # Camera yaw/pitch belongs to the action instance, not terrain identity.
+        spawn: {x: 0, y: 64, z: -14}
+        probe_bounds:
+          x: [-16, 16]
+          y: [63.0, 66.0]
+          z: [-16, 16]
+        capabilities:
+          navigation_model: "flat_2d_feedback_v1"
+          flat_full_block_surface_only: true
+          liquid_traversal: false
+          vertical_edge_traversal: false
+          step_or_slope_traversal: false
+          drop_traversal: false
+          gap_jump_traversal: false
+          swimming: false
+          climbing: false
+          hazard_aware_routing: false
+        config_bindings:
+          profile: "feedback_vanilla_1080p"
+          action_strategy: "feedback_roam_10min"
+
+# Candidates have no terrain instance or provenance claim. Schema v1 fixes their
+# status to blocked, so changing the label alone cannot make one accepted.
+blocked_candidates:
+  - family_id: "plains_riverbank_flat_v1"
+    status: "blocked"
+    blocker_codes:
+      - "immutable_world_snapshot_missing"
+      - "navigation_surface_hash_missing"
+      - "height_aware_probe_missing"
+      - "vertical_policy_missing"
+      - "liquid_hazard_policy_missing"
