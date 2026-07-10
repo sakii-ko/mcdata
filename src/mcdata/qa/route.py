@@ -6,8 +6,14 @@ import math
 from pathlib import Path
 from typing import Any
 
+from mcdata.qa.feedback import feedback_route_report
 
-def route_reference_report(run_dir: Path) -> dict[str, Any] | None:
+
+def route_reference_report(
+    run_dir: Path,
+    *,
+    expected_duration_sec: float | None = None,
+) -> dict[str, Any] | None:
     positions_path = run_dir / "positions.jsonl"
     trajectory_path = run_dir / "trajectory.json"
     if not positions_path.exists() or not trajectory_path.exists():
@@ -15,6 +21,12 @@ def route_reference_report(run_dir: Path) -> dict[str, Any] | None:
     trajectory = json.loads(trajectory_path.read_text(encoding="utf-8"))
     if not trajectory.get("route"):
         return None
+    if trajectory.get("type") == "feedback_roam":
+        return feedback_route_report(
+            run_dir,
+            trajectory,
+            expected_duration_sec=expected_duration_sec,
+        )
     positions = _read_positions(run_dir)
     if positions is None:
         return None

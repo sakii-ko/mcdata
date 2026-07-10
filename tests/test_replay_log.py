@@ -108,3 +108,63 @@ def test_xdotool_failure_warns_once(monkeypatch, capsys) -> None:
     captured = capsys.readouterr()
     assert len(calls) == 2
     assert captured.out.count("Warning: xdotool command failed") == 1
+
+
+def test_input_controller_tracks_keys_and_releases_on_close(monkeypatch) -> None:
+    sent: list[dict] = []
+    released: list[str] = []
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        replay,
+        "_send_event_xdotool",
+        lambda event, **_kwargs: sent.append(dict(event)),
+    )
+    monkeypatch.setattr(
+        replay,
+        "_release_keys",
+        lambda keys, _backend, *, warned=None: released.extend(keys),
+    )
+
+    with replay.InputController() as controller:
+        controller.key_down("w")
+        controller.key_down("w")
+        controller.move_mouse(20, -2)
+        controller.tap("space")
+
+    assert sent == [
+        {"key": "w", "action": "down"},
+        {"mouse_dx": 20, "mouse_dy": -2},
+        {"key": "space", "action": "tap"},
+    ]
+    assert released == ["w"]
+
+
+def test_input_controller_key_up_is_sent_before_close(monkeypatch) -> None:
+    sent: list[dict] = []
+    released: list[str] = []
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        replay,
+        "_send_event_xdotool",
+        lambda event, **_kwargs: sent.append(dict(event)),
+    )
+    monkeypatch.setattr(
+        replay,
+        "_release_keys",
+        lambda keys, _backend, *, warned=None: released.extend(keys),
+    )
+
+    controller = replay.InputController()
+    controller.key_down("w")
+    controller.key_up("w")
+    controller.close()
+
+    assert sent == [
+        {"key": "w", "action": "down"},
+        {"key": "w", "action": "up"},
+    ]
+    assert released == []

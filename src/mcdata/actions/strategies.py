@@ -5,6 +5,17 @@ import random
 from pathlib import Path
 from typing import Any, Callable
 
+from mcdata.actions.feedback import build_feedback_roam
+from mcdata.actions.pathing import (
+    astar as _astar,
+    astar_route as _astar_route,
+    expand_blocked as _expand_blocked,
+    inside_bounds as _inside_bounds,
+    manhattan_distance as _manhattan_distance,
+    point as _point,
+    walk_blocked as _walk_blocked,
+    walk_bounds as _walk_bounds,
+)
 from mcdata.config import load_yaml
 from mcdata.scene_model import load_scene, walk_obstacles
 
@@ -197,6 +208,10 @@ def _roam(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _feedback_roam(spec: dict[str, Any]) -> dict[str, Any]:
+    return build_feedback_roam(spec)
+
+
 def _walk_events(
     route: list[tuple[int, int]],
     spec: dict[str, Any],
@@ -245,67 +260,6 @@ def _walk_events(
             scan_pause_sec=scan_pause_sec,
         )
     return events, t
-
-
-def _astar_route(
-    start: tuple[int, int],
-    goals: list[tuple[int, int]],
-    *,
-    bounds: tuple[int, int, int, int],
-    blocked: set[tuple[int, int]],
-) -> list[tuple[int, int]]:
-    route = [start]
-    cursor = start
-    for goal in goals:
-        segment = _astar(cursor, goal, bounds=bounds, blocked=blocked)
-        route.extend(segment[1:])
-        cursor = goal
-    return route
-
-
-def _walk_bounds(spec: dict[str, Any]) -> tuple[int, int, int, int]:
-    bounds = spec.get("bounds", [-14, 14, -14, 14])
-    min_x, max_x, min_z, max_z = (int(bounds[0]), int(bounds[1]), int(bounds[2]), int(bounds[3]))
-    if min_x > max_x or min_z > max_z:
-        raise RuntimeError(f"Invalid walk bounds: {(min_x, max_x, min_z, max_z)}")
-    return min_x, max_x, min_z, max_z
-
-
-def _walk_blocked(spec: dict[str, Any]) -> set[tuple[int, int]]:
-    blocked = {_point(point) for point in spec.get("blocked", [])}
-    blocked.update(_point(point) for point in spec.get("_scene_obstacles", []) or [])
-    for rect in spec.get("blocked_rects", []) or []:
-        blocked.update(_points_in_rect(rect))
-    return blocked
-
-
-def _expand_blocked(
-    blocked: set[tuple[int, int]],
-    *,
-    bounds: tuple[int, int, int, int],
-    clearance: int,
-) -> set[tuple[int, int]]:
-    if clearance < 0:
-        raise RuntimeError("obstacle_clearance must not be negative")
-    if clearance == 0:
-        return set(blocked)
-    min_x, max_x, min_z, max_z = bounds
-    return {
-        (x + dx, z + dz)
-        for x, z in blocked
-        for dx in range(-clearance, clearance + 1)
-        for dz in range(-clearance, clearance + 1)
-        if min_x <= x + dx <= max_x and min_z <= z + dz <= max_z
-    }
-
-
-def _inside_bounds(point: tuple[int, int], bounds: tuple[int, int, int, int]) -> bool:
-    min_x, max_x, min_z, max_z = bounds
-    return min_x <= point[0] <= max_x and min_z <= point[1] <= max_z
-
-
-def _manhattan_distance(first: tuple[int, int], second: tuple[int, int]) -> int:
-    return abs(first[0] - second[0]) + abs(first[1] - second[1])
 
 
 def _sample_roam_actions(
@@ -484,53 +438,6 @@ def _waypoint_stop_indices(
     }
 
 
-def _point(value: Any) -> tuple[int, int]:
-    return (int(value[0]), int(value[1]))
-
-
-def _points_in_rect(value: Any) -> set[tuple[int, int]]:
-    min_x, min_z, max_x, max_z = (int(value[0]), int(value[1]), int(value[2]), int(value[3]))
-    return {(x, z) for x in range(min_x, max_x + 1) for z in range(min_z, max_z + 1)}
-
-
-def _astar(
-    start: tuple[int, int],
-    goal: tuple[int, int],
-    *,
-    bounds: tuple[int, int, int, int],
-    blocked: set[tuple[int, int]],
-) -> list[tuple[int, int]]:
-    import heapq
-
-    min_x, max_x, min_z, max_z = bounds
-    queue: list[tuple[int, tuple[int, int]]] = [(0, start)]
-    came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
-    cost_so_far: dict[tuple[int, int], int] = {start: 0}
-    while queue:
-        _, current = heapq.heappop(queue)
-        if current == goal:
-            break
-        x, z = current
-        for nxt in ((x + 1, z), (x - 1, z), (x, z + 1), (x, z - 1)):
-            nx, nz = nxt
-            if nx < min_x or nx > max_x or nz < min_z or nz > max_z or nxt in blocked:
-                continue
-            new_cost = cost_so_far[current] + 1
-            if nxt not in cost_so_far or new_cost < cost_so_far[nxt]:
-                cost_so_far[nxt] = new_cost
-                priority = new_cost + abs(goal[0] - nx) + abs(goal[1] - nz)
-                heapq.heappush(queue, (priority, nxt))
-                came_from[nxt] = current
-    if goal not in came_from:
-        raise RuntimeError(f"A* could not route from {start} to {goal}")
-    path = [goal]
-    cursor = goal
-    while came_from[cursor] is not None:
-        cursor = came_from[cursor]
-        path.append(cursor)
-    return list(reversed(path))
-
-
 def _heading_degrees(current: tuple[int, int], nxt: tuple[int, int]) -> int:
     dx = nxt[0] - current[0]
     dz = nxt[1] - current[1]
@@ -591,6 +498,7 @@ STRATEGY_BUILDERS: dict[str, StrategyBuilder] = {
     "scripted": _from_spec(_scripted),
     "astar_walk": _from_spec(_astar_walk),
     "roam": _from_spec(_roam),
+    "feedback_roam": _from_spec(_feedback_roam),
     "scene_probe": _from_spec(_scene_probe),
     "look_scan": _from_spec(_look_scan),
     "grid_patrol": _from_spec(_grid_patrol),

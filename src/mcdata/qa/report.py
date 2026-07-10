@@ -34,6 +34,7 @@ def _run_evidence(input_path: Path, video: Path, run_dir: Path) -> dict[str, Any
         ("manifest", "manifest.json"),
         ("trajectory", "trajectory.json"),
         ("positions", "positions.jsonl"),
+        ("navigation", "navigation_log.jsonl"),
     ):
         path = run_dir / filename
         if path.is_file() and not path.is_symlink():
@@ -80,7 +81,10 @@ def write_run_report(
     expected = {"fps": 24.0, "width": probe.get("width"), "height": probe.get("height")}
     if abs(float(probe.get("fps") or 0) - 24.0) > 0.01:
         warnings.append(f"fps is {probe.get('fps')}, expected 24")
-    route_reference = route_reference_report(default_out_dir)
+    route_reference = route_reference_report(
+        default_out_dir,
+        expected_duration_sec=float(probe.get("duration_sec") or 0),
+    )
     if route_reference and not route_reference.get("passed"):
         warnings.append("route reference check failed")
 
@@ -215,6 +219,13 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"- route_skipped_yaw_count: `{route_reference.get('skipped_yaw_count')}`",
                 f"- route_y_range: `{route_reference.get('y_min')}..{route_reference.get('y_max')}`",
                 f"- route_y_out_of_range_count: `{route_reference.get('y_out_of_range_count')}`",
+                "- route_movement_distance_blocks: "
+                f"`{_format_optional_float(route_reference.get('movement_distance_blocks'))}`",
+                f"- route_unique_occupied_cells: `{route_reference.get('unique_occupied_cells')}`",
+                f"- route_waypoints_reached: `{route_reference.get('waypoints_reached')}`",
+                f"- route_recovery_count: `{route_reference.get('recovery_count')}`",
+                "- route_navigation_duration_ratio: "
+                f"`{_format_optional_float(route_reference.get('navigation_duration_ratio'))}`",
                 "",
             ]
         )

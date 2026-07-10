@@ -66,7 +66,12 @@
         "source_path": { "type": "string" },
         "sha256": { "type": "string" },
         "event_count": { "type": "integer" },
-        "duration_sec": { "type": ["number", "null"] }
+        "duration_sec": { "type": ["number", "null"] },
+        "type": { "type": ["string", "null"] },
+        "execution_mode": {
+          "enum": ["open_loop_event_replay", "online_position_yaw_feedback"]
+        },
+        "route_point_count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": true
     },

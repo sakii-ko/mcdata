@@ -3,12 +3,25 @@ from pathlib import Path
 
 from mcdata.render import pipeline
 from mcdata.render.probe import (
+    parse_entity_data_values,
     parse_position_log,
     parse_rotation_log,
     replay_start_mono_from_log,
     wait_for_position_sample,
     write_positions_jsonl,
 )
+
+
+def test_entity_data_vector_parser_distinguishes_position_and_rotation() -> None:
+    assert parse_entity_data_values(
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [1.5d, 64.0d, -2.25d]",
+        username="mcdata_bot",
+    ) == (1.5, 64.0, -2.25)
+    assert parse_entity_data_values(
+        "[Server thread/INFO]: mcdata_bot has the following entity data: [-90.0f, 15.0f]",
+        username="mcdata_bot",
+    ) == (-90.0, 15.0)
+    assert parse_entity_data_values("unrelated", username="mcdata_bot") is None
 
 
 def test_position_log_is_parsed_to_jsonl(tmp_path: Path) -> None:

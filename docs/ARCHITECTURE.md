@@ -75,13 +75,19 @@
   "type": "astar_walk",          // 策略类型
   "duration_sec": 123.4,
   "route": [{"x": 0, "z": -14}], // 可选：规划路线（供可视化/QA 用）
-  "events": [                    // 唯一被 replay 消费的字段
+  "events": [                    // open-loop replay 消费的字段
     {"t": 1.0, "key": "w", "action": "down"},
     {"t": 1.5, "mouse_dx": 540, "mouse_dy": 0, "duration": 0.35},
     {"t": 2.2, "pause": true, "duration": 2.0}
   ]
 }
 ```
+
+`feedback_roam` 是第二种执行契约：`events=[]`，并额外携带确定性的闭合 `route`、
+`planning` 和 `navigation`。render 以 server 的 `Pos` / `Rotation` 回执为反馈，使用正常
+键鼠输入追踪路线，输出 `navigation_log.jsonl`；它不得 teleport，反馈陈旧、超出高度、
+越过硬偏差或恢复预算耗尽时必须终止录制。相同 trajectory SHA 表示相同路线与控制策略，
+不表示不同画质 profile 会产生 byte-identical 的自适应输入序列。
 
 事件语义：`key` 事件注入键盘输入；`mouse_dx` / `mouse_dy` 事件注入相对鼠标移动；`{"pause": true}` 事件只占用时间轴，用于在 waypoint 停留观察，不产生输入。
 
@@ -94,6 +100,8 @@
   capture.mp4        # 24fps 录制
   manifest.json      # 见 manifest schema
   pipeline.jsonl     # 结构化日志（每行一个 JSON 事件，含 stage/ts）
+  positions.jsonl    # server 反馈坐标/朝向及相对时间
+  navigation_log.jsonl # feedback_roam 控制决策（仅闭环导航）
   server.log         # dedicated server 日志（如启用）
 ```
 
@@ -101,9 +109,12 @@
 
 必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane` 字段；schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
 
-N-way cohort 的 invariant 是相同 Minecraft 版本、代码 commit、trajectory sha256、world seed、
+open-loop N-way cohort 的 invariant 是相同 Minecraft 版本、代码 commit、trajectory sha256、world seed、
 完整 world-state、scene 和采集规格。有意改变天气或时间的 profile 必须归入单独的
 world-state variant，不能与严格 rendering-only cohort 混称；dataset index/report 必须显式记录该分组。
+闭环 `feedback_roam` 只能称为 `policy_aligned_rendering_matrix`：路线、策略、seed 和世界状态
+一致，但每档画质允许由反馈产生不同的微小纠偏；compare 必须基于时间对齐的位置轨迹并
+报告差异，不能宣称 exact open-loop action alignment。
 
 ### accepted dataset（run / QA → 可发布批次）
 

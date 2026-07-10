@@ -22,6 +22,79 @@ class StopEvent(Protocol):
     def is_set(self) -> bool: ...
 
 
+class InputController:
+    """Stateful keyboard/mouse control with guaranteed movement-key release."""
+
+    def __init__(
+        self,
+        *,
+        window_name: str = "Minecraft",
+        stop_event: StopEvent | None = None,
+    ) -> None:
+        self._backend = _backend()
+        self._stop_event = stop_event
+        self._warned: set[tuple[str, ...]] = set()
+        self._held: set[str] = set()
+        self._closed = False
+        if self._backend == "xdotool":
+            _focus_window(window_name, warned=self._warned)
+        else:
+            _xtest_focus_window(window_name)
+        self.inherited_keys = _release_inherited_keys(
+            self._backend,
+            warned=self._warned,
+        )
+
+    def key_down(self, key: str) -> None:
+        if key in self._held:
+            return
+        self._send({"key": key, "action": "down"})
+        self._held.add(key)
+
+    def key_up(self, key: str) -> None:
+        self._send({"key": key, "action": "up"})
+        self._held.discard(key)
+
+    def tap(self, key: str) -> None:
+        self._send({"key": key, "action": "tap"})
+
+    def move_mouse(self, dx: int, dy: int = 0) -> None:
+        if dx or dy:
+            self._send({"mouse_dx": int(dx), "mouse_dy": int(dy)})
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        if self._held:
+            _release_keys(
+                sorted(self._held),
+                self._backend,
+                warned=self._warned,
+            )
+            self._held.clear()
+
+    def __enter__(self) -> InputController:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        self.close()
+
+    def _send(self, event: dict) -> None:
+        if self._closed:
+            raise RuntimeError("input controller is closed")
+        if _stop_requested(self._stop_event):
+            return
+        if self._backend == "xdotool":
+            _send_event_xdotool(
+                event,
+                warned=self._warned,
+                stop_event=self._stop_event,
+            )
+        else:
+            _send_event_xtest(event, stop_event=self._stop_event)
+
+
 def replay_trajectory(
     path: Path,
     *,

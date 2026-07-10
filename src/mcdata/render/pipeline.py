@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from rich.console import Console
 
@@ -115,6 +115,7 @@ class RunState:
     replay_start_mono: float | None = None
     capture_cmd: list[str] | None = None
     resourcepack_runtime: dict[str, object] | None = None
+    worker_error: BaseException | None = None
     error: str | None = None
 
 
@@ -680,6 +681,17 @@ def _server_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
 def _replay_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     if not plan.replay_actions or not plan.run_trajectory_path or plan.dry_run:
         return
+    if _is_feedback_navigation(plan):
+        if not plan.with_server or not plan.capture:
+            raise RuntimeError("feedback_roam replay requires capture with a managed server")
+        state.replay_thread = _start_navigation_thread(plan, state)
+        runlog.log(
+            "navigation",
+            "thread_started",
+            trajectory=str(plan.run_trajectory_path),
+            controller="position_yaw_feedback",
+        )
+        return
     state.replay_thread = _start_replay_thread(
         plan.run_trajectory_path,
         start_event=state.ready_event,
@@ -788,7 +800,13 @@ def _capture_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     if plan.with_server and state.server_proc:
         _start_position_probe_phase(plan, state, runlog)
     _release_replay(state, runlog)
-    _wait_for_capture(state.game_proc, state.capture_proc, plan.run_dir / "game.exitcode")
+    _wait_for_capture(
+        state.game_proc,
+        state.capture_proc,
+        plan.run_dir / "game.exitcode",
+        stop_event=state.replay_stop,
+        worker_error=lambda: state.worker_error,
+    )
     runlog.log("capture", "stop", returncode=state.capture_proc.returncode)
     if state.position_probe_stop:
         state.position_probe_stop.set()
@@ -814,13 +832,19 @@ def _start_position_probe_phase(plan: RunPlan, state: RunState, runlog: RunLogge
     if state.server_proc is None:
         return
     username = str(plan.profile.get("username"))
+    interval = _effective_probe_interval(plan)
     state.position_probe_stop = start_position_probe(
         state.server_proc,
         username,
-        interval_sec=plan.probe_interval,
+        interval_sec=interval,
         sent_at=state.position_probe_sent_at,
     )
-    runlog.log("position_probe", "start", interval_sec=plan.probe_interval)
+    runlog.log(
+        "position_probe",
+        "start",
+        interval_sec=interval,
+        requested_interval_sec=plan.probe_interval,
+    )
     if plan.debug_no_replay_gate:
         runlog.log("position_probe", "first_sample_skipped", debug=True)
         return
@@ -895,7 +919,7 @@ def _write_position_log(plan: RunPlan, state: RunState, runlog: RunLogger) -> No
         username=str(plan.profile.get("username")),
         sent_at=state.position_probe_sent_at,
         replay_start_mono=state.replay_start_mono,
-        replay_log_path=plan.run_dir / "replay_log.jsonl" if plan.replay_actions else None,
+        replay_log_path=_action_timing_log(plan),
     )
     runlog.log("position_probe", "positions_written", count=count)
 
@@ -971,6 +995,30 @@ def _start_replay_thread(
         kwargs={"start_event": start_event, "stop_event": stop_event, "run_dir": run_dir},
         daemon=True,
     )
+    thread.start()
+    return thread
+
+
+def _start_navigation_thread(plan: RunPlan, state: RunState) -> threading.Thread:
+    from mcdata.render.navigation import run_feedback_navigation
+
+    if plan.run_trajectory_path is None:
+        raise RuntimeError("feedback navigation requires a trajectory")
+
+    def run() -> None:
+        try:
+            run_feedback_navigation(
+                plan.run_trajectory_path,
+                server_log_path=plan.run_dir / "server.log",
+                username=str(plan.profile.get("username")),
+                start_event=state.ready_event,
+                stop_event=state.replay_stop,
+                run_dir=plan.run_dir,
+            )
+        except BaseException as exc:
+            state.worker_error = exc
+
+    thread = threading.Thread(target=run, daemon=True)
     thread.start()
     return thread
 
@@ -1181,9 +1229,27 @@ def _minecraft_window_geometry_xwininfo(window_name: str) -> tuple[int, int, int
     return None
 
 
-def _wait_for_capture(game_proc: subprocess.Popen, capture_proc: subprocess.Popen, exitcode_file: Path) -> None:
+def _wait_for_capture(
+    game_proc: subprocess.Popen,
+    capture_proc: subprocess.Popen,
+    exitcode_file: Path,
+    *,
+    stop_event: threading.Event | None = None,
+    worker_error: Callable[[], BaseException | None] | None = None,
+) -> None:
     while capture_proc.poll() is None:
+        failure = worker_error() if worker_error else None
+        if failure is not None:
+            if stop_event:
+                stop_event.set()
+            capture_proc.terminate()
+            capture_proc.wait(timeout=10)
+            raise RuntimeError(
+                f"capture worker failed: {type(failure).__name__}: {failure}"
+            ) from failure
         if game_proc.poll() is not None:
+            if stop_event:
+                stop_event.set()
             capture_proc.terminate()
             capture_proc.wait(timeout=10)
             _write_exitcode(exitcode_file, game_proc.returncode)
@@ -1191,6 +1257,11 @@ def _wait_for_capture(game_proc: subprocess.Popen, capture_proc: subprocess.Pope
                 raise subprocess.CalledProcessError(game_proc.returncode, game_proc.args)
             return
         time.sleep(0.5)
+    if stop_event:
+        stop_event.set()
+    failure = worker_error() if worker_error else None
+    if failure is not None:
+        raise RuntimeError(f"capture worker failed: {type(failure).__name__}: {failure}") from failure
     if capture_proc.returncode:
         raise subprocess.CalledProcessError(capture_proc.returncode, capture_proc.args)
     if game_proc.poll() is None:
@@ -1243,6 +1314,7 @@ def _trajectory_manifest(
     if trajectory_path is None:
         return None
     data = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    route = data.get("route", [])
     return {
         "strategy": strategy,
         "path": str(trajectory_path),
@@ -1251,7 +1323,35 @@ def _trajectory_manifest(
         "event_count": len(data.get("events", [])),
         "duration_sec": data.get("duration_sec"),
         "type": data.get("type"),
+        "execution_mode": (
+            "online_position_yaw_feedback"
+            if data.get("type") == "feedback_roam"
+            else "open_loop_event_replay"
+        ),
+        "route_point_count": len(route) if isinstance(route, list) else 0,
     }
+
+
+def _is_feedback_navigation(plan: RunPlan) -> bool:
+    return bool(plan.trajectory_info and plan.trajectory_info.get("type") == "feedback_roam")
+
+
+def _effective_probe_interval(plan: RunPlan) -> float:
+    if not _is_feedback_navigation(plan) or plan.run_trajectory_path is None:
+        return plan.probe_interval
+    data = json.loads(plan.run_trajectory_path.read_text(encoding="utf-8"))
+    navigation = data.get("navigation", {})
+    control_interval = float(navigation.get("control_interval_sec", plan.probe_interval))
+    if control_interval <= 0:
+        raise RuntimeError("feedback_roam control_interval_sec must be positive")
+    return min(plan.probe_interval, control_interval)
+
+
+def _action_timing_log(plan: RunPlan) -> Path | None:
+    if not plan.replay_actions:
+        return None
+    filename = "navigation_log.jsonl" if _is_feedback_navigation(plan) else "replay_log.jsonl"
+    return plan.run_dir / filename
 
 
 def _capture_manifest(

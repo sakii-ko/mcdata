@@ -8,6 +8,7 @@ from mcdata.config import load_yaml
 from mcdata.scene_model import load_scene, walk_obstacles
 
 ROOT = Path(__file__).resolve().parents[1]
+WALK_STRATEGY_TYPES = {"astar_walk", "roam", "feedback_roam"}
 
 
 def _configured_strategy_specs() -> Iterator[tuple[str, dict[str, Any]]]:
@@ -53,7 +54,7 @@ def test_ground_astar_loop_route_stays_inside_walkable_area() -> None:
 def test_walk_routes_stay_inside_configured_bounds() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     for name, spec in strategies.items():
-        if spec.get("type") not in {"astar_walk", "roam"}:
+        if spec.get("type") not in WALK_STRATEGY_TYPES:
             continue
         trajectory = _build_configured(name, spec)
         _assert_route_stays_inside_walkable_area(trajectory, spec)
@@ -73,7 +74,7 @@ def test_walk_routes_avoid_scene_occupied_cells() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     scene_obstacles = _scene_obstacles()
     for name, spec in strategies.items():
-        if spec.get("type") not in {"astar_walk", "roam"}:
+        if spec.get("type") not in WALK_STRATEGY_TYPES:
             continue
         trajectory = _build_configured(name, spec)
         route = {(point["x"], point["z"]) for point in trajectory["route"]}
@@ -139,6 +140,28 @@ def test_different_roam_seeds_produce_distinct_routes() -> None:
 
     assert len(routes) == 6
     assert len(set(routes.values())) == len(routes)
+
+
+def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    spec = strategies["feedback_roam_10min"]
+    trajectory = _build_configured("feedback_roam_10min", spec)
+    planning = trajectory["planning"]
+
+    assert trajectory["type"] == "feedback_roam"
+    assert trajectory["duration_sec"] >= 604
+    assert trajectory["events"] == []
+    assert trajectory["route"][0] == {"x": 0, "z": -14}
+    assert trajectory["route"][-1] == trajectory["route"][0]
+    assert trajectory["goals"][-1] == trajectory["route"][0]
+    assert planning["closed"] is True
+    assert planning["obstacle_clearance"] >= 2
+    assert planning["route_distance_blocks"] == len(trajectory["route"]) - 1
+    assert planning["sampled_goal_count"] == len(trajectory["goals"]) - 1
+    assert trajectory["navigation"]["waypoint_center_offset"] == 0.5
+    assert trajectory["navigation"]["hard_deviation_blocks"] > trajectory["navigation"][
+        "soft_deviation_blocks"
+    ]
 
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:

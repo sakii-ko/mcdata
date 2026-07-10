@@ -32,6 +32,9 @@ def _sample_manifest() -> dict:
             "sha256": "0" * 64,
             "event_count": 46,
             "duration_sec": 52.09,
+            "type": "astar_walk",
+            "execution_mode": "open_loop_event_replay",
+            "route_point_count": 20,
         },
         capture={
             "enabled": False,

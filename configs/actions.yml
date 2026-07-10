@@ -66,6 +66,37 @@ strategies:
     pause_sec: 0.4
     initial_pause_sec: 1.0
 
+  feedback_roam_10min:
+    type: "feedback_roam"
+    seed: 401
+    start: [0, -14]
+    bounds: [-16, 16, -16, 16]
+    target_duration_sec: 604
+    seconds_per_block: 0.231630565
+    min_goal_dist: 8
+    min_goals: 12
+    max_goals: 512
+    goal_attempts: 100
+    recent_goal_window: 16
+    obstacle_clearance: 2
+    control_interval_sec: 0.1
+    waypoint_tolerance_blocks: 0.35
+    waypoint_center_offset: 0.5
+    lookahead_blocks: 2
+    yaw_tolerance_deg: 2.0
+    move_yaw_limit_deg: 12.0
+    soft_deviation_blocks: 0.75
+    hard_deviation_blocks: 2.0
+    position_stale_sec: 0.75
+    stuck_window_sec: 1.0
+    stuck_distance_blocks: 0.15
+    max_recovery_attempts: 3
+    recovery_hold_sec: 0.2
+    turn_px_per_degree: 6.6667
+    max_turn_px: 180
+    y_min: 63.0
+    y_max: 66.0
+
   ground_astar_loop:
     type: "astar_walk"
     start: [0, -14]

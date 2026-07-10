@@ -136,6 +136,18 @@ def parse_rotation_log(log_path: Path, *, username: str) -> list[dict[str, float
     return rotations
 
 
+def parse_entity_data_values(line: str, *, username: str) -> tuple[float, ...] | None:
+    """Return the numeric entity-data vector emitted by a server command."""
+    needle = f"{username} has the following entity data:"
+    if needle not in line:
+        return None
+    raw = line.split(needle, 1)[1]
+    return tuple(
+        float(match.group(1))
+        for match in re.finditer(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[dDfF]?", raw)
+    )
+
+
 def _position_time_baseline(
     *,
     replay_log_path: Path | None,
