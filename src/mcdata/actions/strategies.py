@@ -419,7 +419,14 @@ def _apply_waypoint_actions(
     for action in waypoint_actions.get(point, []):
         pause_sec = float(action.get("pause_sec", 0))
         if pause_sec > 0:
-            events.append({"t": round(t, 3), "duration": round(pause_sec, 3), "pause": True})
+            events.append(
+                {
+                    "t": round(t, 3),
+                    "duration": round(pause_sec, 3),
+                    "pause": True,
+                    "route_index": route_index,
+                }
+            )
             t += pause_sec
         look_dx_px = int(action.get("look_dx_px", 0))
         look_dy_px = int(action.get("look_dy_px", 0))
@@ -430,6 +437,7 @@ def _apply_waypoint_actions(
                     "mouse_dx": look_dx_px,
                     "mouse_dy": look_dy_px,
                     "duration": 0.35,
+                    "route_index": route_index,
                 }
             )
             t += 0.35 + scan_pause_sec
@@ -440,6 +448,7 @@ def _apply_waypoint_actions(
                     "duration": round(look_hold_sec, 3),
                     "pause": True,
                     "look_hold": True,
+                    "route_index": route_index,
                 }
                 if action.get("moment"):
                     hold_event["look_moment"] = str(action["moment"])
@@ -451,6 +460,7 @@ def _apply_waypoint_actions(
                     "mouse_dx": -look_dx_px,
                     "mouse_dy": -look_dy_px,
                     "duration": 0.35,
+                    "route_index": route_index,
                 }
             )
             t += 0.35 + scan_pause_sec

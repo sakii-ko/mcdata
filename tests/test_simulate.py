@@ -63,6 +63,33 @@ def test_simulate_track_uses_declared_initial_heading_without_a_turn_event() -> 
     ]
 
 
+def test_simulate_track_splits_same_heading_at_declared_route_stop() -> None:
+    trajectory = {
+        "route": [
+            {"x": 0, "z": 0},
+            {"x": 0, "z": 1},
+            {"x": 0, "z": 2},
+            {"x": 0, "z": 3},
+            {"x": 0, "z": 4},
+        ],
+        "events": [
+            {"t": 1.0, "key": "w", "action": "down"},
+            {"t": 2.0, "key": "w", "action": "up"},
+            {"t": 2.0, "pause": True, "duration": 2.0, "route_index": 2},
+            {"t": 4.0, "key": "w", "action": "down"},
+            {"t": 5.0, "key": "w", "action": "up"},
+        ],
+    }
+
+    assert simulate_track(trajectory) == [
+        {"t": 0.0, "x": 0.0, "yaw": 0.0, "z": 0.0},
+        {"t": 1.0, "x": 0.0, "yaw": 0.0, "z": 0.0},
+        {"t": 2.0, "x": 0.0, "yaw": 0.0, "z": 2.0},
+        {"t": 4.0, "x": 0.0, "yaw": 0.0, "z": 2.0},
+        {"t": 5.0, "x": 0.0, "yaw": 0.0, "z": 4.0},
+    ]
+
+
 def test_simulate_track_requires_route_spans_to_match_forward_spans() -> None:
     trajectory = {
         "route": [{"x": 0, "z": 0}, {"x": 1, "z": 0}, {"x": 2, "z": 0}],

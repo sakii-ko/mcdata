@@ -144,18 +144,21 @@
     {
       "duration": 1.697,
       "pause": true,
+      "route_index": 81,
       "t": 25.319
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
+      "route_index": 81,
       "t": 27.016
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
+      "route_index": 81,
       "t": 27.566
     },
     {
@@ -193,18 +196,21 @@
     {
       "duration": 1.792,
       "pause": true,
+      "route_index": 89,
       "t": 31.071
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
+      "route_index": 89,
       "t": 32.863
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
+      "route_index": 89,
       "t": 33.413
     },
     {

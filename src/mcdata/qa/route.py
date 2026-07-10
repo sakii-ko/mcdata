@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from mcdata.qa.feedback import feedback_route_report
+from mcdata.qa.route_contract import trajectory_route_stop_indices
 
 
 def route_reference_report(
@@ -127,7 +128,10 @@ def compare_position_alignment(
 def simulate_track(trajectory: dict[str, Any]) -> list[dict[str, float]]:
     route = _route_points(trajectory)
     move_spans = _forward_spans(trajectory)
-    route_spans = _route_spans(route)
+    route_spans = _route_spans(
+        route,
+        stop_indices=trajectory_route_stop_indices(trajectory, route_length=len(route)),
+    )
     if len(move_spans) != len(route_spans):
         raise ValueError(
             "trajectory route span count does not match forward movement count: "
@@ -487,12 +491,15 @@ def _turn_events(trajectory: dict[str, Any]) -> list[dict[str, float]]:
     return events
 
 
-def _route_spans(route: list[tuple[float, float]]) -> list[dict[str, Any]]:
+def _route_spans(
+    route: list[tuple[float, float]], *, stop_indices: set[int] | None = None
+) -> list[dict[str, Any]]:
     spans: list[dict[str, Any]] = []
+    stop_indices = stop_indices or set()
     current_start: tuple[float, float] | None = None
     current_end: tuple[float, float] | None = None
     current_heading: tuple[float, float] | None = None
-    for current, nxt in zip(route, route[1:]):
+    for route_index, (current, nxt) in enumerate(zip(route, route[1:]), 1):
         heading = (nxt[0] - current[0], nxt[1] - current[1])
         if current_heading is None:
             current_start = current
@@ -509,6 +516,17 @@ def _route_spans(route: list[tuple[float, float]]) -> list[dict[str, Any]]:
             current_start = current
             current_heading = heading
         current_end = nxt
+        if route_index in stop_indices:
+            spans.append(
+                {
+                    "start": current_start,
+                    "end": current_end,
+                    "yaw": _yaw_from_heading(current_heading or (0.0, 1.0)),
+                }
+            )
+            current_start = None
+            current_end = None
+            current_heading = None
     if current_start is not None and current_end is not None:
         spans.append(
             {

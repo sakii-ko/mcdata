@@ -5,6 +5,7 @@ from typing import Any
 
 from mcdata.actions.strategies import build_trajectory
 from mcdata.config import load_yaml
+from mcdata.qa.route import simulate_track
 from mcdata.scene_model import load_scene, walk_obstacles
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +59,15 @@ def test_walk_routes_stay_inside_configured_bounds() -> None:
             continue
         trajectory = _build_configured(name, spec)
         _assert_route_stays_inside_walkable_area(trajectory, spec)
+
+
+def test_open_loop_walk_routes_have_simulatable_movement_segments() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    for name, spec in strategies.items():
+        if spec.get("type") not in {"astar_walk", "roam"}:
+            continue
+        track = simulate_track(_build_configured(name, spec))
+        assert track, name
 
 
 def test_astar_blocking_covers_scene_occupied_cells() -> None:
@@ -219,6 +229,7 @@ def test_lookdev_showcase_walks_and_holds_horizontal_water_views() -> None:
         "gallery_wide",
         "material_closeup_alt",
     ]
+    assert all(isinstance(event.get("route_index"), int) for event in held_views)
 
 
 def test_turn_calibration_probe_is_eight_600px_turns() -> None:

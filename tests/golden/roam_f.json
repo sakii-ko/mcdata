@@ -138,18 +138,21 @@
     {
       "duration": 1.128,
       "pause": true,
+      "route_index": 65,
       "t": 21.063
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 40,
+      "route_index": 65,
       "t": 22.191
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -40,
+      "route_index": 65,
       "t": 22.741
     },
     {
