@@ -1205,7 +1205,7 @@ profiles:
         yaw: 90
         pitch: 18
 
-  lookdev_legendary_rt_bliss_1080p:
+  lookdev_legendary_rt_bliss_1080p: &legendary_rt_bliss_profile
     description: "Look-dev shader candidate: Legendary RT 128x with maximum-realism Bliss 2.1.2."
     game_version: "26.2"
     loader: "fabric"
@@ -1632,6 +1632,19 @@ profiles:
   lookdev_candidate_pair_legendary_solas_midnight_1080p:
     <<: *lookdev_candidate_pair_legendary_solas_profile
     description: "Unrendered controlled fallback target: change only time to midnight to assess Solas moonlight directionality."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+      time: "midnight"
+
+  lookdev_candidate_pair_legendary_bliss_noon_1080p: &lookdev_candidate_pair_legendary_bliss_profile
+    <<: *legendary_rt_bliss_profile
+    description: "Controlled fallback candidate: Legendary RT and maximum-realism Bliss under clear noon sun."
+    world_state:
+      <<: *lookdev_pair_plains_clear_noon_state
+
+  lookdev_candidate_pair_legendary_bliss_midnight_1080p:
+    <<: *lookdev_candidate_pair_legendary_bliss_profile
+    description: "Controlled fallback target: change only time to midnight to assess Bliss moonlight directionality."
     world_state:
       <<: *lookdev_pair_plains_clear_noon_state
       time: "midnight"

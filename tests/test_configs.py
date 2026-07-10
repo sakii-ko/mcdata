@@ -581,6 +581,39 @@ def test_solas_bright_moon_fallback_is_an_unrendered_time_only_candidate(
     ).read_bytes()
 
 
+def test_bliss_bright_moon_fallback_is_a_time_only_candidate() -> None:
+    names = [
+        "lookdev_candidate_pair_legendary_bliss_noon_1080p",
+        "lookdev_candidate_pair_legendary_bliss_midnight_1080p",
+    ]
+    noon, midnight = [load_profile(ROOT / "configs", name) for name in names]
+    renderer_noon = {
+        key: value
+        for key, value in noon.items()
+        if key not in {"description", "world_state"}
+    }
+    renderer_midnight = {
+        key: value
+        for key, value in midnight.items()
+        if key not in {"description", "world_state"}
+    }
+
+    assert renderer_midnight == renderer_noon
+    assert noon["asset_set"] == midnight["asset_set"] == "legendary_rt_bliss"
+    assert noon["world_state"]["time"] == "noon"
+    assert midnight["world_state"]["time"] == "midnight"
+    assert {
+        key: value
+        for key, value in midnight["world_state"].items()
+        if key != "time"
+    } == {
+        key: value for key, value in noon["world_state"].items() if key != "time"
+    }
+    assert noon["world_state"]["biome"]["id"] == "minecraft:plains"
+    assert "additions" not in noon["world_state"]["scene"]
+    assert noon["shader_options"] == midnight["shader_options"]
+
+
 def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:
     profile = load_profile(
         ROOT / "configs", "lookdev_legendary_rt_bliss_1080p"
