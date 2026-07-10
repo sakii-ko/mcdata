@@ -85,7 +85,7 @@ strategies:
     pause_sec: 0.4
     initial_pause_sec: 1.0
 
-  feedback_roam_10min:
+  feedback_roam_10min: &feedback_roam_10min
     type: "feedback_roam"
     seed: 401
     start: [0, -14]
@@ -125,6 +125,26 @@ strategies:
     min_10s_movement_blocks: 10.0
     y_min: 63.0
     y_max: 66.0
+
+  feedback_roam_10min_seed402:
+    <<: *feedback_roam_10min
+    seed: 402
+
+  feedback_roam_10min_seed403:
+    <<: *feedback_roam_10min
+    seed: 403
+
+  feedback_roam_10min_seed404:
+    <<: *feedback_roam_10min
+    seed: 404
+
+  feedback_roam_10min_seed405:
+    <<: *feedback_roam_10min
+    seed: 405
+
+  feedback_roam_10min_seed406:
+    <<: *feedback_roam_10min
+    seed: 406
 
   ground_astar_loop:
     type: "astar_walk"

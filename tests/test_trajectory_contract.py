@@ -120,7 +120,10 @@ def test_roam_goals_have_minimum_adjacent_distance() -> None:
         points = [tuple(spec["start"]), *goals]
 
         assert len(goals) == spec["num_goals"], name
-        assert all(_manhattan(first, second) >= spec["min_goal_dist"] for first, second in zip(points, points[1:])), name
+        assert all(
+            _manhattan(first, second) >= spec["min_goal_dist"]
+            for first, second in zip(points, points[1:])
+        ), name
 
 
 def test_walk_routes_keep_configured_obstacle_clearance() -> None:
@@ -169,9 +172,10 @@ def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
     assert planning["route_distance_blocks"] == len(trajectory["route"]) - 1
     assert planning["sampled_goal_count"] == len(trajectory["goals"]) - 1
     assert trajectory["navigation"]["waypoint_center_offset"] == 0.5
-    assert trajectory["navigation"]["hard_deviation_blocks"] > trajectory["navigation"][
-        "soft_deviation_blocks"
-    ]
+    assert (
+        trajectory["navigation"]["hard_deviation_blocks"]
+        > trajectory["navigation"]["soft_deviation_blocks"]
+    )
     navigation = trajectory["navigation"]
     capped_turn_rate = (
         navigation["max_turn_px"]
@@ -187,8 +191,7 @@ def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
 
     route = [(point["x"], point["z"]) for point in trajectory["route"]]
     directions = [
-        (second[0] - first[0], second[1] - first[1])
-        for first, second in zip(route, route[1:])
+        (second[0] - first[0], second[1] - first[1]) for first, second in zip(route, route[1:])
     ]
     turn_count = sum(first != second for first, second in zip(directions, directions[1:]))
     assert len(set(route)) >= 350
@@ -200,6 +203,53 @@ def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
     assert any(x >= 5 and z <= -4 for x, z in route)
     assert any(-14 <= x <= -1 and z >= 10 for x, z in route)
     assert any(0 <= x <= 14 and z >= 10 for x, z in route)
+
+
+def test_feedback_roam_ten_minute_family_is_balanced_closed_and_distinct() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    expected_names = {
+        "feedback_roam_10min",
+        "feedback_roam_10min_seed402",
+        "feedback_roam_10min_seed403",
+        "feedback_roam_10min_seed404",
+        "feedback_roam_10min_seed405",
+        "feedback_roam_10min_seed406",
+    }
+    family = {
+        name: spec
+        for name, spec in strategies.items()
+        if name == "feedback_roam_10min" or name.startswith("feedback_roam_10min_seed")
+    }
+
+    assert set(family) == expected_names
+    assert sorted(spec["seed"] for spec in family.values()) == list(range(401, 407))
+    shared_specs = [
+        {key: value for key, value in spec.items() if key != "seed"} for spec in family.values()
+    ]
+    assert all(spec == shared_specs[0] for spec in shared_specs[1:])
+    assert shared_specs[0]["target_duration_sec"] == 604
+    assert shared_specs[0]["obstacle_clearance"] == 2
+
+    trajectories = {name: _build_configured(name, spec) for name, spec in family.items()}
+    routes = {
+        name: tuple((point["x"], point["z"]) for point in trajectory["route"])
+        for name, trajectory in trajectories.items()
+    }
+
+    assert len(set(routes.values())) == len(routes)
+    for name, trajectory in trajectories.items():
+        route = routes[name]
+        directions = [
+            (second[0] - first[0], second[1] - first[1]) for first, second in zip(route, route[1:])
+        ]
+        turn_count = sum(first != second for first, second in zip(directions, directions[1:]))
+
+        assert trajectory["duration_sec"] >= 604, name
+        assert route[0] == route[-1] == (0, -14), name
+        assert trajectory["planning"]["closed"] is True, name
+        assert trajectory["planning"]["obstacle_clearance"] == 2, name
+        assert len(set(route)) >= 350, name
+        assert turn_count >= 200, name
 
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:
@@ -251,7 +301,16 @@ def test_turn_calibration_probe_is_eight_600px_turns() -> None:
     assert trajectory["type"] == "scripted"
     assert trajectory["duration_sec"] == 24
     assert len(trajectory["events"]) == 8
-    assert [event["t"] for event in trajectory["events"]] == [2.5, 5.0, 7.5, 10.0, 12.5, 15.0, 17.5, 20.0]
+    assert [event["t"] for event in trajectory["events"]] == [
+        2.5,
+        5.0,
+        7.5,
+        10.0,
+        12.5,
+        15.0,
+        17.5,
+        20.0,
+    ]
     assert all(event["mouse_dx"] == 600 for event in trajectory["events"])
     assert all(event["mouse_dy"] == 0 for event in trajectory["events"])
     assert all(event["duration"] == 0.35 for event in trajectory["events"])
