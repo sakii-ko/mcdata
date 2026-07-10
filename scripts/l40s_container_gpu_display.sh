@@ -16,6 +16,7 @@
 #
 # Usage (as root inside the container):
 #   scripts/l40s_container_gpu_display.sh install   # apt + module extraction + conf
+#   scripts/l40s_container_gpu_display.sh configure # rewrite conf without apt/network
 #   scripts/l40s_container_gpu_display.sh start     # launch Xorg
 #   scripts/l40s_container_gpu_display.sh verify    # glxinfo must show NVIDIA
 # Env overrides: MCDATA_GPU_INDEX (default 0), MCDATA_HEADLESS_DISPLAY (default :77),
@@ -29,34 +30,13 @@ CONF_FILE="/etc/X11/mcdata-l40s-gpu${GPU_INDEX}.conf"
 LOG_FILE="/var/log/mcdata-xorg-${DISPLAY_NUM#:}.log"
 MODULE_DIR="/opt/nvidia-xorg"
 
-cmd="${1:?usage: l40s_container_gpu_display.sh install|start|verify}"
+cmd="${1:?usage: l40s_container_gpu_display.sh install|configure|start|verify}"
 
 driver_version() {
   nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1 | tr -d ' '
 }
 
-do_install() {
-  [[ "$(id -u)" -eq 0 ]] || { echo "error: must run as root" >&2; exit 1; }
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update -qq
-  apt-get install -y -qq xserver-xorg-core mesa-utils xdotool x11-utils
-
-  local ver branch
-  ver="$(driver_version)"
-  branch="${ver%%.*}"
-  if [[ ! -s "$MODULE_DIR/drivers/nvidia_drv.so" ]]; then
-    local tmp
-    tmp="$(mktemp -d)"
-    ( cd "$tmp" && apt-get download "xserver-xorg-video-nvidia-${branch}=${ver}-1ubuntu1" \
-        && dpkg-deb -x xserver-xorg-video-nvidia-*.deb extracted )
-    install -D "$tmp/extracted/usr/lib/xorg/modules/drivers/nvidia_drv.so" \
-      "$MODULE_DIR/drivers/nvidia_drv.so"
-    install -D "$tmp/extracted/usr/lib/xorg/modules/extensions/libglxserver_nvidia.so.${ver}" \
-      "$MODULE_DIR/extensions/libglxserver_nvidia.so.${ver}"
-    ln -sf "libglxserver_nvidia.so.${ver}" "$MODULE_DIR/extensions/libglxserver_nvidia.so"
-    rm -rf "$tmp"
-  fi
-
+write_config() {
   local raw bus_hex dev_hex func bus width height
   raw="$(nvidia-smi --query-gpu=index,pci.bus_id --format=csv,noheader \
       | awk -F, -v idx="$GPU_INDEX" '$1 + 0 == idx {gsub(/ /, "", $2); print $2; exit}')"
@@ -95,7 +75,40 @@ Section "Screen"
     EndSubSection
 EndSection
 EOF
-  echo "installed: $MODULE_DIR (driver $ver), $CONF_FILE (BusID $bus)"
+  echo "configured: $CONF_FILE (BusID $bus, virtual $SCREEN_SIZE)"
+}
+
+do_install() {
+  [[ "$(id -u)" -eq 0 ]] || { echo "error: must run as root" >&2; exit 1; }
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update -qq
+  apt-get install -y -qq xserver-xorg-core mesa-utils xdotool x11-utils
+
+  local ver branch
+  ver="$(driver_version)"
+  branch="${ver%%.*}"
+  if [[ ! -s "$MODULE_DIR/drivers/nvidia_drv.so" ]]; then
+    local tmp
+    tmp="$(mktemp -d)"
+    ( cd "$tmp" && apt-get download "xserver-xorg-video-nvidia-${branch}=${ver}-1ubuntu1" \
+        && dpkg-deb -x xserver-xorg-video-nvidia-*.deb extracted )
+    install -D "$tmp/extracted/usr/lib/xorg/modules/drivers/nvidia_drv.so" \
+      "$MODULE_DIR/drivers/nvidia_drv.so"
+    install -D "$tmp/extracted/usr/lib/xorg/modules/extensions/libglxserver_nvidia.so.${ver}" \
+      "$MODULE_DIR/extensions/libglxserver_nvidia.so.${ver}"
+    ln -sf "libglxserver_nvidia.so.${ver}" "$MODULE_DIR/extensions/libglxserver_nvidia.so"
+    rm -rf "$tmp"
+  fi
+  write_config
+  echo "installed: $MODULE_DIR (driver $ver)"
+}
+
+do_configure() {
+  [[ "$(id -u)" -eq 0 ]] || { echo "error: must run as root" >&2; exit 1; }
+  [[ -s "$MODULE_DIR/drivers/nvidia_drv.so" ]] \
+    || { echo "error: NVIDIA Xorg modules missing; run install first" >&2; exit 1; }
+  command -v Xorg >/dev/null || { echo "error: Xorg missing; run install first" >&2; exit 1; }
+  write_config
 }
 
 do_start() {
@@ -125,6 +138,7 @@ do_verify() {
 
 case "$cmd" in
   install) do_install ;;
+  configure) do_configure ;;
   start) do_start ;;
   verify) do_verify ;;
   *) echo "unknown command: $cmd" >&2; exit 1 ;;
