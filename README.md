@@ -198,6 +198,14 @@ an L1 episode into L2. L3/L4 event names are reserved by taxonomy v1, but the cu
 them `unsupported_contract_only`; they cannot enter an accepted advanced bucket until a real
 executor emits verifiable evidence.
 
+New runs write manifest schema v3, where `action_curriculum` is required. Dataset index v2 also
+accepts legacy manifest v2 captures: when—and only when—the v2 manifest has no action claim, the
+indexer derives the same strict summary from the hash-matched trajectory and complete replay or
+navigation log, and records `action_curriculum_source: derived_legacy_replay`. Legacy open-loop
+logs may omit the newer `execution_status` field, but their event objects and scheduled times must
+still match the trajectory exactly. A v2 claim is validated and labelled `manifest`; v3 never
+falls back to derivation, so a missing/null v3 claim fails closed.
+
 The controlled high-quality lighting/weather seed matrix uses the following profiles with one
 fixed Legendary RT 128x + Complementary Unbound renderer preset:
 

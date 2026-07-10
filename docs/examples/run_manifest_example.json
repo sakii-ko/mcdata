@@ -169,7 +169,7 @@
     "shaderpacks": []
   },
   "run_id": "20260708T053312Z_matrix_low",
-  "schema_version": 2,
+  "schema_version": 3,
   "started_at": "2026-07-08T05:33:12.601019+00:00",
   "trajectory": {
     "duration_sec": 52.09,

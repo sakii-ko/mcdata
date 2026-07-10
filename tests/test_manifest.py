@@ -80,7 +80,7 @@ def test_build_run_manifest_validates_against_schema() -> None:
     manifest = _sample_manifest()
 
     validate(instance=manifest, schema=schema)
-    assert manifest["schema_version"] == 2
+    assert manifest["schema_version"] == 3
     assert manifest["lane"] == "gpu0"
 
 

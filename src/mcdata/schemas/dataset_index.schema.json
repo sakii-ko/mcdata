@@ -107,6 +107,7 @@
           "video",
           "trajectory",
           "action_curriculum",
+          "action_curriculum_source",
           "positions",
           "qa",
           "client_log",
@@ -128,7 +129,11 @@
           "manifest": {
             "allOf": [
               {"$ref": "#/$defs/artifact"},
-              {"type": "object", "required": ["schema_version"], "properties": {"schema_version": {"const": 2}}}
+              {
+                "type": "object",
+                "required": ["schema_version"],
+                "properties": {"schema_version": {"enum": [2, 3]}}
+              }
             ]
           },
           "video": {
@@ -160,6 +165,9 @@
             ]
           },
           "action_curriculum": {"$ref": "#/$defs/acceptedActionCurriculum"},
+          "action_curriculum_source": {
+            "enum": ["manifest", "derived_legacy_replay"]
+          },
           "positions": {"$ref": "#/$defs/artifact"},
           "navigation": {"$ref": "#/$defs/artifact"},
           "qa": {

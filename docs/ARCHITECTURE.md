@@ -116,6 +116,14 @@ accepted 数据 fail closed：缺日志、日志与 trajectory 不一致、manif
 为每个 episode 原样保存该记录，并在 `action_buckets` 中生成四组精确的排序 ID/count；它不复制
 capture，训练端可据此按比例采样。
 
+迁移边界按 manifest 版本机械执行。新录制一律写 v3，v3 的 claim 缺失或为 null 时 dataset
+loader 直接拒绝，不允许 fallback。历史 v2 若已有 claim，必须按当前规则与日志重新计算结果完全
+一致，并在 episode 标 `action_curriculum_source=manifest`；只有历史 v2 缺 claim 时，才允许从
+已由 manifest SHA 绑定的 trajectory 与完整 `replay_log.jsonl` / `navigation_log.jsonl` 严格派生，
+标 `derived_legacy_replay`。旧 replay 可缺后来新增的 `execution_status`，但事件对象、顺序、数量和
+scheduled time 仍须与 trajectory 逐项一致；缺日志或任一篡改继续 fail closed。dataset index 本身
+仍为 schema v2，其 episode manifest artifact 明确允许 v2/v3，并显式保存上述 source 枚举。
+
 ### run dir（render → qa / 数据集）
 
 ```
@@ -131,7 +139,7 @@ capture，训练端可据此按比例采样。
 
 ### manifest.json（每个 run 的完整可复现描述）
 
-必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`action_curriculum`、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane` 字段；schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
+必含字段：`schema_version`、`run_id`、`lane`（并行 shard 标识，未分片时为 null）、`profile`、`mc_version`、资源清单（mods / resourcepacks / shaderpacks，含文件名 + sha256）、`world`（seed + world_state）、`trajectory`（路径 + sha256 + strategy 名 + 事件数）、`action_curriculum`、`capture`（fps / size / ffprobe 实测）、`env`（hostname / DISPLAY / GL renderer / GPU）、`git`（commit + dirty）、时间戳。schema v2 起要求顶层 `lane`；schema v3 起要求顶层 `action_curriculum`。现行 schema 定义放 `src/mcdata/schemas/manifest.schema.json`，测试用 jsonschema 校验。
 
 open-loop N-way cohort 的 invariant 是相同 Minecraft 版本、代码 commit、trajectory sha256、world seed、
 完整 world-state、scene 和采集规格。有意改变天气或时间的 profile 必须归入单独的

@@ -31,6 +31,8 @@ def _write_episode(
     feedback: bool = False,
     material: str | None = None,
     shader: str | None = None,
+    manifest_schema_version: int = 3,
+    include_action_curriculum: bool = True,
 ) -> Path:
     material_name = material or profile
     world_state = {
@@ -68,10 +70,17 @@ def _write_episode(
         action_evidence = run_dir / "navigation_log.jsonl"
         execution_mode = "online_position_yaw_feedback"
     else:
+        replay_record = {
+            "actual_t": 0.0,
+            "event": {"action": "tap", "key": "w", "t": 0},
+            "scheduled_t": 0.0,
+        }
+        replay_record["execution_status"] = "executed"
         (run_dir / "replay_log.jsonl").write_text(
-            '{"event":"start","mono":1.0}\n'
-            '{"actual_t":0.0,"event":{"action":"tap","key":"w","t":0},'
-            '"execution_status":"executed","scheduled_t":0.0}\n',
+            json.dumps({"event": "start", "mono": 1.0})
+            + "\n"
+            + json.dumps(replay_record)
+            + "\n",
             encoding="utf-8",
         )
         action_evidence = run_dir / "replay_log.jsonl"
@@ -100,7 +109,7 @@ def _write_episode(
         else None
     )
     manifest = {
-        "schema_version": 2,
+        "schema_version": manifest_schema_version,
         "run_id": f"episode-{profile}",
         "lane": "gpu0",
         "profile": {
@@ -166,11 +175,6 @@ def _write_episode(
             ),
             "route_point_count": 3 if feedback else 0,
         },
-        "action_curriculum": summarize_action_run(
-            trajectory_path,
-            action_evidence,
-            execution_mode=execution_mode,
-        ),
         "capture": {
             "enabled": True,
             "settings": {"width": 1280, "height": 720, "fps": 24},
@@ -194,6 +198,12 @@ def _write_episode(
         "ended_at": "2026-07-10T00:01:00+00:00",
         "error": None,
     }
+    if include_action_curriculum:
+        manifest["action_curriculum"] = summarize_action_run(
+            trajectory_path,
+            action_evidence,
+            execution_mode=execution_mode,
+        )
     _write_json(run_dir / "manifest.json", manifest)
     evidence_paths = {
         "manifest": run_dir / "manifest.json",
@@ -379,6 +389,26 @@ def _refresh_manifest_evidence(
         _write_json(compare_path, compare)
 
 
+def _downgrade_to_legacy_v2_without_action_claim(
+    manifest_path: Path,
+    compare_paths: tuple[Path, ...],
+) -> None:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["schema_version"] = 2
+    manifest.pop("action_curriculum")
+    _write_json(manifest_path, manifest)
+    replay_path = manifest_path.parent / "replay_log.jsonl"
+    if replay_path.exists():
+        records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+        for record in records[1:]:
+            record.pop("execution_status", None)
+        replay_path.write_text(
+            "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+            encoding="utf-8",
+        )
+    _refresh_manifest_evidence(manifest_path, compare_paths)
+
+
 def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path) -> None:
     profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
 
@@ -433,6 +463,8 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
         "l1_l2_l3_l4": {"episode_count": 0, "episode_ids": []},
     }
     assert all(item["action_curriculum"]["bucket"] == "l1" for item in index["episodes"])
+    assert all(item["action_curriculum_source"] == "manifest" for item in index["episodes"])
+    assert all(item["manifest"]["schema_version"] == 3 for item in index["episodes"])
     assert all(
         not Path(item["action_curriculum"]["evidence"]["path"]).is_absolute()
         for item in index["episodes"]
@@ -775,8 +807,57 @@ def test_feedback_dataset_is_policy_aligned_and_binds_navigation(tmp_path: Path)
         and episode["action_curriculum"]["controller_recovery_counts"]["jump_taps"] == 0
         for episode in index["episodes"]
     )
+    assert all(
+        episode["action_curriculum_source"] == "manifest"
+        for episode in index["episodes"]
+    )
     assert index["status"] == "accepted"
     assert index["manual_review"] is not None
+
+
+def test_legacy_v2_feedback_derives_action_from_navigation_log(tmp_path: Path) -> None:
+    profiles = ["legacy_feedback_vanilla", "legacy_feedback_material"]
+    runs = [
+        _write_episode(
+            tmp_path,
+            profile,
+            {"time": "noon", "weather": "clear"},
+            feedback=True,
+            manifest_schema_version=2,
+            include_action_curriculum=False,
+        )
+        for profile in profiles
+    ]
+    strict = _write_compare(tmp_path, "feedback_compare", runs)
+    diagnostic = _write_compare(tmp_path, "feedback_diagnostic", runs)
+    pairs = _write_pair_manifest(
+        tmp_path,
+        [
+            {
+                "prompt": "Apply the material while preserving legacy feedback navigation.",
+                "source_episode": "episode-legacy_feedback_vanilla",
+                "target_episode": "episode-legacy_feedback_material",
+                "edit_axis": "material_style",
+            }
+        ],
+    )
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile=profiles[0],
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+    )
+
+    assert all(
+        episode["action_curriculum_source"] == "derived_legacy_replay"
+        and episode["action_curriculum"]["evidence"]["kind"] == "navigation_log"
+        and episode["action_curriculum"]["observed_level"] == 1
+        for episode in index["episodes"]
+    )
 
 
 def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
@@ -916,6 +997,127 @@ def test_dataset_rejects_missing_or_tampered_action_evidence(tmp_path: Path) -> 
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
+
+
+def test_dataset_derives_strict_action_contract_from_legacy_v2_replay(
+    tmp_path: Path,
+) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    for profile in profiles:
+        _downgrade_to_legacy_v2_without_action_claim(
+            tmp_path / f"run_{profile}" / "manifest.json",
+            (strict, diagnostic),
+        )
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+        visual_review=review,
+    )
+
+    assert all(
+        item["action_curriculum_source"] == "derived_legacy_replay"
+        and item["manifest"]["schema_version"] == 2
+        and item["action_curriculum"]["observed_semantic_action_counts"][
+            "navigation_move"
+        ]
+        == 1
+        for item in index["episodes"]
+    )
+    assert index["action_buckets"]["l1"]["episode_count"] == len(profiles)
+
+
+def test_legacy_v2_action_derivation_rejects_missing_or_tampered_replay(
+    tmp_path: Path,
+) -> None:
+    missing_root = tmp_path / "missing"
+    profiles, strict, diagnostic, review, pairs = _fixture(missing_root)
+    manifest_path = missing_root / "run_matrix_textured" / "manifest.json"
+    _downgrade_to_legacy_v2_without_action_claim(manifest_path, (strict, diagnostic))
+    (manifest_path.parent / "replay_log.jsonl").unlink()
+    with pytest.raises(DatasetValidationError, match="replay evidence is missing"):
+        write_dataset_index(
+            missing_root,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+    tampered_root = tmp_path / "tampered_legacy"
+    profiles, strict, diagnostic, review, pairs = _fixture(tampered_root)
+    manifest_path = tampered_root / "run_matrix_textured" / "manifest.json"
+    _downgrade_to_legacy_v2_without_action_claim(manifest_path, (strict, diagnostic))
+    replay_path = manifest_path.parent / "replay_log.jsonl"
+    records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+    records[1]["event"]["key"] = "d"
+    replay_path.write_text(
+        "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    with pytest.raises(DatasetValidationError, match="exactly match trajectory events"):
+        write_dataset_index(
+            tampered_root,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
+def test_v3_requires_action_claim_and_v2_claim_is_still_manifest_sourced(
+    tmp_path: Path,
+) -> None:
+    missing_root = tmp_path / "v3_missing"
+    profiles, strict, diagnostic, review, pairs = _fixture(missing_root)
+    manifest_path = missing_root / "run_matrix_textured" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest.pop("action_curriculum")
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+    with pytest.raises(DatasetValidationError, match="schema v3 requires action_curriculum"):
+        write_dataset_index(
+            missing_root,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+    claimed_root = tmp_path / "v2_claimed"
+    profiles, strict, diagnostic, review, pairs = _fixture(claimed_root)
+    manifest_path = claimed_root / "run_matrix_textured" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["schema_version"] = 2
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+    index = write_dataset_index(
+        claimed_root,
+        expected_profiles=profiles,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+        visual_review=review,
+    )
+    by_profile = {item["profile_name"]: item for item in index["episodes"]}
+    assert by_profile["matrix_textured"]["manifest"]["schema_version"] == 2
+    assert by_profile["matrix_textured"]["action_curriculum_source"] == "manifest"
 
 
 def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:

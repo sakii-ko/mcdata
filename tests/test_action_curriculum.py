@@ -314,6 +314,40 @@ def test_missing_or_tampered_replay_evidence_fails_closed(tmp_path: Path) -> Non
         )
 
 
+def test_missing_execution_status_is_allowed_only_for_explicit_legacy_migration(
+    tmp_path: Path,
+) -> None:
+    trajectory = {
+        "type": "astar_walk",
+        "duration_sec": 1,
+        "events": [{"t": 0.0, "key": "w", "action": "tap"}],
+    }
+    trajectory_path = tmp_path / "trajectory.json"
+    replay_path = tmp_path / "replay_log.jsonl"
+    _write_json(trajectory_path, trajectory)
+    _write_replay(replay_path, trajectory["events"])
+    records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+    records[1].pop("execution_status")
+    replay_path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records), encoding="utf-8"
+    )
+
+    with pytest.raises(ActionCurriculumError, match="execution status"):
+        summarize_action_run(
+            trajectory_path,
+            replay_path,
+            execution_mode="open_loop_event_replay",
+        )
+
+    migrated = summarize_action_run(
+        trajectory_path,
+        replay_path,
+        execution_mode="open_loop_event_replay",
+        allow_legacy_execution_status_missing=True,
+    )
+    assert migrated["observed_semantic_action_counts"]["navigation_move"] == 1
+
+
 def test_bucket_index_is_disjoint_exact_and_sorted() -> None:
     episodes = [
         {"episode_id": "z", "action_curriculum": {"bucket": "l1"}},

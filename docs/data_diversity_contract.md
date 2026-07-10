@@ -86,6 +86,11 @@ placement/combat 只有保留的契约事件名，replay 会跳过并标为 `uns
 真实执行器落地前，L3/L4 数据必须保持为空。dataset index 的 `action_buckets` 只保存每组精确、
 稳定排序的 episode ID 和数量，不复制 capture；训练可以先用 L1，再逐步调整四组采样比例。
 
+新 run manifest 从 v3 开始必须显式保存 action curriculum。已经完成的 v2 capture 不重录、不
+伪造 manifest claim：若原 manifest 没有该字段，dataset loader 只能用完整 trajectory 与
+replay/navigation evidence 重新归纳，并把 episode 标成 `derived_legacy_replay`；有字段的 v2 和
+所有 v3 都标 `manifest` 且必须与重算结果一致。这个兼容口只针对 v2，v3 缺 claim 一律拒绝。
+
 ### 2.3 Render
 
 配置层有 33 个 resource-pack asset 定义、8 个 shader family、46 个 asset set；62 个 profile

@@ -83,6 +83,7 @@ def summarize_action_run(
     *,
     execution_mode: str,
     require_evidence: bool = True,
+    allow_legacy_execution_status_missing: bool = False,
 ) -> dict[str, Any]:
     trajectory = _load_object(trajectory_path, "trajectory")
     planned = planned_action_contract(trajectory)
@@ -92,7 +93,13 @@ def summarize_action_run(
     if evidence_path is not None and evidence_path.is_file() and not evidence_path.is_symlink():
         records = _load_jsonl(evidence_path)
         if execution_mode == "open_loop_event_replay":
-            counts = _open_loop_counts(trajectory, records)
+            counts = _open_loop_counts(
+                trajectory,
+                records,
+                allow_legacy_execution_status_missing=(
+                    allow_legacy_execution_status_missing
+                ),
+            )
             kind = "replay_log"
         elif execution_mode == "online_position_yaw_feedback":
             counts, recoveries = _feedback_counts(trajectory, records)
@@ -225,7 +232,10 @@ def _validate_trajectory_semantics(trajectory: dict[str, Any], planned_level: in
 
 
 def _open_loop_counts(
-    trajectory: dict[str, Any], records: list[dict[str, Any]]
+    trajectory: dict[str, Any],
+    records: list[dict[str, Any]],
+    *,
+    allow_legacy_execution_status_missing: bool,
 ) -> dict[str, int]:
     if not records or records[0].get("event") != "start":
         raise ActionCurriculumError("replay log has no start record")
@@ -247,9 +257,23 @@ def _open_loop_counts(
         ):
             raise ActionCurriculumError(f"replay record {index} has no dispatch timing")
         expected_status = _expected_execution_status(event)
-        if record.get("execution_status") != expected_status:
+        observed_status = record.get("execution_status")
+        if observed_status is None and allow_legacy_execution_status_missing:
+            observed_status = expected_status
+        if observed_status != expected_status:
             raise ActionCurriculumError(
                 f"replay record {index} execution status does not match its input primitive"
+            )
+        event_t = event.get("t", 0)
+        if (
+            not isinstance(event_t, (int, float))
+            or isinstance(event_t, bool)
+            or not math.isfinite(float(event_t))
+            or float(scheduled_t) != float(event_t)
+            or float(actual_t) < 0
+        ):
+            raise ActionCurriculumError(
+                f"replay record {index} timing does not match its trajectory event"
             )
         observed_events.append(event)
         if expected_status == "executed":

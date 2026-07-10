@@ -290,7 +290,7 @@ def _episode_evidence(
     manifest = load_json(manifest_path)
     qa = load_json(qa_path)
     _validate_manifest(manifest, run_dir)
-    if manifest.get("schema_version") != 2:
+    if manifest.get("schema_version") not in {2, 3}:
         raise DatasetValidationError(f"Unsupported manifest schema in {run_dir.name}")
     evidence = {
         "manifest": artifact(root, manifest_path),
@@ -355,7 +355,7 @@ def _trajectory_facts(
 
 def _action_curriculum_facts(
     manifest: dict[str, Any], root: Path, run_dir: Path
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
     trajectory = require_mapping(manifest.get("trajectory"), "manifest.trajectory")
     execution_mode = trajectory.get("execution_mode", "open_loop_event_replay")
     filename = (
@@ -364,33 +364,42 @@ def _action_curriculum_facts(
         else "replay_log.jsonl"
     )
     evidence_path = run_dir / filename
+    schema_version = manifest.get("schema_version")
+    claimed = manifest.get("action_curriculum")
+    if schema_version == 3 and claimed is None:
+        raise DatasetValidationError(
+            f"Manifest schema v3 requires action_curriculum for {run_dir.name}"
+        )
+    derive_legacy = schema_version == 2 and claimed is None
     try:
         computed = summarize_action_run(
             run_dir / "trajectory.json",
             evidence_path,
             execution_mode=execution_mode,
             require_evidence=True,
+            allow_legacy_execution_status_missing=derive_legacy,
         )
-        claimed = manifest.get("action_curriculum")
-        validate_action_summary(claimed, require_evidence=True)
+        if claimed is not None:
+            validate_action_summary(claimed, require_evidence=True)
     except ActionCurriculumError as exc:
         raise DatasetValidationError(
             f"Action curriculum validation failed for {run_dir.name}: {exc}"
         ) from exc
-    claimed_normalized = dict(claimed)
-    claimed_evidence = dict(require_mapping(claimed.get("evidence"), "action evidence"))
-    claimed_evidence["path"] = computed["evidence"]["path"]
-    claimed_normalized["evidence"] = claimed_evidence
-    if claimed_normalized != computed:
-        raise DatasetValidationError(
-            f"Manifest action curriculum does not match replay evidence for {run_dir.name}"
-        )
+    if claimed is not None:
+        claimed_normalized = dict(claimed)
+        claimed_evidence = dict(require_mapping(claimed.get("evidence"), "action evidence"))
+        claimed_evidence["path"] = computed["evidence"]["path"]
+        claimed_normalized["evidence"] = claimed_evidence
+        if claimed_normalized != computed:
+            raise DatasetValidationError(
+                f"Manifest action curriculum does not match replay evidence for {run_dir.name}"
+            )
     normalized = dict(computed)
     normalized["evidence"] = {
         **computed["evidence"],
         "path": relative_path(root, evidence_path),
     }
-    return normalized
+    return normalized, "derived_legacy_replay" if derive_legacy else "manifest"
 
 
 def _episode_resources(manifest: dict[str, Any], run_dir: Path) -> dict[str, Any]:
@@ -433,7 +442,9 @@ def episode_from_run(
         duration=expected_duration,
     )
     trajectory_facts = _trajectory_facts(manifest, evidence["trajectory"], run_dir)
-    action_curriculum = _action_curriculum_facts(manifest, root, run_dir)
+    action_curriculum, action_curriculum_source = _action_curriculum_facts(
+        manifest, root, run_dir
+    )
     profile = require_mapping(manifest["profile"], "manifest.profile")
     resources = _episode_resources(manifest, run_dir)
     episode = {
@@ -446,6 +457,7 @@ def episode_from_run(
         "video": {**evidence["video"], **video_facts},
         "trajectory": trajectory_facts,
         "action_curriculum": action_curriculum,
+        "action_curriculum_source": action_curriculum_source,
         "positions": evidence["positions"],
         "qa": {**artifact(root, run_dir / "qa_report.json"), **qa_facts},
         "client_log": evidence["client_log"],
