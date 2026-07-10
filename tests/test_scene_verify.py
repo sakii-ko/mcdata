@@ -38,6 +38,18 @@ def test_verify_scene_commands_raises_on_overlimit_receipt(tmp_path: Path) -> No
         verify_scene_commands(log, expected_fill_count=1, wait_sec=0.01, poll_sec=0.001)
 
 
+def test_verify_scene_commands_raises_on_invalid_command(tmp_path: Path) -> None:
+    log = tmp_path / "server.log"
+    log.write_text(
+        "[Server thread/INFO]: Incorrect argument for command\n"
+        "[Server thread/INFO]: gamerule invalid_name false<--[HERE]\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="Incorrect argument.*server.log"):
+        verify_scene_commands(log, expected_fill_count=0, wait_sec=0.01, poll_sec=0.001)
+
+
 def test_verify_scene_commands_raises_on_missing_receipt(tmp_path: Path) -> None:
     log = tmp_path / "server.log"
     log.write_text("[Server thread/INFO]: Successfully filled 1 block\n", encoding="utf-8")

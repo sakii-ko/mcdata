@@ -10,6 +10,7 @@ from mcdata.scene_model import parse_scene, scene_commands
 SCENE_FAILURE_PATTERNS = (
     "Too many blocks",
     "Cannot place",
+    "Incorrect argument for command",
     "Expected",
     "Unknown",
 )

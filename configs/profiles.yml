@@ -129,7 +129,7 @@ profiles:
     world_state:
       clear_non_player_entities: true
       gamerules:
-        do_mob_spawning: false
+        spawn_mobs: false
       player:
         x: -3
         y: 64
@@ -159,7 +159,7 @@ profiles:
     world_state:
       clear_non_player_entities: true
       gamerules:
-        do_mob_spawning: false
+        spawn_mobs: false
       player:
         x: -3
         y: 64
@@ -189,7 +189,7 @@ profiles:
     world_state:
       clear_non_player_entities: true
       gamerules:
-        do_mob_spawning: false
+        spawn_mobs: false
       player:
         x: -3
         y: 64
