@@ -1,10 +1,10 @@
 from pathlib import Path
 import ast
 
-from mcdata.actions.strategies import STRATEGY_BUILDERS
+from mcdata.actions.strategies import STRATEGY_BUILDERS, build_trajectory
 from mcdata.config import load_profile, load_yaml
 from mcdata.render.scene import _scene_commands
-from mcdata.scene_model import load_scene, scene_commands, scene_mapping
+from mcdata.scene_model import load_scene, scene_commands, scene_mapping, walk_obstacles
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -62,20 +62,13 @@ def test_three_way_preview_profiles_are_strictly_comparable() -> None:
     profiles = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
     asset_sets = load_yaml(ROOT / "configs" / "asset_sets.yml")["asset_sets"]
     names = ["preview_vanilla_high", "preview_texture_high", "matrix_shader_high"]
-    selected = [profiles[name] for name in names]
+    resolved = [load_profile(ROOT / "configs", name) for name in names]
+    comparable = [
+        {key: value for key, value in profile.items() if key not in {"description", "asset_set"}}
+        for profile in resolved
+    ]
 
-    comparable_keys = (
-        "version_strategy",
-        "loader",
-        "quality",
-        "mods",
-        "width",
-        "height",
-        "server_port",
-        "world_profile",
-    )
-    for key in comparable_keys:
-        assert len({repr(profile[key]) for profile in selected}) == 1, key
+    assert comparable[1:] == comparable[:-1]
 
     assert asset_sets[profiles["preview_vanilla_high"]["asset_set"]] == {
         "resourcepacks": [],
@@ -94,6 +87,20 @@ def test_three_way_preview_profiles_are_strictly_comparable() -> None:
         asset_sets[profiles["matrix_shader_high"]["asset_set"]]["shaderpack"]
         == "complementary-reimagined"
     )
+
+
+def test_ten_minute_ground_loop_covers_capture_duration() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"][
+        "ground_astar_loop_10min"
+    ]
+    trajectory = build_trajectory(
+        "ground_astar_loop_10min",
+        dict(spec),
+        scene_obstacles=walk_obstacles(load_scene(ROOT / "configs")),
+    )
+
+    assert trajectory["loops"] == 16
+    assert trajectory["duration_sec"] >= 600
 
 
 def test_matrix_world_states_freeze_scene_and_suppress_recipe_toasts() -> None:
