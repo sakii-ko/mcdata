@@ -64,6 +64,12 @@ waypoint progress and continuous movement rather than accepting local back-and-f
 Because small corrective inputs can differ by render load, this cohort is labelled
 `policy_aligned_rendering_matrix`, not exact open-loop action alignment.
 
+The compatible strategy name remains `feedback_roam_10min` (seed 401). Five additional compactly
+hash-gated variants, `feedback_roam_10min_seed402` through `seed406`, provide distinct deterministic
+10-minute routes without committing five very large trajectory goldens. The rules for crossing
+terrain, action, and render factors while keeping every prompt-edit pair controlled are in
+[`docs/data_diversity_contract.md`](docs/data_diversity_contract.md).
+
 All 19 matrix profiles share `world_profile: render_matrix_base`, seed, scene, player reset, and
 replayed action JSON. The 18 daytime profiles additionally share the exact complete world-state,
 so only their render stack changes. `matrix_night_complementary` deliberately changes time to
