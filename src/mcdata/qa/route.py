@@ -283,11 +283,8 @@ def _alignment_pair_result(
 ) -> dict[str, Any]:
     left_items = series[left] or []
     right_items = series[right] or []
-    count = min(len(left_items), len(right_items))
-    distances = [
-        _position_distance(left_items[idx], right_items[idx])
-        for idx in range(count)
-    ]
+    distances, alignment_mode = _aligned_distances(left_items, right_items)
+    count = len(distances)
     max_distance = max(distances) if distances else None
     mean_distance = sum(distances) / len(distances) if distances else None
     return {
@@ -296,8 +293,73 @@ def _alignment_pair_result(
         "count": count,
         "max_distance_blocks": max_distance,
         "mean_distance_blocks": mean_distance,
+        "alignment_mode": alignment_mode,
         "passed": max_distance is not None and max_distance <= max_threshold_blocks,
     }
+
+
+def _aligned_distances(
+    left: list[dict[str, float]],
+    right: list[dict[str, float]],
+) -> tuple[list[float], str]:
+    if left and right and all("t_rel" in item for item in [*left, *right]):
+        return _time_aligned_distances(left, right), "time_interpolated"
+    count = min(len(left), len(right))
+    return (
+        [_position_distance(left[index], right[index]) for index in range(count)],
+        "sample_index",
+    )
+
+
+def _time_aligned_distances(
+    left: list[dict[str, float]],
+    right: list[dict[str, float]],
+) -> list[float]:
+    left_items = sorted(
+        (item for item in left if item["t_rel"] >= 0),
+        key=lambda item: item["t_rel"],
+    )
+    right_items = sorted(
+        (item for item in right if item["t_rel"] >= 0),
+        key=lambda item: item["t_rel"],
+    )
+    if not left_items or not right_items:
+        return []
+    start = max(left_items[0]["t_rel"], right_items[0]["t_rel"])
+    end = min(left_items[-1]["t_rel"], right_items[-1]["t_rel"])
+    if start > end:
+        return []
+    timeline = sorted(
+        {item["t_rel"] for item in [*left_items, *right_items] if start <= item["t_rel"] <= end}
+    )
+    left_times = [item["t_rel"] for item in left_items]
+    right_times = [item["t_rel"] for item in right_items]
+    return [
+        _position_distance(
+            _interpolate_position(left_items, left_times, timestamp),
+            _interpolate_position(right_items, right_times, timestamp),
+        )
+        for timestamp in timeline
+    ]
+
+
+def _interpolate_position(
+    items: list[dict[str, float]],
+    times: list[float],
+    timestamp: float,
+) -> dict[str, float]:
+    index = bisect.bisect_right(times, timestamp) - 1
+    if index < 0:
+        return items[0]
+    if index >= len(items) - 1 or times[index] == timestamp:
+        return items[index]
+    left = items[index]
+    right = items[index + 1]
+    span = times[index + 1] - times[index]
+    if span <= 0:
+        return right
+    ratio = (timestamp - times[index]) / span
+    return {axis: left[axis] + (right[axis] - left[axis]) * ratio for axis in ("x", "y", "z")}
 
 
 def _alignment_summary(
@@ -306,7 +368,11 @@ def _alignment_summary(
     max_threshold_blocks: float,
 ) -> dict[str, Any]:
     overall_max = max(
-        (item["max_distance_blocks"] for item in pair_results if item["max_distance_blocks"] is not None),
+        (
+            item["max_distance_blocks"]
+            for item in pair_results
+            if item["max_distance_blocks"] is not None
+        ),
         default=None,
     )
     total_count = sum(int(item["count"]) for item in pair_results)
@@ -325,7 +391,9 @@ def _alignment_summary(
     }
 
 
-def _yaw_ignore_windows(trajectory: dict[str, Any], *, margin_sec: float = 0.5) -> list[tuple[float, float]]:
+def _yaw_ignore_windows(
+    trajectory: dict[str, Any], *, margin_sec: float = 0.5
+) -> list[tuple[float, float]]:
     windows = []
     for event in trajectory.get("events", []):
         if "mouse_dx" not in event and "mouse_dy" not in event:
@@ -341,7 +409,11 @@ def _in_any_window(value: float, windows: list[tuple[float, float]]) -> bool:
 
 
 def _read_positions(input_path: Path) -> list[dict[str, float]] | None:
-    path = input_path / "positions.jsonl" if input_path.is_dir() else input_path.parent / "positions.jsonl"
+    path = (
+        input_path / "positions.jsonl"
+        if input_path.is_dir()
+        else input_path.parent / "positions.jsonl"
+    )
     if not path.exists():
         return None
     items: list[dict[str, float]] = []
@@ -373,10 +445,7 @@ def interpolate_yaw(left: float, right: float, ratio: float) -> float:
 
 
 def _route_points(trajectory: dict[str, Any]) -> list[tuple[float, float]]:
-    return [
-        (float(point["x"]), float(point["z"]))
-        for point in trajectory.get("route", [])
-    ]
+    return [(float(point["x"]), float(point["z"])) for point in trajectory.get("route", [])]
 
 
 def _forward_spans(trajectory: dict[str, Any]) -> list[tuple[float, float]]:

@@ -42,6 +42,26 @@ def test_position_alignment_fails_when_max_exceeds_threshold(tmp_path: Path) -> 
     assert alignment["max_distance_blocks"] > 2.0
 
 
+def test_position_alignment_interpolates_feedback_samples_by_time(tmp_path: Path) -> None:
+    left = _timed_positions(
+        tmp_path,
+        "left_timed",
+        [(0.0, 0.0), (1.0, 1.0), (2.0, 2.0)],
+    )
+    right = _timed_positions(
+        tmp_path,
+        "right_timed",
+        [(0.5, 0.5), (1.5, 1.5), (2.5, 2.5)],
+    )
+
+    alignment = route.compare_position_alignment([left, right], max_threshold_blocks=0.01)
+
+    assert alignment is not None
+    assert alignment["passed"] is True
+    assert alignment["max_distance_blocks"] == 0.0
+    assert alignment["pairs"][0]["alignment_mode"] == "time_interpolated"
+
+
 def test_route_reference_passes_when_positions_follow_ideal_track() -> None:
     positions = [
         {"idx": 0, "t_rel": -0.1, "x": 0.0, "y": 64.0, "z": 0.0},
@@ -225,9 +245,10 @@ def test_compare_report_binds_artifact_hashes_and_downscales_frames(
     for item, run in zip(result["evidence"], inputs):
         assert item["input"] == str(run)
         assert set(item) == {"input", "video", "manifest", "trajectory", "positions"}
-        assert item["video"]["sha256"] == hashlib.sha256(
-            (run / "capture.mp4").read_bytes()
-        ).hexdigest()
+        assert (
+            item["video"]["sha256"]
+            == hashlib.sha256((run / "capture.mp4").read_bytes()).hexdigest()
+        )
 
 
 def _positions(tmp_path: Path, name: str, values: list[tuple[float, float, float]]) -> Path:
@@ -236,4 +257,17 @@ def _positions(tmp_path: Path, name: str, values: list[tuple[float, float, float
     with (run_dir / "positions.jsonl").open("w", encoding="utf-8") as fh:
         for idx, (x, y, z) in enumerate(values):
             fh.write(json.dumps({"idx": idx, "x": x, "y": y, "z": z}) + "\n")
+    return run_dir
+
+
+def _timed_positions(
+    tmp_path: Path,
+    name: str,
+    values: list[tuple[float, float]],
+) -> Path:
+    run_dir = tmp_path / name
+    run_dir.mkdir()
+    with (run_dir / "positions.jsonl").open("w", encoding="utf-8") as fh:
+        for idx, (t_rel, x) in enumerate(values):
+            fh.write(json.dumps({"idx": idx, "t_rel": t_rel, "x": x, "y": 64.0, "z": 0.0}) + "\n")
     return run_dir
