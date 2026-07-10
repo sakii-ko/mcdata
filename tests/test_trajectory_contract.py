@@ -163,6 +163,22 @@ def test_feedback_roam_ten_minute_plan_is_closed_and_covers_capture() -> None:
         "soft_deviation_blocks"
     ]
 
+    route = [(point["x"], point["z"]) for point in trajectory["route"]]
+    directions = [
+        (second[0] - first[0], second[1] - first[1])
+        for first, second in zip(route, route[1:])
+    ]
+    turn_count = sum(first != second for first, second in zip(directions, directions[1:]))
+    assert len(set(route)) >= 350
+    assert turn_count >= 200
+    assert {min(x for x, _z in route), max(x for x, _z in route)} == {-16, 16}
+    assert {min(z for _x, z in route), max(z for _x, z in route)} == {-16, 16}
+    assert any(-4 <= x <= 4 and -3 <= z <= 9 for x, z in route)
+    assert any(x <= -5 and z <= -4 for x, z in route)
+    assert any(x >= 5 and z <= -4 for x, z in route)
+    assert any(-14 <= x <= -1 and z >= 10 for x, z in route)
+    assert any(0 <= x <= 14 and z >= 10 for x, z in route)
+
 
 def test_waypoint_actions_insert_pause_and_look_events() -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]["light_closeup_tour"]

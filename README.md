@@ -44,17 +44,37 @@ mcdata run-matrix \
   --duration 60
 ```
 
+For the 1080p closed-loop roaming cohort requested for final collection:
+
+```bash
+export DISPLAY=:0
+export MCDATA_CAPTURE_SIZE=1920x1080
+export MCDATA_CAPTURE_FPS=24
+mcdata run-matrix \
+  --profiles feedback_vanilla_1080p,feedback_modernarch_1080p,feedback_modernarch_solas_1080p \
+  --strategy feedback_roam_10min \
+  --duration 600
+```
+
+`feedback_roam_10min` first plans a deterministic, obstacle-cleared A* route, then follows it
+with normal W/mouse input using live server `Pos`/`Rotation` feedback. It never teleports. Stale
+feedback, unsafe height, excessive route deviation, missing yaw response, lack of route progress,
+or a stuck input worker fails the run. The run writes `navigation_log.jsonl`; QA requires ordered
+waypoint progress and continuous movement rather than accepting local back-and-forth motion.
+Because small corrective inputs can differ by render load, this cohort is labelled
+`policy_aligned_rendering_matrix`, not exact open-loop action alignment.
+
 All 19 matrix profiles share `world_profile: render_matrix_base`, seed, scene, player reset, and
 replayed action JSON. The 18 daytime profiles additionally share the exact complete world-state,
 so only their render stack changes. `matrix_night_complementary` deliberately changes time to
 midnight, so it is a separate controlled world-state variant rather than part of the strict
-rendering-only cohort. The baseline uses vanilla resources, the textured pass uses
+rendering-only cohort. The legacy baseline uses vanilla resources, the textured pass uses
 Faithful 32x with BSL, and the high pass uses Faithful/Fresh Animations with Complementary
 Reimagined. The default `ground_astar_loop` strategy plans a deterministic A* route over the
-ground around water, glass, foliage, lava, torches, redstone lights, sea lanterns, glowstone, and
-a beacon so shader water/reflection/emission differences are visible in a real walking capture.
-It uses one-cell obstacle clearance and currently contains 117 grid cells / 60 events over
-38.937 seconds. Matrix world setup also disables random block ticks, removes stale dropped items,
+showcase plaza around twin reflecting basins, varied masonry/wood/copper districts, galleries,
+stained glass, foliage, and emissive lights. It uses one-cell obstacle clearance and currently
+contains 117 grid cells / 42 events over 35.632 seconds. Matrix world setup also disables random
+block ticks, removes stale dropped items,
 clears persisted player inventory, and grants recipes before the 15-second warmup so scene/HUD
 state remains stable and recipe notifications are gone before capture.
 
@@ -67,6 +87,12 @@ Additional render profiles are available for broader material/shader coverage:
 `matrix_euphoria_complementary`, and `matrix_solas_patrix`.
 The night profile keeps the same ground route and uses brighter client-side options so the frame is
 not black while still exercising night/moon/emissive lighting.
+
+The premium feedback cohort uses vanilla, ModernArch 128x, and ModernArch 128x + Solas 3.7 with
+the same nine Fabric mods and frozen world state. Solas options are pinned in its Iris sidecar for
+LabPBR/POM, 4096-pixel shadows, reflections, refraction, caustics, and high-quality water normals.
+`preview_patrix_full_solas_1080p` is an additional candidate with all four public Patrix 32x
+components in their required order.
 
 For a persistent remote 4090 run:
 

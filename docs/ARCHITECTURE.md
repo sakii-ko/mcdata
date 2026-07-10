@@ -122,7 +122,8 @@ world-state variant，不能与严格 rendering-only cohort 混称；dataset ind
 视为 episode。它逐文件核对 manifest、视频、trajectory、positions、单路 QA、严格 cohort
 compare、资源包 runtime gate 与人工视觉 review；任何 profile 缺失/重复或 provenance 漂移
 都会 fail closed。完整 world-state 的规范 JSON SHA-256 决定 cohort，primary profile 所在组
-标为 `strict_rendering_matrix`，其余组标为 `world_state_variant`。
+open-loop primary 组标为 `strict_rendering_matrix`，闭环反馈 primary 组标为
+`policy_aligned_rendering_matrix`，其余组标为 `world_state_variant`。
 
 产物 `dataset_index.json` 遵循 `src/mcdata/schemas/dataset_index.schema.json`；所有路径均为
 相对 dataset 根目录的 POSIX 路径，`dataset_id` 由不含自身 ID 的规范化索引内容计算，输出

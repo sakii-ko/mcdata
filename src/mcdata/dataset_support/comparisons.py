@@ -26,6 +26,13 @@ def cohorts(
         manifest["profile"]["name"]: manifest["world"]["state"] for manifest in manifests
     }
     primary_state_hash = value_sha256(state_by_profile[primary_profile])
+    execution_by_profile = {
+        manifest["profile"]["name"]: manifest.get("trajectory", {}).get(
+            "execution_mode", "open_loop_event_replay"
+        )
+        for manifest in manifests
+    }
+    primary_execution = execution_by_profile[primary_profile]
     grouped: dict[str, list[dict[str, Any]]] = {}
     for episode in episodes:
         state_hash = value_sha256(state_by_profile[episode["profile_name"]])
@@ -39,7 +46,11 @@ def cohorts(
             {
                 "cohort_id": cohort_id,
                 "role": (
-                    "strict_rendering_matrix"
+                    (
+                        "policy_aligned_rendering_matrix"
+                        if primary_execution == "online_position_yaw_feedback"
+                        else "strict_rendering_matrix"
+                    )
                     if state_hash == primary_state_hash
                     else "world_state_variant"
                 ),
@@ -94,9 +105,12 @@ def _validate_comparison_evidence(
                 f"Comparison has unknown/duplicate evidence: {report_path}"
             )
         episode = known_run_dirs[name]
+        artifact_keys = ["manifest", "video", "trajectory", "positions"]
+        if "navigation" in episode:
+            artifact_keys.append("navigation")
         validate_report_evidence(
             {key: value for key, value in item.items() if key != "input"},
-            {key: episode[key] for key in ("manifest", "video", "trajectory", "positions")},
+            {key: episode[key] for key in artifact_keys},
             f"Comparison report for {name}",
         )
         seen_evidence.add(name)

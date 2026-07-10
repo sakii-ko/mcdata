@@ -48,12 +48,14 @@ class InputController:
     def key_down(self, key: str) -> None:
         if key in self._held:
             return
-        self._send({"key": key, "action": "down"})
-        self._held.add(key)
+        if self._send({"key": key, "action": "down"}):
+            self._held.add(key)
 
     def key_up(self, key: str) -> None:
-        self._send({"key": key, "action": "up"})
-        self._held.discard(key)
+        if key not in self._held:
+            return
+        if self._send({"key": key, "action": "up"}, allow_after_stop=True):
+            self._held.discard(key)
 
     def tap(self, key: str) -> None:
         self._send({"key": key, "action": "tap"})
@@ -80,11 +82,11 @@ class InputController:
     def __exit__(self, *_args: object) -> None:
         self.close()
 
-    def _send(self, event: dict) -> None:
+    def _send(self, event: dict, *, allow_after_stop: bool = False) -> bool:
         if self._closed:
             raise RuntimeError("input controller is closed")
-        if _stop_requested(self._stop_event):
-            return
+        if _stop_requested(self._stop_event) and not allow_after_stop:
+            return False
         if self._backend == "xdotool":
             _send_event_xdotool(
                 event,
@@ -93,6 +95,7 @@ class InputController:
             )
         else:
             _send_event_xtest(event, stop_event=self._stop_event)
+        return True
 
 
 def replay_trajectory(
@@ -160,7 +163,9 @@ def replay_trajectory(
             replay_log.close()
 
 
-def prepare_capture_view(*, window_name: str = "Minecraft", hide_hud: bool = True, settle_sec: float = 1.0) -> None:
+def prepare_capture_view(
+    *, window_name: str = "Minecraft", hide_hud: bool = True, settle_sec: float = 1.0
+) -> None:
     backend = _backend()
     xdotool_warnings: set[tuple[str, ...]] = set()
     if backend == "xdotool":
@@ -263,7 +268,9 @@ def _run_xdotool(args: list[str], *, warned: set[tuple[str, ...]] | None = None)
         warned.add(key)
     detail = (result.stderr or result.stdout).strip()
     suffix = f": {detail}" if detail else ""
-    console.print(f"Warning: xdotool command failed ({' '.join(cmd)}), rc={result.returncode}{suffix}")
+    console.print(
+        f"Warning: xdotool command failed ({' '.join(cmd)}), rc={result.returncode}{suffix}"
+    )
 
 
 def _xtest_focus_window(window_name: str) -> None:
@@ -314,7 +321,7 @@ def _send_event_xtest(event: dict, *, stop_event: StopEvent | None = None) -> No
                 xtest.fake_input(display, X.KeyPress, keycode)
                 xtest.fake_input(display, X.KeyRelease, keycode)
         else:
-                console.print(f"Warning: could not resolve keycode for {event['key']!r}")
+            console.print(f"Warning: could not resolve keycode for {event['key']!r}")
     if "mouse_dx" in event or "mouse_dy" in event:
         for dx, dy, delay in _mouse_steps(event):
             if _stop_requested(stop_event):

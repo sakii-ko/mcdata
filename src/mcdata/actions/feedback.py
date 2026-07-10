@@ -12,6 +12,7 @@ from mcdata.actions.pathing import (
     inside_bounds,
     manhattan_distance,
     point,
+    reduce_cardinal_turns,
     walk_blocked,
     walk_bounds,
 )
@@ -106,7 +107,11 @@ def _sample_closed_route(
         goals.append(goal)
         route.extend(segment[1:])
         cursor = goal
-        return_segment = astar(cursor, start, bounds=bounds, blocked=blocked)
+        return_segment = reduce_cardinal_turns(
+            astar(cursor, start, bounds=bounds, blocked=blocked),
+            bounds=bounds,
+            blocked=blocked,
+        )
         closed_distance = len(route) - 1 + len(return_segment) - 1
         if len(goals) >= min_goals and closed_distance * seconds_per_block >= target_duration_sec:
             route.extend(return_segment[1:])
@@ -137,7 +142,8 @@ def _sample_goal_segment(
         if manhattan_distance(cursor, candidate) < min_goal_dist:
             continue
         try:
-            return candidate, astar(cursor, candidate, bounds=bounds, blocked=blocked)
+            route = astar(cursor, candidate, bounds=bounds, blocked=blocked)
+            return candidate, reduce_cardinal_turns(route, bounds=bounds, blocked=blocked)
         except RuntimeError:
             continue
     raise RuntimeError(
@@ -174,7 +180,6 @@ def _navigation_parameters(spec: dict[str, Any], seconds_per_block: float) -> di
         "control_interval_sec": float(spec.get("control_interval_sec", 0.1)),
         "waypoint_tolerance_blocks": float(spec.get("waypoint_tolerance_blocks", 0.35)),
         "waypoint_center_offset": float(spec.get("waypoint_center_offset", 0.5)),
-        "lookahead_blocks": int(spec.get("lookahead_blocks", 2)),
         "yaw_tolerance_deg": float(spec.get("yaw_tolerance_deg", 2.0)),
         "move_yaw_limit_deg": float(spec.get("move_yaw_limit_deg", 12.0)),
         "soft_deviation_blocks": float(spec.get("soft_deviation_blocks", 0.75)),
@@ -185,7 +190,13 @@ def _navigation_parameters(spec: dict[str, Any], seconds_per_block: float) -> di
         "max_recovery_attempts": int(spec.get("max_recovery_attempts", 3)),
         "recovery_hold_sec": float(spec.get("recovery_hold_sec", 0.2)),
         "turn_px_per_degree": float(spec.get("turn_px_per_degree", 6.6667)),
-        "max_turn_px": int(spec.get("max_turn_px", 180)),
+        "turn_gain": float(spec.get("turn_gain", 0.35)),
+        "turn_confirmation_samples": int(spec.get("turn_confirmation_samples", 1)),
+        "turn_response_timeout_sec": float(spec.get("turn_response_timeout_sec", 1.0)),
+        "turn_min_improvement_deg": float(spec.get("turn_min_improvement_deg", 2.0)),
+        "max_turn_px": int(spec.get("max_turn_px", 100)),
+        "progress_timeout_sec": float(spec.get("progress_timeout_sec", 3.0)),
+        "progress_min_distance_blocks": float(spec.get("progress_min_distance_blocks", 0.25)),
         "y_min": float(spec.get("y_min", 63.0)),
         "y_max": float(spec.get("y_max", 66.0)),
         "seconds_per_block": seconds_per_block,
@@ -198,7 +209,6 @@ def _validate_navigation(navigation: dict[str, Any]) -> None:
     positive = (
         "control_interval_sec",
         "waypoint_tolerance_blocks",
-        "lookahead_blocks",
         "yaw_tolerance_deg",
         "move_yaw_limit_deg",
         "soft_deviation_blocks",
@@ -207,7 +217,12 @@ def _validate_navigation(navigation: dict[str, Any]) -> None:
         "stuck_window_sec",
         "recovery_hold_sec",
         "turn_px_per_degree",
+        "turn_gain",
+        "turn_response_timeout_sec",
+        "turn_min_improvement_deg",
         "max_turn_px",
+        "progress_timeout_sec",
+        "progress_min_distance_blocks",
         "seconds_per_block",
     )
     for key in positive:
@@ -223,6 +238,10 @@ def _validate_navigation(navigation: dict[str, Any]) -> None:
         raise RuntimeError("feedback_roam hard_deviation_blocks must exceed soft_deviation_blocks")
     if navigation["move_yaw_limit_deg"] < navigation["yaw_tolerance_deg"]:
         raise RuntimeError("feedback_roam move_yaw_limit_deg must cover yaw_tolerance_deg")
+    if navigation["turn_gain"] > 1:
+        raise RuntimeError("feedback_roam turn_gain must not exceed 1")
+    if navigation["turn_confirmation_samples"] < 0:
+        raise RuntimeError("feedback_roam turn_confirmation_samples must not be negative")
     if navigation["position_stale_sec"] < navigation["control_interval_sec"]:
         raise RuntimeError("feedback_roam position_stale_sec must cover a control interval")
     if navigation["stuck_window_sec"] < navigation["control_interval_sec"]:

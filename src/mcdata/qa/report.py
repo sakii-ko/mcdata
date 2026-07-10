@@ -76,7 +76,9 @@ def write_run_report(
             warnings.append(f"black border detected near t={timestamp:.3f}s")
         if brightness["p50"] < 12:
             warnings.append(f"low median brightness near t={timestamp:.3f}s")
-        frame_metrics.append({"timestamp_sec": timestamp, "brightness": brightness, "border": border})
+        frame_metrics.append(
+            {"timestamp_sec": timestamp, "brightness": brightness, "border": border}
+        )
 
     expected = {"fps": 24.0, "width": probe.get("width"), "height": probe.get("height")}
     if abs(float(probe.get("fps") or 0) - 24.0) > 0.01:
@@ -226,6 +228,11 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 f"- route_recovery_count: `{route_reference.get('recovery_count')}`",
                 "- route_navigation_duration_ratio: "
                 f"`{_format_optional_float(route_reference.get('navigation_duration_ratio'))}`",
+                "- route_position_duration_ratio: "
+                f"`{_format_optional_float(route_reference.get('position_duration_ratio'))}`",
+                "- route_ordered_progress_blocks: "
+                f"`{_format_optional_float(route_reference.get('ordered_route_progress_blocks'))}`",
+                f"- route_terminal_stop: `{route_reference.get('terminal_stop')}`",
                 "",
             ]
         )

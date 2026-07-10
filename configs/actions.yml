@@ -1,3 +1,22 @@
+showcase_blocked_rects: &showcase_blocked_rects
+  - [-14, -3, -5, 9]
+  - [5, -3, 14, 9]
+  - [-22, -18, -22, 16]
+  - [22, -18, 22, 16]
+  - [-20, 22, 20, 22]
+  - [-20, -22, -12, -22]
+  - [12, -22, 20, -22]
+  - [-19, -16, -17, -14]
+  - [17, -16, 19, -14]
+  - [-19, 13, -17, 15]
+  - [17, 13, 19, 15]
+
+showcase_blocked: &showcase_blocked
+  - [-7, -16]
+  - [7, -16]
+  - [-7, -10]
+  - [7, -10]
+
 strategies:
   idle_pan:
     type: "look_scan"
@@ -82,7 +101,6 @@ strategies:
     control_interval_sec: 0.1
     waypoint_tolerance_blocks: 0.35
     waypoint_center_offset: 0.5
-    lookahead_blocks: 2
     yaw_tolerance_deg: 2.0
     move_yaw_limit_deg: 12.0
     soft_deviation_blocks: 0.75
@@ -93,7 +111,13 @@ strategies:
     max_recovery_attempts: 3
     recovery_hold_sec: 0.2
     turn_px_per_degree: 6.6667
-    max_turn_px: 180
+    turn_gain: 0.35
+    turn_confirmation_samples: 1
+    turn_response_timeout_sec: 1.0
+    turn_min_improvement_deg: 2.0
+    max_turn_px: 100
+    progress_timeout_sec: 3.0
+    progress_min_distance_blocks: 0.25
     y_min: 63.0
     y_max: 66.0
 
@@ -102,49 +126,15 @@ strategies:
     start: [0, -14]
     goals:
       - [12, -12]
-      - [12, 10]
+      - [12, 12]
       - [3, 12]
-      - [-12, 10]
+      - [-12, 12]
       - [-12, -12]
       - [0, -14]
     bounds: [-16, 16, -14, 14]
     obstacle_clearance: 1
-    blocked_rects:
-      - [-14, -2, -5, 7]
-      - [5, -2, 14, 7]
-    blocked:
-      - [-10, -10]
-      - [-7, -10]
-      - [-4, -10]
-      - [-1, -10]
-      - [1, -11]
-      - [2, -11]
-      - [3, -11]
-      - [1, -10]
-      - [2, -10]
-      - [3, -10]
-      - [1, -9]
-      - [2, -9]
-      - [3, -9]
-      - [5, -10]
-      - [8, -10]
-      - [11, -10]
-      - [-2, 9]
-      - [-1, 9]
-      - [0, 9]
-      - [1, 9]
-      - [2, 9]
-      - [-4, 14]
-      - [-3, 14]
-      - [-2, 14]
-      - [-1, 14]
-      - [0, 14]
-      - [1, 14]
-      - [2, 14]
-      - [3, 14]
-      - [4, 14]
-      - [-14, 12]
-      - [14, 12]
+    blocked_rects: *showcase_blocked_rects
+    blocked: *showcase_blocked
     turn_px_per_degree: 6.6667
     seconds_per_block: 0.231630565
     walk_startup_comp_sec: 0.000889052
@@ -163,42 +153,8 @@ strategies:
       - [-4, -3]
       - [0, -14]
     bounds: [-16, 16, -14, 14]
-    blocked_rects:
-      - [-14, -2, -5, 7]
-      - [5, -2, 14, 7]
-    blocked:
-      - [-10, -10]
-      - [-7, -10]
-      - [-4, -10]
-      - [-1, -10]
-      - [1, -11]
-      - [2, -11]
-      - [3, -11]
-      - [1, -10]
-      - [2, -10]
-      - [3, -10]
-      - [1, -9]
-      - [2, -9]
-      - [3, -9]
-      - [5, -10]
-      - [8, -10]
-      - [11, -10]
-      - [-2, 9]
-      - [-1, 9]
-      - [0, 9]
-      - [1, 9]
-      - [2, 9]
-      - [-4, 14]
-      - [-3, 14]
-      - [-2, 14]
-      - [-1, 14]
-      - [0, 14]
-      - [1, 14]
-      - [2, 14]
-      - [3, 14]
-      - [4, 14]
-      - [-14, 12]
-      - [14, 12]
+    blocked_rects: *showcase_blocked_rects
+    blocked: *showcase_blocked
     waypoint_actions:
       - at: [-4, -3]
         pause_sec: 2.0
@@ -224,42 +180,8 @@ strategies:
       - [4, -3]
       - [0, -14]
     bounds: [-16, 16, -14, 14]
-    blocked_rects:
-      - [-14, -2, -5, 7]
-      - [5, -2, 14, 7]
-    blocked:
-      - [-10, -10]
-      - [-7, -10]
-      - [-4, -10]
-      - [-1, -10]
-      - [1, -11]
-      - [2, -11]
-      - [3, -11]
-      - [1, -10]
-      - [2, -10]
-      - [3, -10]
-      - [1, -9]
-      - [2, -9]
-      - [3, -9]
-      - [5, -10]
-      - [8, -10]
-      - [11, -10]
-      - [-2, 9]
-      - [-1, 9]
-      - [0, 9]
-      - [1, 9]
-      - [2, 9]
-      - [-4, 14]
-      - [-3, 14]
-      - [-2, 14]
-      - [-1, 14]
-      - [0, 14]
-      - [1, 14]
-      - [2, 14]
-      - [3, 14]
-      - [4, 14]
-      - [-14, 12]
-      - [14, 12]
+    blocked_rects: *showcase_blocked_rects
+    blocked: *showcase_blocked
     waypoint_actions:
       - at: [4, -3]
         pause_sec: 2.0
@@ -288,42 +210,8 @@ strategies:
       - [11, -8]
       - [0, -14]
     bounds: [-14, 14, -14, 14]
-    blocked_rects:
-      - [-14, -2, -5, 7]
-      - [5, -2, 14, 7]
-    blocked:
-      - [-10, -10]
-      - [-7, -10]
-      - [-4, -10]
-      - [-1, -10]
-      - [1, -11]
-      - [2, -11]
-      - [3, -11]
-      - [1, -10]
-      - [2, -10]
-      - [3, -10]
-      - [1, -9]
-      - [2, -9]
-      - [3, -9]
-      - [5, -10]
-      - [8, -10]
-      - [11, -10]
-      - [-2, 9]
-      - [-1, 9]
-      - [0, 9]
-      - [1, 9]
-      - [2, 9]
-      - [-4, 14]
-      - [-3, 14]
-      - [-2, 14]
-      - [-1, 14]
-      - [0, 14]
-      - [1, 14]
-      - [2, 14]
-      - [3, 14]
-      - [4, 14]
-      - [-14, 12]
-      - [14, 12]
+    blocked_rects: *showcase_blocked_rects
+    blocked: *showcase_blocked
     waypoint_actions:
       - at: [-10, -8]
         pause_sec: 2.0

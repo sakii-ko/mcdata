@@ -168,3 +168,28 @@ def test_input_controller_key_up_is_sent_before_close(monkeypatch) -> None:
         {"key": "w", "action": "up"},
     ]
     assert released == []
+
+
+def test_input_controller_releases_held_key_after_stop(monkeypatch) -> None:
+    sent: list[dict] = []
+    stop = threading.Event()
+    monkeypatch.setattr(replay, "_backend", lambda: "xdotool")
+    monkeypatch.setattr(replay, "_focus_window", lambda _name, *, warned=None: None)
+    monkeypatch.setattr(replay, "_release_inherited_keys", lambda *_args, **_kwargs: [])
+    monkeypatch.setattr(
+        replay,
+        "_send_event_xdotool",
+        lambda event, **_kwargs: sent.append(dict(event)),
+    )
+
+    controller = replay.InputController(stop_event=stop)
+    controller.key_down("s")
+    stop.set()
+    controller.key_up("s")
+    controller.key_down("w")
+    controller.close()
+
+    assert sent == [
+        {"key": "s", "action": "down"},
+        {"key": "s", "action": "up"},
+    ]

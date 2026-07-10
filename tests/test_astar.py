@@ -1,6 +1,6 @@
 import pytest
 
-from mcdata.actions.pathing import astar, points_in_rect
+from mcdata.actions.pathing import astar, points_in_rect, reduce_cardinal_turns
 from mcdata.actions.strategies import build_trajectory
 
 
@@ -10,6 +10,35 @@ def test_points_in_rect_includes_boundaries() -> None:
     assert (-1, -2) in points
     assert (1, 0) in points
     assert len(points) == 9
+
+
+def test_reduce_cardinal_turns_replaces_open_zigzag_with_one_corner() -> None:
+    route = [(0, 0), (1, 0), (1, 1), (2, 1), (2, 2), (3, 2), (3, 3)]
+
+    reduced = reduce_cardinal_turns(route, bounds=(0, 3, 0, 3), blocked=set())
+
+    assert reduced == [
+        (0, 0),
+        (1, 0),
+        (2, 0),
+        (3, 0),
+        (3, 1),
+        (3, 2),
+        (3, 3),
+    ]
+
+
+def test_reduce_cardinal_turns_preserves_blocked_clearance() -> None:
+    route = [(0, 0), (0, 1), (0, 2), (1, 2), (2, 2)]
+
+    reduced = reduce_cardinal_turns(
+        route,
+        bounds=(0, 2, 0, 2),
+        blocked={(1, 0), (1, 1)},
+    )
+
+    assert reduced == route
+    assert not (set(reduced) & {(1, 0), (1, 1)})
 
 
 def test_astar_routes_around_blocked_points() -> None:

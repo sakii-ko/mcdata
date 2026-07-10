@@ -1,41 +1,19 @@
 from pathlib import Path
 import ast
+import hashlib
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS, build_trajectory
 from mcdata.config import load_profile, load_yaml
 from mcdata.render.options import write_iris_config
 from mcdata.render.scene import _scene_commands
-from mcdata.scene_model import load_scene, scene_commands, scene_mapping
+from mcdata.scene_model import load_scene, scene_commands, scene_mapping, walk_obstacles
 
 ROOT = Path(__file__).resolve().parents[1]
 
-EXPECTED_SCENE_COMMANDS = [
-    "forceload add -32 -32 32 32",
-    "fill -18 64 -18 18 86 18 minecraft:air",
-    "fill -18 87 -18 18 92 18 minecraft:air",
-    "fill -24 60 -24 24 62 24 minecraft:dirt",
-    "fill -24 63 -24 24 63 24 minecraft:grass_block",
-    "fill -15 63 -15 15 63 15 minecraft:smooth_stone",
-    "fill -14 63 -2 -5 63 7 minecraft:water",
-    "fill -14 62 -2 -5 62 7 minecraft:blue_concrete",
-    "fill 5 64 -2 14 64 7 minecraft:glass",
-    "fill 5 63 -2 14 63 7 minecraft:white_concrete",
-    "fill -2 64 9 2 67 9 minecraft:oak_leaves",
-    "fill -4 64 14 4 68 14 minecraft:white_concrete",
-    "setblock -10 64 -10 minecraft:torch",
-    "setblock -7 64 -10 minecraft:lantern",
-    "setblock -4 64 -10 minecraft:redstone_torch",
-    "setblock -1 64 -10 minecraft:redstone_lamp[lit=true]",
-    "fill 1 64 -11 3 64 -9 minecraft:glass",
-    "setblock 2 64 -10 minecraft:lava",
-    "setblock 5 64 -10 minecraft:sea_lantern",
-    "setblock 8 64 -10 minecraft:glowstone",
-    "setblock 11 64 -10 minecraft:beacon",
-    "setblock -14 64 12 minecraft:oak_log",
-    "setblock -14 65 12 minecraft:oak_leaves",
-    "setblock 14 64 12 minecraft:polished_deepslate",
-    "setblock 14 65 12 minecraft:glass",
-]
+EXPECTED_SCENE_COMMAND_COUNT = 127
+EXPECTED_SCENE_COMMANDS_SHA256 = (
+    "12a2f3d5a75a80548fea9d037b3cb22551e7371ec90019f7bbb44a76c1269c8a"
+)
 
 
 def test_profile_asset_sets_exist() -> None:
@@ -291,41 +269,72 @@ def test_action_strategy_types_are_registered() -> None:
         assert spec.get("type") in STRATEGY_BUILDERS, name
 
 
-def test_scene_lava_source_is_glass_contained_before_setblock() -> None:
+def test_scene_has_no_uncontrolled_fire_or_lava() -> None:
     commands = _configured_scene_commands()
 
-    glass = "fill 1 64 -11 3 64 -9 minecraft:glass"
-    lava = "setblock 2 64 -10 minecraft:lava"
-
-    assert glass in commands
-    assert lava in commands
-    assert commands.index(glass) < commands.index(lava)
+    assert not any("minecraft:lava" in command for command in commands)
+    assert not any("minecraft:fire" in command for command in commands)
 
 
 def test_scene_air_clear_is_split_under_fill_limit() -> None:
     commands = _configured_scene_commands()
 
-    assert "fill -18 64 -18 18 92 18 minecraft:air" not in commands
-    assert "fill -18 64 -18 18 86 18 minecraft:air" in commands
-    assert "fill -18 87 -18 18 92 18 minecraft:air" in commands
-    assert commands.index("fill -18 64 -18 18 86 18 minecraft:air") < commands.index(
-        "fill -18 87 -18 18 92 18 minecraft:air"
-    )
+    air_commands = [command for command in commands if command.endswith(" minecraft:air")]
+
+    assert air_commands == [
+        "fill -30 64 -30 30 71 30 minecraft:air",
+        "fill -30 72 -30 30 79 30 minecraft:air",
+        "fill -30 80 -30 30 87 30 minecraft:air",
+        "fill -30 88 -30 30 94 30 minecraft:air",
+    ]
 
 
-def test_scene_pool_is_below_walk_surface() -> None:
+def test_scene_reflecting_basins_are_contained_beside_a_full_block_bridge() -> None:
     commands = _configured_scene_commands()
 
-    assert "fill -14 64 -2 -5 64 7 minecraft:water" not in commands
-    assert "fill -14 63 -2 -5 63 7 minecraft:water" in commands
-    assert "fill -14 62 -2 -5 62 7 minecraft:blue_concrete" in commands
+    assert "fill -13 62 -2 -6 62 8 minecraft:dark_prismarine" in commands
+    assert "fill 6 62 -2 13 62 8 minecraft:dark_prismarine" in commands
+    assert "fill -13 63 -2 -6 63 8 minecraft:water" in commands
+    assert "fill 6 63 -2 13 63 8 minecraft:water" in commands
+    assert "fill -4 63 -3 4 63 9 minecraft:dark_oak_planks" in commands
+    assert "fill -14 64 -3 -14 65 9 minecraft:polished_blackstone_bricks" in commands
+    assert "fill 14 64 -3 14 65 9 minecraft:polished_blackstone_bricks" in commands
+
+
+def test_showcase_scene_has_a_continuous_varied_walk_surface() -> None:
+    spec = load_scene(ROOT / "configs")
+    blocks = {entry.block for entry in spec.entries}
+    plaza = next(entry for entry in spec.entries if entry.region == "plaza_base")
+
+    assert plaza.start == (-22, -1, -22)
+    assert plaza.end == (22, -1, 22)
+    assert {
+        "minecraft:polished_andesite",
+        "minecraft:mud_bricks",
+        "minecraft:cut_sandstone",
+        "minecraft:waxed_oxidized_cut_copper",
+        "minecraft:mossy_stone_bricks",
+        "minecraft:deepslate_tiles",
+        "minecraft:stone_bricks",
+        "minecraft:polished_blackstone_bricks",
+        "minecraft:dark_oak_planks",
+    } <= blocks
+
+
+def test_showcase_scene_obstacle_footprint_is_exact() -> None:
+    spec = load_scene(ROOT / "configs")
+
+    assert len(walk_obstacles(spec)) == 429
 
 
 def test_scene_yml_commands_match_current_server_commands() -> None:
     spec = load_scene(ROOT / "configs")
+    commands = scene_commands(spec)
+    encoded = ("\n".join(commands) + "\n").encode("utf-8")
 
-    assert scene_commands(spec) == EXPECTED_SCENE_COMMANDS
-    assert _scene_commands(scene_mapping(spec)) == EXPECTED_SCENE_COMMANDS
+    assert len(commands) == EXPECTED_SCENE_COMMAND_COUNT
+    assert hashlib.sha256(encoded).hexdigest() == EXPECTED_SCENE_COMMANDS_SHA256
+    assert _scene_commands(scene_mapping(spec)) == commands
 
 
 def _configured_scene_commands() -> list[str]:

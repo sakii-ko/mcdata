@@ -116,3 +116,55 @@ def astar(
         cursor = came_from[cursor]
         path.append(cursor)
     return list(reversed(path))
+
+
+def reduce_cardinal_turns(
+    route: list[Point],
+    *,
+    bounds: Bounds,
+    blocked: set[Point],
+) -> list[Point]:
+    """Deterministically string-pull a grid route through safe orthogonal chords."""
+    if len(route) < 2:
+        return list(route)
+    result = [route[0]]
+    cursor_index = 0
+    while cursor_index < len(route) - 1:
+        selection: tuple[int, list[Point]] | None = None
+        for candidate_index in range(len(route) - 1, cursor_index, -1):
+            for axis_order in ("x_then_z", "z_then_x"):
+                candidate = _orthogonal_path(
+                    route[cursor_index],
+                    route[candidate_index],
+                    axis_order=axis_order,
+                )
+                if all(
+                    inside_bounds(point, bounds) and point not in blocked for point in candidate
+                ):
+                    selection = candidate_index, candidate
+                    break
+            if selection is not None:
+                break
+        if selection is None:
+            raise RuntimeError("Could not reduce a valid cardinal route")
+        cursor_index, chord = selection
+        result.extend(chord[1:])
+    return result
+
+
+def _orthogonal_path(start: Point, goal: Point, *, axis_order: str) -> list[Point]:
+    route = [start]
+    x, z = start
+    axes = ("x", "z") if axis_order == "x_then_z" else ("z", "x")
+    for axis in axes:
+        target = goal[0] if axis == "x" else goal[1]
+        current = x if axis == "x" else z
+        step = 1 if target > current else -1
+        while current != target:
+            current += step
+            if axis == "x":
+                x = current
+            else:
+                z = current
+            route.append((x, z))
+    return route

@@ -214,7 +214,9 @@ def _bootstrap_profile_unlocked(
     )
     game_version = game_version or resolve_game_version(profile)
     work_dir = ensure_dir(paths.instance_dir(profile_name))
-    server_root = ensure_dir((paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve())
+    server_root = ensure_dir(
+        (paths.root / str(profile.get("server_dir", ".mcdata/servers"))).resolve()
+    )
     ensure_dir(paths.main_dir)
 
     console.print(f"Profile: {profile_name}")
@@ -223,7 +225,9 @@ def _bootstrap_profile_unlocked(
 
     mods: list[str] = []
     if profile.get("loader") == "fabric":
-        mods = install_mods(work_dir, game_version=game_version, slugs=list(profile.get("mods", [])))
+        mods = install_mods(
+            work_dir, game_version=game_version, slugs=list(profile.get("mods", []))
+        )
 
     asset_config = load_asset_config(paths.configs)
     source_resourcepacks, shaderpack = install_asset_set(
@@ -263,7 +267,9 @@ def _bootstrap_profile_unlocked(
             "resourcepacks": resourcepacks,
             "resourcepack_resolution": resourcepack_resolution,
             "shaderpack": shaderpack,
-            "server_dir": str(server_root / server_profile_name(profile, profile_name=profile_name, lane=lane)),
+            "server_dir": str(
+                server_root / server_profile_name(profile, profile_name=profile_name, lane=lane)
+            ),
             "server_port": profile.get("server_port", 25565),
             "lane": lane,
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -869,12 +875,31 @@ def _teardown_phase(plan: RunPlan, state: RunState, runlog: RunLogger) -> None:
     state.ready_event.set()
     if state.position_probe_stop:
         state.position_probe_stop.set()
-    if state.replay_thread:
-        state.replay_thread.join(timeout=5)
-        runlog.log("replay", "thread_joined", alive=state.replay_thread.is_alive())
+    worker_failure = _join_replay_worker(state, runlog)
+    if state.worker_error is not None:
+        worker_failure = (
+            f"action/navigation worker failed: "
+            f"{type(state.worker_error).__name__}: {state.worker_error}"
+        )
     _terminate_running_processes(state, runlog)
     _write_position_log(plan, state, runlog)
+    raise_worker_failure = bool(worker_failure and state.error is None)
+    if worker_failure and state.error is None:
+        state.error = worker_failure
     _write_run_manifest_for_plan(plan, state, runlog)
+    if raise_worker_failure:
+        raise RuntimeError(worker_failure)
+
+
+def _join_replay_worker(state: RunState, runlog: RunLogger) -> str | None:
+    if state.replay_thread is None:
+        return None
+    state.replay_thread.join(timeout=5)
+    alive = state.replay_thread.is_alive()
+    runlog.log("replay", "thread_joined", alive=alive)
+    if alive:
+        return "action/navigation worker remained alive after 5s teardown timeout"
+    return None
 
 
 def _terminate_running_processes(state: RunState, runlog: RunLogger) -> None:
@@ -1014,6 +1039,7 @@ def _start_navigation_thread(plan: RunPlan, state: RunState) -> threading.Thread
                 start_event=state.ready_event,
                 stop_event=state.replay_stop,
                 run_dir=plan.run_dir,
+                position_query_sent_at=state.position_probe_sent_at,
             )
         except BaseException as exc:
             state.worker_error = exc
@@ -1057,7 +1083,15 @@ def _start_capture(
     ]
     if duration:
         ffmpeg_cmd += ["-t", str(duration)]
-    ffmpeg_cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", str(capture_file)]
+    ffmpeg_cmd += [
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-preset",
+        "veryfast",
+        str(capture_file),
+    ]
     console.print("Starting capture:")
     console.print(" ".join(shlex.quote(part) for part in ffmpeg_cmd))
     log = (run_dir / "capture.log").open("w", encoding="utf-8")
@@ -1081,9 +1115,7 @@ def _capture_input(display: str, *, width: int, height: int, desktop: bool) -> s
         return display
     x, y, window_width, window_height = geometry
     if x < 0 or y < 0:
-        console.print(
-            f"Window is at {x},{y}; falling back to display capture {display}."
-        )
+        console.print(f"Window is at {x},{y}; falling back to display capture {display}.")
         return display
     if window_width < width or window_height < height:
         console.print(
@@ -1261,7 +1293,9 @@ def _wait_for_capture(
         stop_event.set()
     failure = worker_error() if worker_error else None
     if failure is not None:
-        raise RuntimeError(f"capture worker failed: {type(failure).__name__}: {failure}") from failure
+        raise RuntimeError(
+            f"capture worker failed: {type(failure).__name__}: {failure}"
+        ) from failure
     if capture_proc.returncode:
         raise subprocess.CalledProcessError(capture_proc.returncode, capture_proc.args)
     if game_proc.poll() is None:
@@ -1271,7 +1305,9 @@ def _wait_for_capture(
         _write_exitcode(exitcode_file, game_proc.returncode)
 
 
-def _wait_for_game(game_proc: subprocess.Popen, exitcode_file: Path, *, duration: int | None) -> None:
+def _wait_for_game(
+    game_proc: subprocess.Popen, exitcode_file: Path, *, duration: int | None
+) -> None:
     if duration is None:
         rc = game_proc.wait()
         _write_exitcode(exitcode_file, rc)

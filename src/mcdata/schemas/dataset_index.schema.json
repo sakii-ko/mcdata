@@ -37,6 +37,7 @@
         "git_commit",
         "trajectory_sha256",
         "trajectory_event_count",
+        "trajectory_execution_mode",
         "trajectory_duration_sec",
         "world_seed",
         "world_profile",
@@ -47,7 +48,10 @@
         "mc_version": {"type": "string"},
         "git_commit": {"type": "string", "minLength": 1},
         "trajectory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "trajectory_event_count": {"type": "integer", "minimum": 1},
+        "trajectory_event_count": {"type": "integer", "minimum": 0},
+        "trajectory_execution_mode": {
+          "enum": ["open_loop_event_replay", "online_position_yaw_feedback"]
+        },
         "trajectory_duration_sec": {"type": "number", "exclusiveMinimum": 0},
         "world_seed": {"type": ["integer", "string"]},
         "world_profile": {"type": "string"},
@@ -70,7 +74,13 @@
         ],
         "properties": {
           "cohort_id": {"type": "string", "pattern": "^cohort-[0-9a-f]{16}$"},
-          "role": {"enum": ["strict_rendering_matrix", "world_state_variant"]},
+          "role": {
+            "enum": [
+              "strict_rendering_matrix",
+              "policy_aligned_rendering_matrix",
+              "world_state_variant"
+            ]
+          },
           "world_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
           "world_state": {"type": "object"},
           "episode_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
@@ -128,15 +138,25 @@
               {"$ref": "#/$defs/artifact"},
               {
                 "type": "object",
-                "required": ["event_count", "duration_sec"],
+                "required": [
+                  "event_count",
+                  "duration_sec",
+                  "execution_mode",
+                  "route_point_count"
+                ],
                 "properties": {
-                  "event_count": {"type": "integer", "minimum": 1},
-                  "duration_sec": {"type": "number", "exclusiveMinimum": 0}
+                  "event_count": {"type": "integer", "minimum": 0},
+                  "duration_sec": {"type": "number", "exclusiveMinimum": 0},
+                  "execution_mode": {
+                    "enum": ["open_loop_event_replay", "online_position_yaw_feedback"]
+                  },
+                  "route_point_count": {"type": "integer", "minimum": 0}
                 }
               }
             ]
           },
           "positions": {"$ref": "#/$defs/artifact"},
+          "navigation": {"$ref": "#/$defs/artifact"},
           "qa": {
             "allOf": [
               {"$ref": "#/$defs/artifact"},

@@ -21,14 +21,35 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _write_episode(root: Path, profile: str, state: dict, *, commit: str = "abc123") -> Path:
+def _write_episode(
+    root: Path,
+    profile: str,
+    state: dict,
+    *,
+    commit: str = "abc123",
+    feedback: bool = False,
+) -> Path:
     run_dir = root / f"run_{profile}"
     run_dir.mkdir(parents=True)
     (run_dir / "capture.mp4").write_bytes(f"video-{profile}".encode())
     (run_dir / "positions.jsonl").write_text('{"idx": 0}\n', encoding="utf-8")
     trajectory_path = run_dir / "trajectory.json"
-    trajectory_path.write_text('{"events": []}\n', encoding="utf-8")
+    trajectory_path.write_text(
+        (
+            '{"type":"feedback_roam","route":[{"x":0,"z":0},{"x":1,"z":0},'
+            '{"x":0,"z":0}],"events":[]}\n'
+            if feedback
+            else '{"events": [{"t": 0, "key": "w", "action": "tap"}]}\n'
+        ),
+        encoding="utf-8",
+    )
     trajectory_sha = _sha256(trajectory_path)
+    if feedback:
+        (run_dir / "navigation_log.jsonl").write_text(
+            '{"event":"start","mono":1.0}\n'
+            '{"event":"control","t_rel":59.9,"moving":true,"yaw_error":1.0}\n',
+            encoding="utf-8",
+        )
     (run_dir / "client_latest.log").write_text(
         "[Render thread/INFO]: Shaders are disabled because enableShaders is set to false\n",
         encoding="utf-8",
@@ -88,8 +109,13 @@ def _write_episode(root: Path, profile: str, state: dict, *, commit: str = "abc1
         "world": {"seed": 1, "profile": "render_matrix_base", "state": state},
         "trajectory": {
             "sha256": trajectory_sha,
-            "event_count": 60,
-            "duration_sec": 38.937,
+            "event_count": 0 if feedback else 60,
+            "duration_sec": 604.0 if feedback else 38.937,
+            "type": "feedback_roam" if feedback else "astar_walk",
+            "execution_mode": (
+                "online_position_yaw_feedback" if feedback else "open_loop_event_replay"
+            ),
+            "route_point_count": 3 if feedback else 0,
         },
         "capture": {
             "enabled": True,
@@ -115,18 +141,21 @@ def _write_episode(root: Path, profile: str, state: dict, *, commit: str = "abc1
         "error": None,
     }
     _write_json(run_dir / "manifest.json", manifest)
+    evidence_paths = {
+        "manifest": run_dir / "manifest.json",
+        "video": run_dir / "capture.mp4",
+        "trajectory": trajectory_path,
+        "positions": run_dir / "positions.jsonl",
+    }
+    if feedback:
+        evidence_paths["navigation"] = run_dir / "navigation_log.jsonl"
     evidence = {
         key: {
             "path": str(path),
             "sha256": _sha256(path),
             "size_bytes": path.stat().st_size,
         }
-        for key, path in {
-            "manifest": run_dir / "manifest.json",
-            "video": run_dir / "capture.mp4",
-            "trajectory": trajectory_path,
-            "positions": run_dir / "positions.jsonl",
-        }.items()
+        for key, path in evidence_paths.items()
     }
     _write_json(
         run_dir / "qa_report.json",
@@ -148,6 +177,22 @@ def _write_episode(root: Path, profile: str, state: dict, *, commit: str = "abc1
                 "mean_deviation_blocks": 0.2,
                 "max_yaw_error_degrees": 1.0,
                 "y_out_of_range_count": 0,
+                **(
+                    {
+                        "mode": "online_position_yaw_feedback",
+                        "failure_count": 0,
+                        "navigation_control_count": 600,
+                        "movement_distance_blocks": 240.0,
+                        "navigation_duration_ratio": 0.998,
+                        "terminal_stop": True,
+                        "route_progress_ordered": True,
+                        "ordered_route_progress_blocks": 240.0,
+                        "minimum_route_progress_blocks": 30.0,
+                        "position_duration_ratio": 0.999,
+                    }
+                    if feedback
+                    else {}
+                ),
             },
         },
     )
@@ -169,6 +214,14 @@ def _write_compare(root: Path, name: str, runs: list[Path]) -> Path:
             )
     evidence = []
     for run in runs:
+        evidence_paths = {
+            "manifest": run / "manifest.json",
+            "video": run / "capture.mp4",
+            "trajectory": run / "trajectory.json",
+            "positions": run / "positions.jsonl",
+        }
+        if (run / "navigation_log.jsonl").exists():
+            evidence_paths["navigation"] = run / "navigation_log.jsonl"
         evidence.append(
             {
                 "input": f"/remote/runs/{run.name}",
@@ -178,12 +231,7 @@ def _write_compare(root: Path, name: str, runs: list[Path]) -> Path:
                         "sha256": _sha256(path),
                         "size_bytes": path.stat().st_size,
                     }
-                    for key, path in {
-                        "manifest": run / "manifest.json",
-                        "video": run / "capture.mp4",
-                        "trajectory": run / "trajectory.json",
-                        "positions": run / "positions.jsonl",
-                    }.items()
+                    for key, path in evidence_paths.items()
                 },
             }
         )
@@ -274,7 +322,9 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
         visual_review=review,
     )
 
-    strict_cohort = next(item for item in index["cohorts"] if item["role"] == "strict_rendering_matrix")
+    strict_cohort = next(
+        item for item in index["cohorts"] if item["role"] == "strict_rendering_matrix"
+    )
     variants = [item for item in index["cohorts"] if item["role"] == "world_state_variant"]
     assert index["status"] == "accepted"
     assert len(strict_cohort["profile_names"]) == 2
@@ -309,6 +359,40 @@ def test_dataset_without_manual_review_is_only_automated_pass(tmp_path: Path) ->
     assert index["manual_review"] is None
 
 
+def test_feedback_dataset_is_policy_aligned_and_binds_navigation(tmp_path: Path) -> None:
+    profiles = ["feedback_vanilla", "feedback_material"]
+    runs = [
+        _write_episode(
+            tmp_path,
+            profile,
+            {"time": "noon", "weather": "clear"},
+            feedback=True,
+        )
+        for profile in profiles
+    ]
+    strict = _write_compare(tmp_path, "feedback_compare", runs)
+    diagnostic = _write_compare(tmp_path, "feedback_diagnostic", runs)
+    review = _write_visual_review(tmp_path, profiles)
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile=profiles[0],
+        generator_commit=GENERATOR_COMMIT,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+        visual_review=review,
+    )
+
+    assert index["cohorts"][0]["role"] == "policy_aligned_rendering_matrix"
+    assert index["invariants"]["trajectory_execution_mode"] == ("online_position_yaw_feedback")
+    assert index["invariants"]["trajectory_event_count"] == 0
+    assert all("navigation" in episode for episode in index["episodes"])
+    assert all(episode["trajectory"]["route_point_count"] == 3 for episode in index["episodes"])
+    assert index["status"] == "accepted"
+    assert index["manual_review"] is not None
+
+
 def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
     profiles, strict, diagnostic, review = _fixture(tmp_path)
     manifest_path = tmp_path / "run_matrix_textured" / "manifest.json"
@@ -321,9 +405,9 @@ def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -341,9 +425,9 @@ def test_dataset_rejects_missing_resource_provenance(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -362,9 +446,9 @@ def test_dataset_rejects_runtime_resolution_mismatch(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -378,9 +462,9 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -395,9 +479,9 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
         write_dataset_index(
             tmp_path / "partial",
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -412,9 +496,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -423,9 +507,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             expected_fps=float("nan"),
         )
@@ -436,9 +520,9 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path / "symlink",
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -475,9 +559,9 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
@@ -491,9 +575,9 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
         write_dataset_index(
             tmp_path,
             expected_profiles=profiles,
-        primary_profile="matrix_low",
-        generator_commit=GENERATOR_COMMIT,
-        strict_compare_report=strict,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )

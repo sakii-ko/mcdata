@@ -1,27 +1,145 @@
 scene:
   origin: [0, 64, 0]
   entries:
-    - {kind: forceload, from: [-32, 0, -32], to: [32, 0, 32]}
-    - {kind: fill, block: "minecraft:air", from: [-18, 0, -18], to: [18, 28, 18], split_axis: y}
-    - {kind: fill, block: "minecraft:dirt", from: [-24, -4, -24], to: [24, -2, 24]}
-    - {kind: fill, block: "minecraft:grass_block", from: [-24, -1, -24], to: [24, -1, 24]}
-    - {kind: fill, block: "minecraft:smooth_stone", from: [-15, -1, -15], to: [15, -1, 15]}
-    - {kind: fill, block: "minecraft:water", from: [-14, -1, -2], to: [-5, -1, 7], region: water_pool, walk_obstacle: true}
-    - {kind: fill, block: "minecraft:blue_concrete", from: [-14, -2, -2], to: [-5, -2, 7], region: water_pool_floor}
-    - {kind: fill, block: "minecraft:glass", from: [5, 0, -2], to: [14, 0, 7], region: glass_platform}
-    - {kind: fill, block: "minecraft:white_concrete", from: [5, -1, -2], to: [14, -1, 7]}
-    - {kind: fill, block: "minecraft:oak_leaves", from: [-2, 0, 9], to: [2, 3, 9], region: leaf_wall}
-    - {kind: fill, block: "minecraft:white_concrete", from: [-4, 0, 14], to: [4, 4, 14], region: white_wall}
-    - {kind: setblock, block: "minecraft:torch", at: [-10, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:lantern", at: [-7, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:redstone_torch", at: [-4, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:redstone_lamp[lit=true]", at: [-1, 0, -10], region: light_row}
-    - {kind: fill, block: "minecraft:glass", from: [1, 0, -11], to: [3, 0, -9], region: lava_containment}
-    - {kind: setblock, block: "minecraft:lava", at: [2, 0, -10], region: lava_source}
-    - {kind: setblock, block: "minecraft:sea_lantern", at: [5, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:glowstone", at: [8, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:beacon", at: [11, 0, -10], region: light_row}
-    - {kind: setblock, block: "minecraft:oak_log", at: [-14, 0, 12], region: corner_marker}
-    - {kind: setblock, block: "minecraft:oak_leaves", at: [-14, 1, 12], region: corner_marker}
-    - {kind: setblock, block: "minecraft:polished_deepslate", at: [14, 0, 12], region: corner_marker}
-    - {kind: setblock, block: "minecraft:glass", at: [14, 1, 12], region: corner_marker}
+    - {kind: forceload, from: [-48, 0, -48], to: [48, 0, 48]}
+    - {kind: fill, block: "minecraft:air", from: [-30, 0, -30], to: [30, 30, 30], split_axis: y}
+    - {kind: fill, block: "minecraft:dirt", from: [-30, -4, -30], to: [30, -2, 30]}
+    - {kind: fill, block: "minecraft:grass_block", from: [-30, -1, -30], to: [30, -1, 30]}
+
+    # Continuous full-block showcase floor. The overlays are material districts,
+    # never height changes, so every planned walking cell remains at y=63.
+    - {kind: fill, block: "minecraft:polished_andesite", from: [-22, -1, -22], to: [22, -1, 22], region: plaza_base}
+    - {kind: fill, block: "minecraft:mud_bricks", from: [-22, -1, -22], to: [-5, -1, -4], region: southwest_masonry}
+    - {kind: fill, block: "minecraft:cut_sandstone", from: [-4, -1, -22], to: [4, -1, -4], region: south_promenade}
+    - {kind: fill, block: "minecraft:waxed_oxidized_cut_copper", from: [5, -1, -22], to: [22, -1, -4], region: southeast_copper}
+    - {kind: fill, block: "minecraft:mossy_stone_bricks", from: [-22, -1, -3], to: [-15, -1, 13], region: west_garden_walk}
+    - {kind: fill, block: "minecraft:deepslate_tiles", from: [15, -1, -3], to: [22, -1, 13], region: east_arcade_walk}
+    - {kind: fill, block: "minecraft:stone_bricks", from: [-14, -1, 10], to: [-1, -1, 22], region: north_stone_court}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [0, -1, 10], to: [14, -1, 22], region: north_blackstone_court}
+    - {kind: fill, block: "minecraft:dark_oak_planks", from: [-4, -1, -3], to: [4, -1, 9], region: reflection_bridge}
+    - {kind: fill, block: "minecraft:stripped_spruce_wood[axis=z]", from: [-1, -1, -3], to: [1, -1, 9], region: reflection_bridge_inlay}
+
+    # Two source-filled reflecting basins flank a broad bridge. Full-block rims
+    # and a solid prismarine floor contain all water deterministically.
+    - {kind: fill, block: "minecraft:dark_prismarine", from: [-13, -2, -2], to: [-6, -2, 8], region: west_basin_floor}
+    - {kind: fill, block: "minecraft:dark_prismarine", from: [6, -2, -2], to: [13, -2, 8], region: east_basin_floor}
+    - {kind: fill, block: "minecraft:sea_lantern", from: [-13, -2, 1], to: [-6, -2, 1], region: west_basin_light}
+    - {kind: fill, block: "minecraft:sea_lantern", from: [-13, -2, 5], to: [-6, -2, 5], region: west_basin_light}
+    - {kind: fill, block: "minecraft:sea_lantern", from: [6, -2, 1], to: [13, -2, 1], region: east_basin_light}
+    - {kind: fill, block: "minecraft:sea_lantern", from: [6, -2, 5], to: [13, -2, 5], region: east_basin_light}
+    - {kind: fill, block: "minecraft:water", from: [-13, -1, -2], to: [-6, -1, 8], region: west_reflecting_basin, walk_obstacle: true}
+    - {kind: fill, block: "minecraft:water", from: [6, -1, -2], to: [13, -1, 8], region: east_reflecting_basin, walk_obstacle: true}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-14, 0, -3], to: [-14, 1, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-5, 0, -3], to: [-5, 1, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, -3], to: [-6, 1, -3], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [-13, 0, 9], to: [-6, 1, 9], region: west_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [14, 0, -3], to: [14, 1, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [5, 0, -3], to: [5, 1, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, -3], to: [13, 1, -3], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [6, 0, 9], to: [13, 1, 9], region: east_basin_rim}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-14, 0, -3], to: [-14, 3, -3], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-14, 0, 9], to: [-14, 3, 9], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-5, 0, -3], to: [-5, 3, -3], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [-5, 0, 9], to: [-5, 3, 9], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [5, 0, -3], to: [5, 3, -3], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [5, 0, 9], to: [5, 3, 9], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [14, 0, -3], to: [14, 3, -3], region: basin_pillar}
+    - {kind: fill, block: "minecraft:chiseled_polished_blackstone", from: [14, 0, 9], to: [14, 3, 9], region: basin_pillar}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [-14, 4, -3], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:verdant_froglight", at: [-14, 4, 9], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:pearlescent_froglight", at: [-5, 4, -3], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [-5, 4, 9], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:verdant_froglight", at: [5, 4, -3], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:pearlescent_froglight", at: [5, 4, 9], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [14, 4, -3], region: basin_pillar_light}
+    - {kind: setblock, block: "minecraft:verdant_froglight", at: [14, 4, 9], region: basin_pillar_light}
+
+    # West masonry-and-copper gallery.
+    - {kind: fill, block: "minecraft:bricks", from: [-22, 0, -18], to: [-22, 9, 16], region: west_gallery}
+    - {kind: fill, block: "minecraft:stone_bricks", from: [-22, 0, -18], to: [-22, 1, 16], region: west_gallery_base}
+    - {kind: fill, block: "minecraft:waxed_weathered_cut_copper", from: [-22, 8, -18], to: [-22, 9, 16], region: west_gallery_cornice}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, -16], to: [-22, 6, -13], region: west_gallery_window}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, -10], to: [-22, 6, -7], region: west_gallery_window}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, -4], to: [-22, 6, -1], region: west_gallery_window}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, 2], to: [-22, 6, 5], region: west_gallery_window}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, 8], to: [-22, 6, 11], region: west_gallery_window}
+    - {kind: fill, block: "minecraft:light_blue_stained_glass", from: [-22, 2, 14], to: [-22, 6, 15], region: west_gallery_window}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, -17], region: west_gallery_light}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, -11], region: west_gallery_light}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, -5], region: west_gallery_light}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, 1], region: west_gallery_light}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, 7], region: west_gallery_light}
+    - {kind: setblock, block: "minecraft:shroomlight", at: [-22, 7, 13], region: west_gallery_light}
+
+    # East deepslate-and-copper arcade.
+    - {kind: fill, block: "minecraft:polished_deepslate", from: [22, 0, -18], to: [22, 9, 16], region: east_arcade}
+    - {kind: fill, block: "minecraft:deepslate_tiles", from: [22, 0, -18], to: [22, 1, 16], region: east_arcade_base}
+    - {kind: fill, block: "minecraft:waxed_exposed_cut_copper", from: [22, 8, -18], to: [22, 9, 16], region: east_arcade_cornice}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, -16], to: [22, 6, -13], region: east_arcade_window}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, -10], to: [22, 6, -7], region: east_arcade_window}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, -4], to: [22, 6, -1], region: east_arcade_window}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, 2], to: [22, 6, 5], region: east_arcade_window}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, 8], to: [22, 6, 11], region: east_arcade_window}
+    - {kind: fill, block: "minecraft:tinted_glass", from: [22, 2, 14], to: [22, 6, 15], region: east_arcade_window}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, -17], region: east_arcade_light}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, -11], region: east_arcade_light}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, -5], region: east_arcade_light}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, 1], region: east_arcade_light}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, 7], region: east_arcade_light}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [22, 7, 13], region: east_arcade_light}
+
+    # North stained-glass pavilion, framed by quartz and sandstone.
+    - {kind: fill, block: "minecraft:smooth_sandstone", from: [-20, 0, 22], to: [20, 10, 22], region: north_pavilion}
+    - {kind: fill, block: "minecraft:cut_sandstone", from: [-20, 0, 22], to: [20, 1, 22], region: north_pavilion_base}
+    - {kind: fill, block: "minecraft:quartz_block", from: [-20, 9, 22], to: [20, 10, 22], region: north_pavilion_cornice}
+    - {kind: fill, block: "minecraft:blue_stained_glass", from: [-18, 2, 22], to: [-12, 7, 22], region: north_pavilion_window}
+    - {kind: fill, block: "minecraft:cyan_stained_glass", from: [-9, 2, 22], to: [-3, 7, 22], region: north_pavilion_window}
+    - {kind: fill, block: "minecraft:purple_stained_glass", from: [0, 2, 22], to: [6, 7, 22], region: north_pavilion_window}
+    - {kind: fill, block: "minecraft:magenta_stained_glass", from: [9, 2, 22], to: [18, 7, 22], region: north_pavilion_window}
+    - {kind: fill, block: "minecraft:quartz_pillar[axis=y]", from: [-20, 0, 22], to: [-20, 10, 22], region: north_pavilion_column}
+    - {kind: fill, block: "minecraft:quartz_pillar[axis=y]", from: [-10, 0, 22], to: [-10, 10, 22], region: north_pavilion_column}
+    - {kind: fill, block: "minecraft:quartz_pillar[axis=y]", from: [-1, 0, 22], to: [-1, 10, 22], region: north_pavilion_column}
+    - {kind: fill, block: "minecraft:quartz_pillar[axis=y]", from: [8, 0, 22], to: [8, 10, 22], region: north_pavilion_column}
+    - {kind: fill, block: "minecraft:quartz_pillar[axis=y]", from: [20, 0, 22], to: [20, 10, 22], region: north_pavilion_column}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [-15, 8, 22], region: north_pavilion_light}
+    - {kind: setblock, block: "minecraft:verdant_froglight", at: [-6, 8, 22], region: north_pavilion_light}
+    - {kind: setblock, block: "minecraft:pearlescent_froglight", at: [3, 8, 22], region: north_pavilion_light}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [13, 8, 22], region: north_pavilion_light}
+
+    # Twin entry towers keep the spawn vista open toward the bridge.
+    - {kind: fill, block: "minecraft:mud_bricks", from: [-20, 0, -22], to: [-12, 8, -22], region: southwest_tower}
+    - {kind: fill, block: "minecraft:dark_oak_planks", from: [-19, 2, -22], to: [-13, 6, -22], region: southwest_tower_inlay}
+    - {kind: fill, block: "minecraft:waxed_copper_block", from: [-20, 7, -22], to: [-12, 8, -22], region: southwest_tower_roof}
+    - {kind: setblock, block: "minecraft:ochre_froglight", at: [-16, 5, -22], region: southwest_tower_light}
+    - {kind: fill, block: "minecraft:polished_blackstone_bricks", from: [12, 0, -22], to: [20, 8, -22], region: southeast_tower}
+    - {kind: fill, block: "minecraft:crimson_planks", from: [13, 2, -22], to: [19, 6, -22], region: southeast_tower_inlay}
+    - {kind: fill, block: "minecraft:waxed_weathered_copper", from: [12, 7, -22], to: [20, 8, -22], region: southeast_tower_roof}
+    - {kind: setblock, block: "minecraft:pearlescent_froglight", at: [16, 5, -22], region: southeast_tower_light}
+
+    # Four contained planters and custom trees add PBR foliage silhouettes.
+    - {kind: fill, block: "minecraft:bricks", from: [-19, 0, -16], to: [-17, 0, -14], region: southwest_planter}
+    - {kind: setblock, block: "minecraft:dirt", at: [-18, 0, -15], region: southwest_planter_soil}
+    - {kind: fill, block: "minecraft:oak_log", from: [-18, 1, -15], to: [-18, 5, -15], region: southwest_tree}
+    - {kind: fill, block: "minecraft:oak_leaves[persistent=true]", from: [-21, 4, -18], to: [-15, 7, -12], region: southwest_tree_canopy}
+    - {kind: fill, block: "minecraft:bricks", from: [17, 0, -16], to: [19, 0, -14], region: southeast_planter}
+    - {kind: setblock, block: "minecraft:dirt", at: [18, 0, -15], region: southeast_planter_soil}
+    - {kind: fill, block: "minecraft:birch_log", from: [18, 1, -15], to: [18, 5, -15], region: southeast_tree}
+    - {kind: fill, block: "minecraft:birch_leaves[persistent=true]", from: [15, 4, -18], to: [21, 7, -12], region: southeast_tree_canopy}
+    - {kind: fill, block: "minecraft:mossy_stone_bricks", from: [-19, 0, 13], to: [-17, 0, 15], region: northwest_planter}
+    - {kind: setblock, block: "minecraft:dirt", at: [-18, 0, 14], region: northwest_planter_soil}
+    - {kind: fill, block: "minecraft:cherry_log", from: [-18, 1, 14], to: [-18, 5, 14], region: northwest_tree}
+    - {kind: fill, block: "minecraft:cherry_leaves[persistent=true]", from: [-21, 4, 11], to: [-15, 7, 17], region: northwest_tree_canopy}
+    - {kind: fill, block: "minecraft:deepslate_bricks", from: [17, 0, 13], to: [19, 0, 15], region: northeast_planter}
+    - {kind: setblock, block: "minecraft:dirt", at: [18, 0, 14], region: northeast_planter_soil}
+    - {kind: fill, block: "minecraft:dark_oak_log", from: [18, 1, 14], to: [18, 5, 14], region: northeast_tree}
+    - {kind: fill, block: "minecraft:flowering_azalea_leaves[persistent=true]", from: [15, 4, 11], to: [21, 7, 17], region: northeast_tree_canopy}
+
+    # Promenade luminaires use solid bases reflected in the planner obstacle map.
+    - {kind: fill, block: "minecraft:polished_blackstone_wall", from: [-7, 0, -16], to: [-7, 3, -16], region: promenade_lamp}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [-7, 4, -16], region: promenade_lamp}
+    - {kind: fill, block: "minecraft:polished_blackstone_wall", from: [7, 0, -16], to: [7, 3, -16], region: promenade_lamp}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [7, 4, -16], region: promenade_lamp}
+    - {kind: fill, block: "minecraft:polished_blackstone_wall", from: [-7, 0, -10], to: [-7, 3, -10], region: promenade_lamp}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [-7, 4, -10], region: promenade_lamp}
+    - {kind: fill, block: "minecraft:polished_blackstone_wall", from: [7, 0, -10], to: [7, 3, -10], region: promenade_lamp}
+    - {kind: setblock, block: "minecraft:sea_lantern", at: [7, 4, -10], region: promenade_lamp}

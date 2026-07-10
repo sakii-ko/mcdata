@@ -112,6 +112,23 @@ def _validate_qa(qa: dict[str, Any], run_dir: Path) -> dict[str, Any]:
         or route.get("y_out_of_range_count") != 0
     ):
         raise DatasetValidationError(f"Route QA evidence is incomplete for {run_dir.name}")
+    if route.get("mode") == "online_position_yaw_feedback" and (
+        route.get("failure_count") != 0
+        or not isinstance(route.get("navigation_control_count"), int)
+        or route.get("navigation_control_count") <= 0
+        or not isinstance(route.get("movement_distance_blocks"), (int, float))
+        or route.get("movement_distance_blocks") <= 0
+        or not isinstance(route.get("navigation_duration_ratio"), (int, float))
+        or route.get("navigation_duration_ratio") < 0.95
+        or route.get("terminal_stop") is not True
+        or route.get("route_progress_ordered") is not True
+        or not isinstance(route.get("ordered_route_progress_blocks"), (int, float))
+        or not isinstance(route.get("minimum_route_progress_blocks"), (int, float))
+        or route.get("ordered_route_progress_blocks") < route.get("minimum_route_progress_blocks")
+        or not isinstance(route.get("position_duration_ratio"), (int, float))
+        or route.get("position_duration_ratio") < 0.95
+    ):
+        raise DatasetValidationError(f"Feedback navigation QA is incomplete for {run_dir.name}")
     return {
         "passed": True,
         "warnings": [],
@@ -277,13 +294,20 @@ def _episode_evidence(
         "positions": artifact(root, run_dir / "positions.jsonl"),
         "client_log": artifact(root, run_dir / "client_latest.log"),
     }
+    execution_mode = manifest.get("trajectory", {}).get("execution_mode", "open_loop_event_replay")
+    if execution_mode == "online_position_yaw_feedback":
+        evidence["navigation"] = artifact(root, run_dir / "navigation_log.jsonl")
     video_facts = _validate_capture(
         manifest, qa, width=width, height=height, fps=fps, duration=duration
     )
     qa_facts = _validate_qa(qa, run_dir)
     validate_report_evidence(
         qa.get("evidence"),
-        {key: evidence[key] for key in ("manifest", "video", "trajectory", "positions")},
+        {
+            key: evidence[key]
+            for key in ("manifest", "video", "trajectory", "positions", "navigation")
+            if key in evidence
+        },
         f"QA report for {run_dir.name}",
     )
     return manifest, evidence, video_facts, qa_facts
@@ -297,15 +321,31 @@ def _trajectory_facts(
         raise DatasetValidationError(f"Trajectory hash mismatch for {run_dir.name}")
     event_count = trajectory.get("event_count")
     duration = trajectory.get("duration_sec")
-    if not isinstance(event_count, int) or event_count <= 0:
+    execution_mode = trajectory.get("execution_mode", "open_loop_event_replay")
+    route_point_count = trajectory.get("route_point_count", 0)
+    if execution_mode not in {"open_loop_event_replay", "online_position_yaw_feedback"}:
+        raise DatasetValidationError(f"Invalid trajectory execution mode for {run_dir.name}")
+    if not isinstance(event_count, int) or event_count < 0:
         raise DatasetValidationError(f"Invalid trajectory event count for {run_dir.name}")
+    if execution_mode == "open_loop_event_replay" and event_count <= 0:
+        raise DatasetValidationError(f"Open-loop trajectory has no events for {run_dir.name}")
+    if execution_mode == "online_position_yaw_feedback" and (
+        event_count != 0 or not isinstance(route_point_count, int) or route_point_count < 2
+    ):
+        raise DatasetValidationError(f"Feedback trajectory contract is invalid for {run_dir.name}")
     if (
         not isinstance(duration, (int, float))
         or not math.isfinite(float(duration))
         or duration <= 0
     ):
         raise DatasetValidationError(f"Invalid trajectory duration for {run_dir.name}")
-    return {**trajectory_artifact, "event_count": event_count, "duration_sec": duration}
+    return {
+        **trajectory_artifact,
+        "event_count": event_count,
+        "duration_sec": duration,
+        "execution_mode": execution_mode,
+        "route_point_count": route_point_count,
+    }
 
 
 def _episode_resources(manifest: dict[str, Any], run_dir: Path) -> dict[str, Any]:
@@ -370,6 +410,8 @@ def episode_from_run(
         "resourcepack_resolution": resources["resolution"],
         "accepted": True,
     }
+    if "navigation" in evidence:
+        episode["navigation"] = evidence["navigation"]
     return episode, manifest
 
 
@@ -416,6 +458,11 @@ def global_invariants(
         ),
         "trajectory_event_count": _single_value(
             manifests, lambda item: item.get("trajectory", {}).get("event_count"), "event count"
+        ),
+        "trajectory_execution_mode": _single_value(
+            manifests,
+            lambda item: item.get("trajectory", {}).get("execution_mode", "open_loop_event_replay"),
+            "trajectory execution mode",
         ),
         "trajectory_duration_sec": _single_value(
             manifests,

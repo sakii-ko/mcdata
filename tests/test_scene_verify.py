@@ -61,7 +61,7 @@ def test_verify_scene_commands_raises_on_missing_receipt(tmp_path: Path) -> None
 def test_expected_scene_fill_count_excludes_forceload() -> None:
     profile = {"world_state": {"scene": scene_mapping(load_scene(ROOT / "configs"))}}
 
-    assert expected_scene_fill_count(profile) == 24
+    assert expected_scene_fill_count(profile) == 126
 
 
 def test_apply_world_state_freezes_ticks_and_clears_stale_entities() -> None:
