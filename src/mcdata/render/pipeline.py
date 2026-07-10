@@ -245,7 +245,12 @@ def _bootstrap_profile_unlocked(
         resourcepacks=resourcepacks,
         overrides=dict(profile.get("options", {}) or {}),
     )
-    write_iris_config(work_dir, shaderpack=shaderpack, enabled=bool(shaderpack))
+    write_iris_config(
+        work_dir,
+        shaderpack=shaderpack,
+        enabled=bool(shaderpack),
+        shader_options=profile.get("shader_options"),
+    )
     _write_manifest(
         work_dir,
         {

@@ -13,6 +13,7 @@ defaults:
   gamemode: "creative"
   capture_ready_delay_sec: 15
   capture_fps: 24
+  shader_options: {}
   options:
     gamma: "1.0"
     fov: "0.0"

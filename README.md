@@ -81,6 +81,18 @@ The project intentionally does not guess credentials or hostnames.
 
 Profiles live in `configs/profiles.yml`.
 
+Shader profiles can declare Iris pack options without relying on prior GUI state. Keys and values
+must be quoted, single-token strings; bootstrap writes them deterministically to the sidecar for
+the exact resolved ZIP filename:
+
+```yaml
+shader_options:
+  MATERIAL_FORMAT: "1"
+  WATER_REFLECTIONS: "true"
+```
+
+Configuring non-empty `shader_options` on a profile without one selected shader ZIP is an error.
+
 - `vanilla_low`: latest official release, low graphics.
 - `fabric_low`: latest version that supports Fabric API, Sodium, and Iris.
 - `fabric_faithful_bsl`: Faithful 32x + BSL shader.

@@ -14,6 +14,8 @@
 
 2. **配置优先于代码（config over code）**
    新的渲染组合 = `asset_sets.yml` / `profiles.yml` 里的新条目；新的巡逻路线 = `actions.yml` 里的新 strategy 配置。只有当现有参数表达不了需求时才扩展代码，而且扩展必须是**通用参数**（例如 `waypoint_actions`），不允许把具体场景坐标写死进 Python。
+   shader 的非默认开关写在 profile 的 `shader_options` 映射中；bootstrap 只在恰好选中一个
+   shader ZIP 时，按键名排序生成 `shaderpacks/<exact ZIP filename>.txt`，禁止依赖 GUI 状态。
 
 3. **纯逻辑与副作用分离（pure core, effectful shell）**
    路径规划、事件序列生成、manifest 构建、QA 指标计算都是纯函数，不碰网络/文件/子进程；I/O 和进程管理收敛在薄 wrapper 里。这是可测试性的来源：纯逻辑用单元测试覆盖，不需要 GPU、不需要启动游戏。
