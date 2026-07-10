@@ -6,6 +6,11 @@ import math
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_jump import (
+    DELIBERATE_JUMP_SEMANTIC,
+    JumpEvidenceError,
+    validate_deliberate_jump_sequences,
+)
 from mcdata.action_combat import (
     COMBAT_SEMANTIC,
     CombatEvidenceError,
@@ -50,7 +55,7 @@ BUCKET_BY_LEVEL = {
 SEMANTIC_ACTION_LEVEL = {
     "navigation_move": 1,
     "navigation_camera": 1,
-    "deliberate_jump": 2,
+    DELIBERATE_JUMP_SEMANTIC: 2,
     "deterministic_block_placement": 3,
     "controlled_combat": 4,
 }
@@ -247,12 +252,6 @@ def _validate_trajectory_semantics(trajectory: dict[str, Any], planned_level: in
             raise ActionCurriculumError(
                 f"trajectory event {index} declares {semantic!r} above planned L{planned_level}"
             )
-        if semantic == "deliberate_jump" and not (
-            event.get("key") == "space" and event.get("action") == "tap"
-        ):
-            raise ActionCurriculumError(
-                "deliberate_jump must be a single explicit space tap"
-            )
         if semantic == PLACEMENT_SEMANTIC:
             try:
                 placement_spec(event)
@@ -263,6 +262,20 @@ def _validate_trajectory_semantics(trajectory: dict[str, Any], planned_level: in
                 combat_spec(event)
             except CombatEvidenceError as exc:
                 raise ActionCurriculumError(str(exc)) from exc
+    try:
+        validate_deliberate_jump_sequences(events)
+    except JumpEvidenceError as exc:
+        raise ActionCurriculumError(str(exc)) from exc
+    route = trajectory.get("route")
+    if route is not None:
+        if not isinstance(route, list):
+            raise ActionCurriculumError("trajectory route must be a list")
+        if any(
+            event.get("semantic_action") == DELIBERATE_JUMP_SEMANTIC
+            and int(event["route_index"]) >= len(route)
+            for event in events
+        ):
+            raise ActionCurriculumError("deliberate jump route_index is outside the route")
     try:
         placements = placement_specs(events)
         validate_placement_event_sequences(events)
@@ -670,7 +683,7 @@ def _count_executed_event(counts: dict[str, int], event: dict[str, Any]) -> None
     ):
         counts["navigation_camera"] += 1
     semantic = event.get("semantic_action")
-    if semantic == "deliberate_jump":
+    if semantic == DELIBERATE_JUMP_SEMANTIC and event.get("semantic_phase") == "press":
         counts[semantic] += 1
 
 

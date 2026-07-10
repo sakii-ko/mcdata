@@ -298,16 +298,17 @@ def test_lookdev_showcase_walks_and_holds_horizontal_water_views() -> None:
     assert all(isinstance(event.get("route_index"), int) for event in held_views)
 
 
-def test_l2_jump_showcase_is_a_semantic_only_extension_of_l1_lookdev() -> None:
+def test_l2_jump_showcase_uses_complete_running_holds_on_a_safe_route() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     base = _build_configured("lookdev_showcase_60s", strategies["lookdev_showcase_60s"])
     trajectory = _build_configured(
         "curriculum_l2_jump_showcase_60s",
         strategies["curriculum_l2_jump_showcase_60s"],
     )
-    jumps = [
+    jump_events = [
         event for event in trajectory["events"] if event.get("semantic_action") == "deliberate_jump"
     ]
+    jumps = [event for event in jump_events if event.get("semantic_phase") == "press"]
 
     assert planned_action_contract(trajectory) == {
         "taxonomy_version": 1,
@@ -315,28 +316,61 @@ def test_l2_jump_showcase_is_a_semantic_only_extension_of_l1_lookdev() -> None:
         "planned_capabilities": ["navigation", "deliberate_jump"],
         "bucket": "l1_l2",
     }
-    assert trajectory["duration_sec"] == base["duration_sec"] == 59.034
-    assert trajectory["route"] == base["route"]
-    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
-    assert all(event["key"] == "space" and event["action"] == "tap" for event in jumps)
-    assert [
-        event for event in trajectory["events"] if event.get("semantic_action") != "deliberate_jump"
-    ] == base["events"]
+    assert trajectory["duration_sec"] == 58.973
+    assert 58 <= trajectory["duration_sec"] < 60
+    assert trajectory["route"] != base["route"]
+    assert [event["route_index"] for event in jumps] == [22, 34, 56, 71]
+    assert [event["semantic_phase"] for event in jump_events] == [
+        "press",
+        "release",
+    ] * 4
+    assert all(event["key"] == "space" and event["hold_duration_sec"] == 0.16 for event in jump_events)
     assert not any(event.get("semantic_action") for event in base["events"])
-    assert simulate_track(trajectory) == simulate_track(base)
+    assert simulate_track(trajectory)
 
 
-def test_waypoint_deliberate_jump_requires_an_explicit_boolean() -> None:
+def test_running_jump_config_has_a_strict_field_set() -> None:
     spec = {
         "type": "astar_walk",
         "start": [0, 0],
-        "goals": [[0, 2]],
-        "bounds": [-1, 1, 0, 2],
-        "waypoint_actions": [{"at": [0, 2], "deliberate_jump": "yes"}],
+        "goals": [[0, 4]],
+        "bounds": [-1, 1, 0, 4],
+        "running_jumps": [
+            {
+                "at": [0, 2],
+                "jump_id": "jump_bad",
+                "hold_duration_sec": 0.16,
+                "unbound": True,
+            }
+        ],
     }
 
-    with pytest.raises(RuntimeError, match="deliberate_jump must be a boolean"):
+    with pytest.raises(RuntimeError, match="contain exactly"):
         build_trajectory("bad_jump", spec)
+
+
+def test_action_curriculum_route_keeps_two_cell_clearance_from_known_pillar() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    trajectory = _build_configured(
+        "curriculum_l2_jump_showcase_60s",
+        strategies["curriculum_l2_jump_showcase_60s"],
+    )
+    route = [(point["x"], point["z"]) for point in trajectory["route"]]
+    pillar_xz = (5, 9)  # scene block [5,64,9], source of the rejected GPU-run collision
+    jump_indices = {
+        event["route_index"]
+        for event in trajectory["events"]
+        if event.get("semantic_action") == "deliberate_jump"
+    }
+
+    assert min(
+        max(abs(x - pillar_xz[0]), abs(z - pillar_xz[1])) for x, z in route
+    ) == 3
+    assert all(
+        max(abs(route[index][0] - pillar_xz[0]), abs(route[index][1] - pillar_xz[1]))
+        > 2
+        for index in jump_indices
+    )
 
 
 def test_l3_place_showcase_keeps_l2_route_and_uses_real_aim_restore_events() -> None:
@@ -354,7 +388,12 @@ def test_l3_place_showcase_keeps_l2_route_and_uses_real_aim_restore_events() -> 
         for event in l3["events"]
         if event.get("semantic_action") == "deterministic_block_placement"
     ]
-    jumps = [event for event in l3["events"] if event.get("semantic_action") == "deliberate_jump"]
+    jumps = [
+        event
+        for event in l3["events"]
+        if event.get("semantic_action") == "deliberate_jump"
+        and event.get("semantic_phase") == "press"
+    ]
 
     assert planned_action_contract(l3) == {
         "taxonomy_version": 1,
@@ -366,12 +405,12 @@ def test_l3_place_showcase_keeps_l2_route_and_uses_real_aim_restore_events() -> 
         ],
         "bucket": "l1_l2_l3",
     }
-    assert l3["duration_sec"] == l2["duration_sec"] == 59.034
+    assert l3["duration_sec"] == l2["duration_sec"] == 58.973
     assert l3["route"] == l2["route"]
-    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
-    assert [event["route_index"] for event in placements] == [12, 60]
+    assert [event["route_index"] for event in jumps] == [22, 34, 56, 71]
+    assert [event["route_index"] for event in placements] == [26, 80]
     assert [event["placement"]["hotbar_slot"] for event in placements] == [1, 2]
-    assert [event["placement"]["face"] for event in placements] == ["east", "north"]
+    assert [event["placement"]["face"] for event in placements] == ["south", "west"]
     route_cells = {(point["x"], point["z"]) for point in l3["route"]}
     assert all(
         (event["placement"]["target"][0], event["placement"]["target"][2]) not in route_cells
@@ -423,6 +462,7 @@ def test_l4_combat_showcase_is_cumulative_and_keeps_the_same_60s_route() -> None
         event
         for event in l4["events"]
         if event.get("semantic_action") == "deliberate_jump"
+        and event.get("semantic_phase") == "press"
     ]
 
     assert planned_action_contract(l4) == {
@@ -437,14 +477,14 @@ def test_l4_combat_showcase_is_cumulative_and_keeps_the_same_60s_route() -> None
         "bucket": "l1_l2_l3_l4",
     }
     assert l4["route"] == l3["route"]
-    assert l4["duration_sec"] == l3["duration_sec"] == 59.034
-    assert [event["route_index"] for event in jumps] == [12, 34, 39, 104]
-    assert [event["route_index"] for event in placements] == [12, 60]
-    assert len(combats) == 1 and combats[0]["route_index"] == 77
+    assert l4["duration_sec"] == l3["duration_sec"] == 58.973
+    assert [event["route_index"] for event in jumps] == [22, 34, 56, 71]
+    assert [event["route_index"] for event in placements] == [26, 80]
+    assert len(combats) == 1 and combats[0]["route_index"] == 48
     spec = combats[0]["combat"]
     assert spec["target_entity"] == "minecraft:iron_golem"
     assert spec["target_uuid"] == "4d434441-5441-4c34-8000-000000000004"
-    assert spec["spawn"] == [16.5, 64.0, -6.5]
+    assert spec["spawn"] == [4.5, 64.0, 12.5]
     assert spec["hotbar_slot"] == 3
     assert spec["weapon"] == "minecraft:wooden_sword"
     route_cells = {(point["x"], point["z"]) for point in l4["route"]}
@@ -452,7 +492,7 @@ def test_l4_combat_showcase_is_cumulative_and_keeps_the_same_60s_route() -> None
     assert min(
         abs(spec["spawn"][0] - x) + abs(spec["spawn"][2] - z)
         for x, z in route_cells
-    ) == 2
+    ) == 3
     combat_index = l4["events"].index(combats[0])
     aim = l4["events"][combat_index - 1]
     restore = l4["events"][combat_index + 1]
@@ -470,7 +510,7 @@ def test_l4_checked_in_trajectory_and_documented_copy_are_identical() -> None:
 
     assert documented == golden
     assert hashlib.sha256(golden).hexdigest() == (
-        "613cd580ae2acc696471d8dcd63692bb7127f93862429c4e3995620836853b0b"
+        "219af517550950d0f0a71a9a6a2bdcd5b3cc52c4588b1cd18b017e6608d8d0f2"
     )
 
 

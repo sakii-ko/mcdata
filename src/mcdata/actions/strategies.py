@@ -5,6 +5,11 @@ import random
 from pathlib import Path
 from typing import Any, Callable
 
+from mcdata.action_jump import (
+    append_forward_run_with_jumps,
+    running_jump_plan,
+    validate_all_running_jumps_scheduled,
+)
 from mcdata.actions.feedback import build_feedback_roam
 from mcdata.actions.combat_events import append_controlled_combat
 from mcdata.actions.pathing import (
@@ -17,7 +22,7 @@ from mcdata.actions.pathing import (
     walk_blocked as _walk_blocked,
     walk_bounds as _walk_bounds,
 )
-from mcdata.actions.placement_events import append_block_placement, append_deliberate_jump
+from mcdata.actions.placement_events import append_block_placement
 from mcdata.config import load_yaml
 from mcdata.scene_model import load_scene, walk_obstacles
 
@@ -230,6 +235,7 @@ def _walk_events(
     initial_pause_sec = float(spec.get("initial_pause_sec", 1.0))
     scan_pause_sec = float(spec.get("scan_pause_sec", 0.25))
     waypoint_actions = _waypoint_actions(spec)
+    running_jumps = running_jump_plan(route, spec)
     goals = [_point(point) for point in spec.get("goals", [])]
     goal_indices = _route_goal_indices(route, goals)
     events: list[dict[str, Any]] = []
@@ -255,7 +261,18 @@ def _walk_events(
                 )
                 t += 0.35 + scan_pause_sec
         heading = desired
-        t = _hold_key(events, t, "w", distance * seconds_per_block + walk_startup_comp_sec)
+        segment_start = route_index
+        segment_end = route_index + distance
+        t = append_forward_run_with_jumps(
+            events,
+            t,
+            duration=distance * seconds_per_block + walk_startup_comp_sec,
+            seconds_per_block=seconds_per_block,
+            walk_startup_comp_sec=walk_startup_comp_sec,
+            segment_start=segment_start,
+            segment_end=segment_end,
+            running_jumps=running_jumps,
+        )
         route_index += distance
         t = _apply_waypoint_actions(
             events,
@@ -266,6 +283,7 @@ def _walk_events(
             waypoint_actions=waypoint_actions,
             scan_pause_sec=scan_pause_sec,
         )
+    validate_all_running_jumps_scheduled(events, running_jumps)
     return events, t
 
 
@@ -474,9 +492,6 @@ def _apply_waypoint_actions(
             action.get("block_placement"),
             route_index=route_index,
             scan_pause_sec=scan_pause_sec,
-        )
-        append_deliberate_jump(
-            events, t, action.get("deliberate_jump", False), route_index=route_index
         )
         t = append_controlled_combat(
             events,

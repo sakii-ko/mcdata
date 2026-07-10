@@ -40,8 +40,9 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "scene_model": {"config"},
     "terrain": {"config", "scene_model"},
     "resourcepack_catalog": {"config"},
-    "action_curriculum": {"action_combat", "action_placement"},
+    "action_curriculum": {"action_combat", "action_jump", "action_placement"},
     "action_combat": {"action_placement"},
+    "action_jump": set(),
     "action_placement": set(),
     "net": set(),
     "mojang": {"net"},
@@ -56,7 +57,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "settings": {"config", "paths"},
     "schemas": set(),
     "actions": {
-        "config", "paths", "scene_model", "action_combat", "action_placement",
+        "config", "paths", "scene_model", "action_combat", "action_jump", "action_placement",
     },
     "actions.replay": set(),  # replay must stay dependency-free (runtime input backend)
     "render": {

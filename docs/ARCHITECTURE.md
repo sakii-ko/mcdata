@@ -52,14 +52,14 @@
 
 | 模块 | 允许 import | 明确禁止 |
 |---|---|---|
-| `mcdata.actions`（strategies/viz） | config, paths, scene_model, action_combat/action_placement（纯 event contract） | render、qa（策略不知道渲染的存在） |
+| `mcdata.actions`（strategies/viz） | config, paths, scene_model, action_jump/action_combat/action_placement（纯 event contract） | render、qa（策略不知道渲染的存在） |
 | `mcdata.actions.replay` | —（零 mcdata 依赖） | 一切 mcdata 模块 |
 | `mcdata.render` | config, paths, packs, resourcepacks, net, mojang, modrinth, manifest, runlog, settings, scene_model, action_curriculum, action_combat/action_placement, actions.replay（输入回放，见注）, qa.probe（ffprobe 封装）, render.*（包内 lifecycle/scene/probe/placement/combat 分层） | actions 的策略实现（只消费 trajectory JSON 文件） |
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
 | `mcdata.terrain` | config, scene_model（纯校验/哈希；只读 canonical registry 与所绑定配置） | render、actions、qa、manifest、dataset（Phase 1 尚未 wiring） |
 | `mcdata.resourcepack_catalog` | config（只读候选、许可、lineage 与 split 契约） | packs、render、actions、qa、dataset（不下载资产，也不推断训练许可） |
-| `mcdata.action_curriculum` / `mcdata.action_combat` / `mcdata.action_placement` | curriculum 可依赖 combat/placement；combat 复用 placement 的通用 server receipt/log-prefix 校验；placement 仅标准库 | 所有上层模块（taxonomy、L3/L4 计划/回执验证与证据归纳） |
+| `mcdata.action_curriculum` / `mcdata.action_jump` / `mcdata.action_combat` / `mcdata.action_placement` | curriculum 可依赖 jump/combat/placement；jump 只定义严格的 running key-hold 契约；combat 复用 placement 的通用 server receipt/log-prefix 校验；jump/placement 仅标准库 | 所有上层模块（taxonomy、L2–L4 计划/回执验证与证据归纳） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
 | `mcdata.dataset` / `mcdata.dataset_support` | action_curriculum；dataset 另依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |
@@ -116,7 +116,9 @@ cleanup 和 server-log 哈希全部验证通过，归纳器才把它计为 obser
 `l1_l2_l3= ... + deterministic_block_placement`、`l1_l2_l3_l4= ... + controlled_combat`。
 trajectory 可用严格的 `action_curriculum={taxonomy_version, planned_level, capabilities}` 声明
 高阶计划；字段缺失的现有 A*/roam/feedback trajectory 兼容推导为 L1。`deliberate_jump` 必须是
-显式标注的单次 Space tap。
+一对共享 `jump_id` / `route_index` / `hold_duration_sec` 的显式 Space down/up，hold 只能为
+0.12–0.18 秒，且整段必须被带有至少 0.30 秒前后余量的 `W` hold 包住。press/release 任一输入失败、
+缺失或 evidence 状态错误都会拒绝；完整一对只计一次语义动作。
 
 run manifest 的顶层 `action_curriculum` 同时记录 planned level/capabilities、逐类 observed semantic
 counts、observed level、bucket、动作日志哈希以及 `controller_recovery_counts`。open-loop 的 observed
@@ -124,8 +126,10 @@ counts、observed level、bucket、动作日志哈希以及 `controller_recovery
 `navigation_log.jsonl` 的 control 决策归纳。navigator 为脱困执行的一次 Space + S 只记为
 `attempts/jump_taps/reverse_moves`，永不记成 deliberate jump。
 
-L3 showcase 严格沿用 L2 的 117 点路线和 59.034 秒时间预算，在 route indices 12/60 加入两个
-侧向 action arena，并保留 route indices 12/34/39/104 的四次 deliberate jump。录制开始前，
+L2–L4 showcase 共享 action-curriculum 专用的 93 点、58.973 秒路线；相对 scene obstacle 使用
+两格 clearance，四次 running jump 位于 route indices 22/34/56/71。已知实体柱 `[5,64,9]`
+与 route 最近的 Chebyshev 距离为三格，不再沿用会在跳后漂移中擦柱的 L1 look-dev 路线。
+L3 在 route indices 26/80 加入两个侧向 action arena。录制开始前，
 render 清空 inventory/掉落物/非玩家实体，把两个 target 置 air、support 与 hotbar 固定到声明值，
 再以 conditional server `say` marker 验证；录制区间内禁止 teleport，只执行轨迹相机 aim、数字键
 选槽和 mouse button 3；录制结束后才验证两个 target block，并清除 target/support/action item。
@@ -134,7 +138,7 @@ receipt 只从命令发送前的 log byte offset 之后查找真实 `[Server] ma
 和命令错误回显；post-capture verification 必须是 replay 最后一条，且 final prefix 必须扩展 reset
 prefix。
 
-L4 showcase 复用同一 117 点/59.034 秒路线、四次 jump 和两次 placement，并在 route index 77
+L4 showcase 复用同一 93 点/58.973 秒路线、四次 jump 和两次 placement，并在 route index 48
 加入 taxonomy v1 唯一允许的 fixed-UUID iron-golem sparring target。reset 固定 NoAI、rotation、
 20 HP、1.0 knockback resistance、木剑 hotbar 槽并验证 profile 的 `spawn_mobs=false`；capture 内只发送
 相机、数字键和 mouse button 1，不允许 `tp` 或 server `damage`。左键后 0.25 秒内通过

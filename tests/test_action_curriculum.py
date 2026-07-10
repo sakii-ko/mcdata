@@ -47,6 +47,30 @@ def _write_replay(path: Path, events: list[dict], statuses: list[str] | None = N
     path.write_text("".join(json.dumps(item) + "\n" for item in records), encoding="utf-8")
 
 
+def _jump_pair(*, press_t: float = 0.5, route_index: int = 1) -> list[dict]:
+    common = {
+        "key": "space",
+        "semantic_action": "deliberate_jump",
+        "jump_id": "jump_test",
+        "route_index": route_index,
+        "hold_duration_sec": 0.16,
+    }
+    return [
+        {
+            "t": press_t,
+            "action": "down",
+            "semantic_phase": "press",
+            **common,
+        },
+        {
+            "t": round(press_t + 0.16, 3),
+            "action": "up",
+            "semantic_phase": "release",
+            **common,
+        },
+    ]
+
+
 def _l2_trajectory() -> dict:
     return {
         "type": "scripted",
@@ -57,13 +81,9 @@ def _l2_trajectory() -> dict:
             "capabilities": ["navigation", "deliberate_jump"],
         },
         "events": [
-            {"t": 0.0, "key": "w", "action": "tap"},
-            {
-                "t": 1.0,
-                "key": "space",
-                "action": "tap",
-                "semantic_action": "deliberate_jump",
-            },
+            {"t": 0.0, "key": "w", "action": "down"},
+            *_jump_pair(),
+            {"t": 1.0, "key": "w", "action": "up"},
         ],
     }
 
@@ -653,6 +673,73 @@ def test_deliberate_jump_is_l2_only_when_explicit_and_dispatched(tmp_path: Path)
     assert result["observed_semantic_action_counts"]["deliberate_jump"] == 1
 
 
+@pytest.mark.parametrize(
+    ("tamper", "message"),
+    [
+        ("missing_release", "missing a press or release"),
+        ("instant_tap", "missing a press or release"),
+        ("short_hold", "hold must be"),
+        ("not_running", "running lead-in"),
+    ],
+)
+def test_deliberate_jump_plan_requires_complete_running_hold(
+    tamper: str,
+    message: str,
+) -> None:
+    trajectory = _l2_trajectory()
+    if tamper == "missing_release":
+        trajectory["events"].pop(2)
+    elif tamper == "instant_tap":
+        trajectory["events"][1:3] = [
+            {
+                "t": 0.5,
+                "key": "space",
+                "action": "tap",
+                "semantic_action": "deliberate_jump",
+            }
+        ]
+    elif tamper == "short_hold":
+        trajectory["events"][1]["hold_duration_sec"] = 0.05
+        trajectory["events"][2]["hold_duration_sec"] = 0.05
+        trajectory["events"][2]["t"] = 0.55
+    elif tamper == "not_running":
+        trajectory["events"][1]["t"] = 0.1
+        trajectory["events"][2]["t"] = 0.26
+
+    with pytest.raises(ActionCurriculumError, match=message):
+        planned_action_contract(trajectory)
+
+
+@pytest.mark.parametrize("missing_phase", ["press", "release"])
+def test_deliberate_jump_replay_requires_both_executed_inputs(
+    tmp_path: Path,
+    missing_phase: str,
+) -> None:
+    trajectory = _l2_trajectory()
+    trajectory_path = tmp_path / "trajectory.json"
+    replay_path = tmp_path / "replay_log.jsonl"
+    _write_json(trajectory_path, trajectory)
+    _write_replay(replay_path, trajectory["events"])
+    records = [json.loads(line) for line in replay_path.read_text().splitlines()]
+    record = next(
+        item
+        for item in records
+        if isinstance(item.get("event"), dict)
+        and item["event"].get("semantic_phase") == missing_phase
+    )
+    record["execution_status"] = "non_input"
+    replay_path.write_text(
+        "".join(json.dumps(item) + "\n" for item in records), encoding="utf-8"
+    )
+
+    with pytest.raises(ActionCurriculumError, match="execution status"):
+        summarize_action_run(
+            trajectory_path,
+            replay_path,
+            execution_mode="open_loop_event_replay",
+        )
+
+
 def test_configured_l2_jump_showcase_counts_all_dispatched_jumps(tmp_path: Path) -> None:
     spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"][
         "curriculum_l2_jump_showcase_60s"
@@ -776,7 +863,12 @@ def test_l3_contract_event_without_executor_cannot_claim_execution(tmp_path: Pat
             execution_mode="open_loop_event_replay",
         )
 
-    statuses[3] = "executed"
+    placement_index = next(
+        index
+        for index, event in enumerate(events)
+        if event.get("semantic_action") == "deterministic_block_placement"
+    )
+    statuses[placement_index] = "executed"
     _write_replay(replay_path, events, statuses)
     with pytest.raises(ActionCurriculumError, match="execution status"):
         summarize_action_run(
@@ -967,7 +1059,7 @@ def test_configured_l3_showcase_preserves_route_and_all_lower_actions(tmp_path: 
     )
 
     assert l3["route"] == l2["route"]
-    assert l3["duration_sec"] == l2["duration_sec"] == 59.034
+    assert l3["duration_sec"] == l2["duration_sec"] == 58.973
     assert result["observed_semantic_action_counts"]["deliberate_jump"] == 4
     assert result["observed_semantic_action_counts"]["deterministic_block_placement"] == 2
 

@@ -76,22 +76,25 @@
 | bucket | planned capabilities | accepted episode 的最低真实证据 |
 |---|---|---|
 | `l1` | navigation（移动/相机） | replay event 或 feedback control 必须观察到实际移动；只有 fixed pan 不合格 |
-| `l1_l2` | L1 + deliberate jump | 显式语义标注且实际 dispatch 的 Space tap |
+| `l1_l2` | L1 + deliberate jump | 完整 dispatch 的 0.12–0.18 秒 Space down/up 对，以及独立 y-rise/landing 物理证据 |
 | `l1_l2_l3` | L1+L2 + deterministic block placement | 最高等级 placement 执行证据 |
 | `l1_l2_l3_l4` | L1+L2+L3 + controlled combat | 最高等级 combat 执行证据 |
 
 现有 A*/roam/feedback trajectory 在没有声明时兼容推导为 L1。navigator 的 stuck recovery 会
-执行 Space + S，但只进入独立的 `controller_recovery_counts`，绝不把 episode 升成 L2。L3 已有
-fail-closed executor：`curriculum_l3_place_showcase_60s` 与 L2 共享同一 117 点 route/59.034 秒预算，
-保留四次 jump，并在 route indices 12/60 做两次固定 target/support/face 的真实选槽与右键放置。
+执行 Space + S，但只进入独立的 `controller_recovery_counts`，绝不把 episode 升成 L2。
+L2–L4 共享一条 action 专用的 93 点 route/58.973 秒预算，scene obstacle clearance=2；四次
+0.160 秒 running jump 位于 indices 22/34/56/71，已知 `[5,64,9]` 实体柱与路线至少相隔三格。
+L3 fail-closed executor 在 route indices 26/80 做两次固定 target/support/face 的真实选槽与右键放置。
 arena reset 与 hotbar 在 capture 前完成，capture 内禁止 teleport，target world probe 与 cleanup 在
 capture 后完成；receipt line 和 `server.log` prefix SHA-256 全部进入 replay evidence。L4 已有
-累积式 fail-closed executor：同路线/时长继续保留四次 jump 和两次 placement，在 route index 77
+累积式 fail-closed executor：同路线/时长继续保留四次 jump 和两次 placement，在 route index 48
 加入固定 UUID/tag、NoAI、20 HP、1.0 抗击退的 iron-golem sparring target；玩家真实选木剑槽并左键，
 5 秒有效期内用 `execute on attacker` 证明攻击者身份，capture 后再证明 `0 < health_after < health_before`
 并清理实体、武器和掉落物。任何 server probe/score、objective create/remove receipt、日志前缀或
-低层动作缺失都拒绝。L3/L4 在各自真 GPU showcase、独立 manifest 复算、route QA 和视频目检通过前，
-accepted 桶仍保持为空。dataset index 的 `action_buckets` 只保存每组精确、
+低层动作缺失都拒绝。L2 还必须由 0.10 秒位置采样独立证明四次 `peak_delta_y>=0.8` 与落地；当前
+manifest 只证明输入，不承载这项物理效果，因此独立审计未通过时不得升级。L3/L4 在各自真 GPU
+showcase、独立 manifest 复算、route QA 和视频目检通过前，accepted 桶仍保持为空。dataset index
+的 `action_buckets` 只保存每组精确、
 稳定排序的 episode ID 和数量，不复制 capture；训练可以先用 L1，再逐步调整四组采样比例。
 
 新 run manifest 从 v3 开始必须显式保存 action curriculum。已经完成的 v2 capture 不重录、不

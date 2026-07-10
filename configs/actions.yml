@@ -254,8 +254,25 @@ strategies:
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
 
-  curriculum_l2_jump_showcase_60s:
+  curriculum_l2_jump_showcase_60s: &curriculum_action_showcase_60s
     <<: *lookdev_showcase_60s
+    # The action curriculum uses a dedicated two-cell-clearance loop. Four
+    # jumps happen mid-run on long straight corridors, never at a stopped
+    # look/placement/combat waypoint.
+    goals:
+      - [-10, -12]
+      - [-2, -6]
+      - [-2, 12]
+      - [2, 12]
+      - [2, -6]
+      - [10, -12]
+      - [0, -14]
+    obstacle_clearance: 2
+    running_jumps:
+      - {at: [-6, -6], jump_id: "jump_west_run", hold_duration_sec: 0.16}
+      - {at: [-2, 2], jump_id: "jump_north_run", hold_duration_sec: 0.16}
+      - {at: [2, 4], jump_id: "jump_south_run", hold_duration_sec: 0.16}
+      - {at: [6, -7], jump_id: "jump_east_run", hold_duration_sec: 0.16}
     action_curriculum:
       taxonomy_version: 1
       planned_level: 2
@@ -267,43 +284,39 @@ strategies:
         moment: "material_closeup"
         pause_sec: 0.4
         look_dy_px: 45
-        look_hold_sec: 2.0
-        deliberate_jump: true
-      - at: [-3, 3]
+        look_hold_sec: 3.0
+      - at: [-2, -6]
         moment: "water_reflection_alt"
         pause_sec: 0.4
         look_dx_px: 600
         look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [-3, 8]
+        look_hold_sec: 4.5
+      - at: [-2, 12]
         moment: "water_reflection"
         pause_sec: 0.4
         look_dx_px: 600
         look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [0, 10]
+        look_hold_sec: 4.5
+      - at: [2, 12]
         moment: "scene_wide"
         pause_sec: 0.4
         look_dx_px: -600
         look_dy_px: -30
-        look_hold_sec: 2.5
-      - at: [15, 11]
+        look_hold_sec: 3.5
+      - at: [2, -6]
         moment: "gallery_wide"
         pause_sec: 0.4
         look_dx_px: -600
         look_dy_px: -30
-        look_hold_sec: 2.5
+        look_hold_sec: 3.5
       - at: [10, -12]
         moment: "material_closeup_alt"
         pause_sec: 0.4
         look_dy_px: -25
-        look_hold_sec: 0.4
-        deliberate_jump: true
+        look_hold_sec: 2.0
 
   curriculum_l3_place_showcase_60s:
-    <<: *lookdev_showcase_60s
+    <<: *curriculum_action_showcase_60s
     action_curriculum:
       taxonomy_version: 1
       planned_level: 3
@@ -316,71 +329,66 @@ strategies:
         moment: "material_closeup"
         pause_sec: 0.4
         look_dy_px: 45
-        look_hold_sec: 0.8
-        deliberate_jump: true
-        block_placement:
-          action_id: "place_gold_west"
-          block: "minecraft:gold_block"
-          support_block: "minecraft:glass"
-          hotbar_slot: 1
-          item_count: 2
-          target: [-12, 65, -13]
-          support: [-13, 65, -13]
-          face: "east"
-          aim_dx_px: 610
-          aim_dy_px: -150
-          input_settle_sec: 0.1
-          input_duration_sec: 0.25
-          receipt_timeout_sec: 3.0
-      - at: [-3, 3]
+        look_hold_sec: 3.0
+      - at: [-2, -6]
         moment: "water_reflection_alt"
         pause_sec: 0.4
         look_dx_px: 600
         look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [-3, 8]
-        moment: "water_reflection"
-        pause_sec: 0.4
-        look_dx_px: 600
-        look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [0, 10]
-        moment: "scene_wide"
-        pause_sec: 0.4
-        look_dx_px: -600
-        look_dy_px: -30
-        look_hold_sec: 2.5
-      - at: [15, 11]
-        moment: "gallery_wide"
-        pause_sec: 0.4
-        look_dx_px: -600
-        look_dy_px: -30
-        look_hold_sec: 1.0
+        look_hold_sec: 3.15
         block_placement:
-          action_id: "place_emerald_north"
-          block: "minecraft:emerald_block"
+          action_id: "place_gold_north"
+          block: "minecraft:gold_block"
           support_block: "minecraft:glass"
-          hotbar_slot: 2
+          hotbar_slot: 1
           item_count: 2
-          target: [14, 65, 13]
-          support: [14, 65, 14]
-          face: "north"
-          aim_dx_px: 610
+          target: [-2, 65, -8]
+          support: [-2, 65, -9]
+          face: "south"
+          aim_dx_px: -600
           aim_dy_px: -150
           input_settle_sec: 0.1
           input_duration_sec: 0.25
           receipt_timeout_sec: 3.0
+      - at: [-2, 12]
+        moment: "water_reflection"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 4.5
+      - at: [2, 12]
+        moment: "scene_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 3.5
+      - at: [2, -6]
+        moment: "gallery_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 3.5
       - at: [10, -12]
         moment: "material_closeup_alt"
         pause_sec: 0.4
         look_dy_px: -25
-        look_hold_sec: 0.4
-        deliberate_jump: true
-
+        look_hold_sec: 0.65
+        block_placement:
+          action_id: "place_emerald_east"
+          block: "minecraft:emerald_block"
+          support_block: "minecraft:glass"
+          hotbar_slot: 2
+          item_count: 2
+          target: [12, 65, -12]
+          support: [13, 65, -12]
+          face: "west"
+          aim_dx_px: 600
+          aim_dy_px: -150
+          input_settle_sec: 0.1
+          input_duration_sec: 0.25
+          receipt_timeout_sec: 3.0
   curriculum_l4_combat_showcase_60s:
-    <<: *lookdev_showcase_60s
+    <<: *curriculum_action_showcase_60s
     action_curriculum:
       taxonomy_version: 1
       planned_level: 4
@@ -394,69 +402,45 @@ strategies:
         moment: "material_closeup"
         pause_sec: 0.4
         look_dy_px: 45
-        look_hold_sec: 0.8
-        deliberate_jump: true
-        block_placement:
-          action_id: "place_gold_west"
-          block: "minecraft:gold_block"
-          support_block: "minecraft:glass"
-          hotbar_slot: 1
-          item_count: 2
-          target: [-12, 65, -13]
-          support: [-13, 65, -13]
-          face: "east"
-          aim_dx_px: 610
-          aim_dy_px: -150
-          input_settle_sec: 0.1
-          input_duration_sec: 0.25
-          receipt_timeout_sec: 3.0
-      - at: [-3, 3]
+        look_hold_sec: 3.0
+      - at: [-2, -6]
         moment: "water_reflection_alt"
         pause_sec: 0.4
         look_dx_px: 600
         look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [-3, 8]
-        moment: "water_reflection"
-        pause_sec: 0.4
-        look_dx_px: 600
-        look_dy_px: 20
-        look_hold_sec: 3.5
-        deliberate_jump: true
-      - at: [0, 10]
-        moment: "scene_wide"
-        pause_sec: 0.4
-        look_dx_px: -600
-        look_dy_px: -30
-        look_hold_sec: 0.4
-      - at: [15, 11]
-        moment: "gallery_wide"
-        pause_sec: 0.4
-        look_dx_px: -600
-        look_dy_px: -30
-        look_hold_sec: 1.0
+        look_hold_sec: 3.15
         block_placement:
-          action_id: "place_emerald_north"
-          block: "minecraft:emerald_block"
+          action_id: "place_gold_north"
+          block: "minecraft:gold_block"
           support_block: "minecraft:glass"
-          hotbar_slot: 2
+          hotbar_slot: 1
           item_count: 2
-          target: [14, 65, 13]
-          support: [14, 65, 14]
-          face: "north"
-          aim_dx_px: 610
+          target: [-2, 65, -8]
+          support: [-2, 65, -9]
+          face: "south"
+          aim_dx_px: -600
           aim_dy_px: -150
           input_settle_sec: 0.1
           input_duration_sec: 0.25
           receipt_timeout_sec: 3.0
-      - at: [16, -5]
+      - at: [-2, 12]
+        moment: "water_reflection"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 4.5
+      - at: [2, 12]
+        moment: "scene_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 1.4
         controlled_combat:
-          action_id: "spar_iron_golem_east"
+          action_id: "spar_iron_golem_north"
           target_entity: "minecraft:iron_golem"
           target_tag: "mcdata_l4_sparring_target"
           target_uuid: "4d434441-5441-4c34-8000-000000000004"
-          spawn: [16.5, 64.0, -6.5]
+          spawn: [4.5, 64.0, 12.5]
           rotation: [0.0, 0.0]
           initial_health: 20.0
           knockback_resistance: 1.0
@@ -469,13 +453,31 @@ strategies:
           attack_probe_delay_sec: 0.25
           input_duration_sec: 1.0
           receipt_timeout_sec: 3.0
+      - at: [2, -6]
+        moment: "gallery_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 3.5
       - at: [10, -12]
         moment: "material_closeup_alt"
         pause_sec: 0.4
         look_dy_px: -25
-        look_hold_sec: 0.4
-        deliberate_jump: true
-
+        look_hold_sec: 0.65
+        block_placement:
+          action_id: "place_emerald_east"
+          block: "minecraft:emerald_block"
+          support_block: "minecraft:glass"
+          hotbar_slot: 2
+          item_count: 2
+          target: [12, 65, -12]
+          support: [13, 65, -12]
+          face: "west"
+          aim_dx_px: 600
+          aim_dy_px: -150
+          input_settle_sec: 0.1
+          input_duration_sec: 0.25
+          receipt_timeout_sec: 3.0
   glass_edge_loop:
     type: "astar_walk"
     start: [0, -14]

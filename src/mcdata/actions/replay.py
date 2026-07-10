@@ -274,6 +274,9 @@ def _dispatch_replay_event(
         if dispatched is False and camera_family is not None:
             family, phase = camera_family
             raise RuntimeError(f"{family} camera {phase} input dispatch failed")
+        if dispatched is False and event.get("semantic_action") == "deliberate_jump":
+            phase = str(event.get("semantic_phase", "unknown"))
+            raise RuntimeError(f"Deliberate jump {phase} input dispatch failed")
         _update_held(held, event)
     return execution_status, None
 

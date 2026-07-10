@@ -52,24 +52,3 @@ def append_block_placement(
         }
     )
     return t + PLACEMENT_AIM_DURATION_SEC + scan_pause_sec
-
-
-def append_deliberate_jump(
-    events: list[dict[str, Any]],
-    t: float,
-    value: Any,
-    *,
-    route_index: int,
-) -> None:
-    if not isinstance(value, bool):
-        raise RuntimeError("waypoint deliberate_jump must be a boolean")
-    if value:
-        events.append(
-            {
-                "t": round(t, 3),
-                "key": "space",
-                "action": "tap",
-                "semantic_action": "deliberate_jump",
-                "route_index": route_index,
-            }
-        )

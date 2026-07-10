@@ -10,22 +10,22 @@ not permission to weaken the probes or add an in-capture teleport.
 
 ## Cumulative showcase
 
-`curriculum_l4_combat_showcase_60s` keeps the L1/L2/L3 117-cell route and exact 59.034-second budget.
-It retains deliberate jumps at route indices 12/34/39/104 and deterministic placements at 12/60,
-then adds one encounter at route index 77:
+`curriculum_l4_combat_showcase_60s` keeps the L1/L2/L3 93-cell route and exact 58.973-second budget.
+It retains deliberate running jumps at route indices 22/34/56/71 and deterministic placements at
+26/80, then adds one encounter at route index 48:
 
 | field | fixed value |
 |---|---|
-| target | `minecraft:iron_golem` at exact entity position `[16.5,64,-6.5]`, two Manhattan units from the stopped route cell |
+| target | `minecraft:iron_golem` at exact entity position `[4.5,64,12.5]`, two horizontal blocks east of the stopped player center |
 | identity | tag `mcdata_l4_sparring_target`, UUID `4d434441-5441-4c34-8000-000000000004` |
 | snapshot | NoAI, fixed `[yaw=0,pitch=0]`, 20 HP, knockback resistance 1.0 |
 | player equipment | one `minecraft:wooden_sword` in hotbar slot 3 |
 | capture input | slot-3 key, then mouse button 1; no `tp`, `damage`, or server-side attack |
 
 The generated trajectory and checked-in golden are byte-identical at SHA-256
-`613cd580ae2acc696471d8dcd63692bb7127f93862429c4e3995620836853b0b`. The reviewed top-down map is
+`219af517550950d0f0a71a9a6a2bdcd5b3cc52c4588b1cd18b017e6608d8d0f2`. The reviewed top-down map is
 `docs/trajectories/curriculum_l4_combat_showcase_60s.png`; it marks the off-route target and the
-route-index-77 aim segment separately from placement targets and jumps.
+route-index-48 aim segment separately from placement targets and jumps.
 
 Taxonomy v1 intentionally permits only this iron-golem target. The managed server is peaceful, so
 advertising husk/zombie/skeleton/pillager support without an explicit difficulty snapshot/restore
@@ -61,7 +61,7 @@ score mismatch, cleanup residue, objective failure, or log/hash tamper rejects t
 
 ## CPU verification
 
-`scripts/dev_check.sh` passes with 446 tests, zero standards failures, and a clean Ruff run. Tests cover
+`scripts/dev_check.sh` must pass with zero standards failures and a clean Ruff run. Tests cover
 the configured cumulative route, real button-1 dispatch, immediate attacker receipt, positive health
 delta, UUID/tag/slot projection, objective lifecycle, prior-line rejection, server-log tampering,
 post-capture control ordering, concurrent position-probe log lines, and best-effort cleanup after an
@@ -71,7 +71,8 @@ Health, and score output. The only standards output is the documented R19 size w
 
 ## GPU acceptance still required
 
-The first fresh-lane run must verify the 26.2 server's actual English score lines, SNBT parsing,
+The first fresh-lane run must start only after the fixed L2 run proves all four physical rises and
+landings and passes route QA. L4 must then verify the 26.2 server's actual English score lines, SNBT parsing,
 creative wooden-sword damage, target red-flash/combat readability, two-block reach, `-20 px` vertical
 aim, objective create/remove lines, and cleanup. Route QA must separately show that adding the off-route
 NoAI target does not change the subsequent L1 route. Source/target render endpoints must independently

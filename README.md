@@ -194,7 +194,10 @@ placement), and `l1_l2_l3_l4` (+ controlled combat). `dataset_index.json.action_
 the exact sorted episode IDs and count for each bucket, so training can mix bucket proportions
 without copying videos. Open-loop runs must bind an exact `replay_log.jsonl`; feedback runs bind
 `navigation_log.jsonl`. Navigator recovery Space/S inputs are counted separately and never turn
-an L1 episode into L2. L3 now has a deterministic placement executor: it resets/provisions a fixed
+an L1 episode into L2. Deliberate L2 jumps use explicit 0.12–0.18-second Space down/up pairs inside
+a forward run; either missing input fails closed. Until physical jump evidence is represented in the
+manifest, an independent 0.10-second position audit must additionally prove four rises and landings.
+L3 now has a deterministic placement executor: it resets/provisions a fixed
 action arena before capture, sends real camera/hotbar/right-click input without teleport during
 capture, and verifies/cleans the exact target blocks afterward. Unique server receipts and
 `server.log` prefix hashes are bound into `replay_log.jsonl`; input dispatch alone remains

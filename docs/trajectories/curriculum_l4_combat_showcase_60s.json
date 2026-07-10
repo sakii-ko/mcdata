@@ -9,7 +9,7 @@
     "planned_level": 4,
     "taxonomy_version": 1
   },
-  "duration_sec": 59.034,
+  "duration_sec": 58.973,
   "events": [
     {
       "duration": 0.4,
@@ -25,422 +25,322 @@
     {
       "action": "up",
       "key": "w",
-      "t": 3.917
+      "t": 2.527
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 3.917
+      "t": 2.527
     },
     {
       "action": "down",
       "key": "w",
-      "t": 4.467
+      "t": 3.077
     },
     {
       "action": "up",
       "key": "w",
-      "t": 4.931
+      "t": 3.31
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 3.31
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 3.86
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 5.251
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 5.251
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 5.801
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 6.033
     },
     {
       "duration": 0.4,
       "pause": true,
       "route_index": 12,
-      "t": 4.931
+      "t": 6.033
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 45,
       "route_index": 12,
-      "t": 5.331
+      "t": 6.433
     },
     {
-      "duration": 0.8,
+      "duration": 3.0,
       "look_hold": true,
       "look_moment": "material_closeup",
       "pause": true,
       "route_index": 12,
-      "t": 5.881
+      "t": 6.983
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -45,
       "route_index": 12,
-      "t": 6.681
+      "t": 9.983
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 10.533
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 11.924
     },
     {
       "duration": 0.35,
-      "mouse_dx": 610,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 11.924
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 12.474
+    },
+    {
+      "action": "down",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_west_run",
+      "key": "space",
+      "route_index": 22,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "press",
+      "t": 13.401
+    },
+    {
+      "action": "up",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_west_run",
+      "key": "space",
+      "route_index": 22,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "release",
+      "t": 13.561
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 14.328
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 26,
+      "t": 14.328
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 20,
+      "route_index": 26,
+      "t": 14.728
+    },
+    {
+      "duration": 3.15,
+      "look_hold": true,
+      "look_moment": "water_reflection_alt",
+      "pause": true,
+      "route_index": 26,
+      "t": 15.278
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -20,
+      "route_index": 26,
+      "t": 18.428
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
       "mouse_dy": -150,
       "placement_aim": true,
-      "route_index": 12,
-      "t": 7.231
+      "route_index": 26,
+      "t": 18.978
     },
     {
       "duration": 0.25,
       "placement": {
-        "action_id": "place_gold_west",
-        "aim_dx_px": 610,
+        "action_id": "place_gold_north",
+        "aim_dx_px": -600,
         "aim_dy_px": -150,
         "block": "minecraft:gold_block",
-        "face": "east",
+        "face": "south",
         "hotbar_slot": 1,
         "input_duration_sec": 0.25,
         "input_settle_sec": 0.1,
         "item_count": 2,
         "receipt_timeout_sec": 3.0,
         "support": [
-          -13,
+          -2,
           65,
-          -13
+          -9
         ],
         "support_block": "minecraft:glass",
         "target": [
-          -12,
+          -2,
           65,
-          -13
+          -8
         ]
       },
-      "route_index": 12,
+      "route_index": 26,
       "semantic_action": "deterministic_block_placement",
-      "t": 7.781
+      "t": 19.528
     },
     {
       "duration": 0.35,
-      "mouse_dx": -610,
+      "mouse_dx": 600,
       "mouse_dy": 150,
       "placement_aim_restore": true,
-      "route_index": 12,
-      "t": 8.031
-    },
-    {
-      "action": "tap",
-      "key": "space",
-      "route_index": 12,
-      "semantic_action": "deliberate_jump",
-      "t": 8.581
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 8.581
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 10.204
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": 0,
-      "t": 10.204
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 10.754
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 12.376
+      "route_index": 26,
+      "t": 19.778
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 12.376
+      "t": 20.328
     },
     {
       "action": "down",
       "key": "w",
-      "t": 12.926
+      "t": 20.878
     },
     {
-      "action": "up",
-      "key": "w",
-      "t": 14.78
-    },
-    {
-      "duration": 0.4,
-      "pause": true,
-      "route_index": 34,
-      "t": 14.78
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 600,
-      "mouse_dy": 20,
-      "route_index": 34,
-      "t": 15.18
-    },
-    {
-      "duration": 3.5,
-      "look_hold": true,
-      "look_moment": "water_reflection_alt",
-      "pause": true,
-      "route_index": 34,
-      "t": 15.73
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": -20,
-      "route_index": 34,
-      "t": 19.23
-    },
-    {
-      "action": "tap",
+      "action": "down",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_north_run",
       "key": "space",
       "route_index": 34,
       "semantic_action": "deliberate_jump",
-      "t": 19.78
+      "semantic_phase": "press",
+      "t": 22.732
     },
     {
-      "action": "down",
-      "key": "w",
-      "t": 19.78
+      "action": "up",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_north_run",
+      "key": "space",
+      "route_index": 34,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "release",
+      "t": 22.892
     },
     {
       "action": "up",
       "key": "w",
-      "t": 20.939
+      "t": 25.048
     },
     {
       "duration": 0.4,
       "pause": true,
-      "route_index": 39,
-      "t": 20.939
+      "route_index": 44,
+      "t": 25.048
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 20,
-      "route_index": 39,
-      "t": 21.339
+      "route_index": 44,
+      "t": 25.448
     },
     {
-      "duration": 3.5,
+      "duration": 4.5,
       "look_hold": true,
       "look_moment": "water_reflection",
       "pause": true,
-      "route_index": 39,
-      "t": 21.889
+      "route_index": 44,
+      "t": 25.998
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
       "mouse_dy": -20,
-      "route_index": 39,
-      "t": 25.389
-    },
-    {
-      "action": "tap",
-      "key": "space",
-      "route_index": 39,
-      "semantic_action": "deliberate_jump",
-      "t": 25.939
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 25.939
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 26.403
+      "route_index": 44,
+      "t": 30.498
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 26.403
+      "t": 31.048
     },
     {
       "action": "down",
       "key": "w",
-      "t": 26.953
+      "t": 31.598
     },
     {
       "action": "up",
       "key": "w",
-      "t": 27.649
+      "t": 32.525
     },
     {
       "duration": 0.4,
       "pause": true,
-      "route_index": 44,
-      "t": 27.649
+      "route_index": 48,
+      "t": 32.525
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
       "mouse_dy": -30,
-      "route_index": 44,
-      "t": 28.049
+      "route_index": 48,
+      "t": 32.925
     },
     {
-      "duration": 0.4,
+      "duration": 1.4,
       "look_hold": true,
       "look_moment": "scene_wide",
       "pause": true,
-      "route_index": 44,
-      "t": 28.599
+      "route_index": 48,
+      "t": 33.475
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 30,
-      "route_index": 44,
-      "t": 28.999
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 600,
-      "mouse_dy": 0,
-      "t": 29.549
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 30.099
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 30.331
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": 0,
-      "t": 30.331
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 30.881
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 34.357
-    },
-    {
-      "duration": 0.4,
-      "pause": true,
-      "route_index": 60,
-      "t": 34.357
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": -30,
-      "route_index": 60,
-      "t": 34.757
-    },
-    {
-      "duration": 1.0,
-      "look_hold": true,
-      "look_moment": "gallery_wide",
-      "pause": true,
-      "route_index": 60,
-      "t": 35.307
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 600,
-      "mouse_dy": 30,
-      "route_index": 60,
-      "t": 36.307
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 610,
-      "mouse_dy": -150,
-      "placement_aim": true,
-      "route_index": 60,
-      "t": 36.857
-    },
-    {
-      "duration": 0.25,
-      "placement": {
-        "action_id": "place_emerald_north",
-        "aim_dx_px": 610,
-        "aim_dy_px": -150,
-        "block": "minecraft:emerald_block",
-        "face": "north",
-        "hotbar_slot": 2,
-        "input_duration_sec": 0.25,
-        "input_settle_sec": 0.1,
-        "item_count": 2,
-        "receipt_timeout_sec": 3.0,
-        "support": [
-          14,
-          65,
-          14
-        ],
-        "support_block": "minecraft:glass",
-        "target": [
-          14,
-          65,
-          13
-        ]
-      },
-      "route_index": 60,
-      "semantic_action": "deterministic_block_placement",
-      "t": 37.407
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -610,
-      "mouse_dy": 150,
-      "placement_aim_restore": true,
-      "route_index": 60,
-      "t": 37.657
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 38.207
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 38.439
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": 0,
-      "t": 38.439
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 38.989
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 42.696
+      "route_index": 48,
+      "t": 34.875
     },
     {
       "combat_aim": true,
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -20,
-      "route_index": 77,
-      "t": 42.696
+      "route_index": 48,
+      "t": 35.425
     },
     {
       "combat": {
-        "action_id": "spar_iron_golem_east",
+        "action_id": "spar_iron_golem_north",
         "aim_dx_px": 0,
         "aim_dy_px": -20,
         "attack_probe_delay_sec": 0.25,
@@ -456,9 +356,9 @@
           0.0
         ],
         "spawn": [
-          16.5,
+          4.5,
           64.0,
-          -6.5
+          12.5
         ],
         "target_entity": "minecraft:iron_golem",
         "target_tag": "mcdata_l4_sparring_target",
@@ -466,138 +366,258 @@
         "weapon": "minecraft:wooden_sword"
       },
       "duration": 1.0,
-      "route_index": 77,
+      "route_index": 48,
       "semantic_action": "controlled_combat",
-      "t": 43.246
+      "t": 35.975
     },
     {
       "combat_aim_restore": true,
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 20,
-      "route_index": 77,
-      "t": 44.246
+      "route_index": 48,
+      "t": 36.975
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
       "mouse_dy": 0,
-      "t": 44.796
+      "t": 37.525
     },
     {
       "action": "down",
       "key": "w",
-      "t": 45.346
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 48.358
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 600,
-      "mouse_dy": 0,
-      "t": 48.358
+      "t": 38.075
     },
     {
       "action": "down",
-      "key": "w",
-      "t": 48.908
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_south_run",
+      "key": "space",
+      "route_index": 56,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "press",
+      "t": 39.929
+    },
+    {
+      "action": "up",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_south_run",
+      "key": "space",
+      "route_index": 56,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "release",
+      "t": 40.089
     },
     {
       "action": "up",
       "key": "w",
-      "t": 50.531
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": 600,
-      "mouse_dy": 0,
-      "t": 50.531
-    },
-    {
-      "action": "down",
-      "key": "w",
-      "t": 51.081
-    },
-    {
-      "action": "up",
-      "key": "w",
-      "t": 52.703
+      "t": 42.246
     },
     {
       "duration": 0.4,
       "pause": true,
-      "route_index": 104,
-      "t": 52.703
+      "route_index": 66,
+      "t": 42.246
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": -30,
+      "route_index": 66,
+      "t": 42.646
+    },
+    {
+      "duration": 3.5,
+      "look_hold": true,
+      "look_moment": "gallery_wide",
+      "pause": true,
+      "route_index": 66,
+      "t": 43.196
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 30,
+      "route_index": 66,
+      "t": 46.696
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 47.246
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 47.478
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": 0,
+      "t": 47.478
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 48.028
+    },
+    {
+      "action": "down",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_east_run",
+      "key": "space",
+      "route_index": 71,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "press",
+      "t": 48.956
+    },
+    {
+      "action": "up",
+      "hold_duration_sec": 0.16,
+      "jump_id": "jump_east_run",
+      "key": "space",
+      "route_index": 71,
+      "semantic_action": "deliberate_jump",
+      "semantic_phase": "release",
+      "t": 49.116
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 49.882
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 49.882
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 50.432
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 51.591
+    },
+    {
+      "duration": 0.4,
+      "pause": true,
+      "route_index": 80,
+      "t": 51.591
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": -25,
-      "route_index": 104,
-      "t": 53.103
+      "route_index": 80,
+      "t": 51.991
     },
     {
-      "duration": 0.4,
+      "duration": 0.65,
       "look_hold": true,
       "look_moment": "material_closeup_alt",
       "pause": true,
-      "route_index": 104,
-      "t": 53.653
+      "route_index": 80,
+      "t": 52.541
     },
     {
       "duration": 0.35,
       "mouse_dx": 0,
       "mouse_dy": 25,
-      "route_index": 104,
-      "t": 54.053
+      "route_index": 80,
+      "t": 53.191
     },
     {
-      "action": "tap",
-      "key": "space",
-      "route_index": 104,
-      "semantic_action": "deliberate_jump",
-      "t": 54.603
+      "duration": 0.35,
+      "mouse_dx": 600,
+      "mouse_dy": -150,
+      "placement_aim": true,
+      "route_index": 80,
+      "t": 53.741
+    },
+    {
+      "duration": 0.25,
+      "placement": {
+        "action_id": "place_emerald_east",
+        "aim_dx_px": 600,
+        "aim_dy_px": -150,
+        "block": "minecraft:emerald_block",
+        "face": "west",
+        "hotbar_slot": 2,
+        "input_duration_sec": 0.25,
+        "input_settle_sec": 0.1,
+        "item_count": 2,
+        "receipt_timeout_sec": 3.0,
+        "support": [
+          13,
+          65,
+          -12
+        ],
+        "support_block": "minecraft:glass",
+        "target": [
+          12,
+          65,
+          -12
+        ]
+      },
+      "route_index": 80,
+      "semantic_action": "deterministic_block_placement",
+      "t": 54.291
     },
     {
       "duration": 0.35,
       "mouse_dx": -600,
-      "mouse_dy": 0,
-      "t": 54.603
-    },
-    {
-      "duration": 0.35,
-      "mouse_dx": -600,
-      "mouse_dy": 0,
-      "t": 55.153
+      "mouse_dy": 150,
+      "placement_aim_restore": true,
+      "route_index": 80,
+      "t": 54.541
     },
     {
       "action": "down",
       "key": "w",
-      "t": 55.703
+      "t": 55.091
     },
     {
       "action": "up",
       "key": "w",
-      "t": 58.02
+      "t": 55.324
+    },
+    {
+      "duration": 0.35,
+      "mouse_dx": -600,
+      "mouse_dy": 0,
+      "t": 55.324
+    },
+    {
+      "action": "down",
+      "key": "w",
+      "t": 55.874
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "t": 58.191
     },
     {
       "duration": 0.35,
       "mouse_dx": 600,
       "mouse_dy": 0,
-      "t": 58.02
+      "t": 58.191
     },
     {
       "action": "down",
       "key": "w",
-      "t": 58.57
+      "t": 58.741
     },
     {
       "action": "up",
       "key": "w",
-      "t": 59.034
+      "t": 58.973
     }
   ],
   "initial_heading_deg": 90.0,
@@ -623,28 +643,28 @@
       "z": -14
     },
     {
+      "x": -4,
+      "z": -13
+    },
+    {
       "x": -5,
-      "z": -14
+      "z": -13
     },
     {
       "x": -6,
-      "z": -14
+      "z": -13
     },
     {
       "x": -7,
-      "z": -14
+      "z": -13
     },
     {
       "x": -8,
-      "z": -14
+      "z": -13
     },
     {
       "x": -9,
-      "z": -14
-    },
-    {
-      "x": -10,
-      "z": -14
+      "z": -13
     },
     {
       "x": -10,
@@ -679,388 +699,292 @@
       "z": -6
     },
     {
-      "x": -10,
-      "z": -5
-    },
-    {
       "x": -9,
-      "z": -5
+      "z": -6
     },
     {
       "x": -8,
-      "z": -5
+      "z": -6
     },
     {
       "x": -7,
-      "z": -5
+      "z": -6
     },
     {
       "x": -6,
-      "z": -5
+      "z": -6
     },
     {
       "x": -5,
-      "z": -5
+      "z": -6
     },
     {
       "x": -4,
-      "z": -5
+      "z": -6
     },
     {
       "x": -3,
+      "z": -6
+    },
+    {
+      "x": -2,
+      "z": -6
+    },
+    {
+      "x": -2,
       "z": -5
     },
     {
-      "x": -3,
+      "x": -2,
       "z": -4
     },
     {
-      "x": -3,
+      "x": -2,
       "z": -3
     },
     {
-      "x": -3,
+      "x": -2,
       "z": -2
     },
     {
-      "x": -3,
+      "x": -2,
       "z": -1
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 0
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 1
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 2
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 3
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 4
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 5
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 6
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 7
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 8
     },
     {
-      "x": -3,
+      "x": -2,
       "z": 9
-    },
-    {
-      "x": -3,
-      "z": 10
     },
     {
       "x": -2,
       "z": 10
     },
     {
-      "x": -1,
-      "z": 10
-    },
-    {
-      "x": 0,
-      "z": 10
-    },
-    {
-      "x": 0,
+      "x": -2,
       "z": 11
+    },
+    {
+      "x": -2,
+      "z": 12
+    },
+    {
+      "x": -1,
+      "z": 12
+    },
+    {
+      "x": 0,
+      "z": 12
     },
     {
       "x": 1,
-      "z": 11
+      "z": 12
+    },
+    {
+      "x": 2,
+      "z": 12
     },
     {
       "x": 2,
       "z": 11
     },
     {
-      "x": 3,
-      "z": 11
-    },
-    {
-      "x": 4,
-      "z": 11
-    },
-    {
-      "x": 5,
-      "z": 11
-    },
-    {
-      "x": 6,
-      "z": 11
-    },
-    {
-      "x": 7,
-      "z": 11
-    },
-    {
-      "x": 8,
-      "z": 11
-    },
-    {
-      "x": 9,
-      "z": 11
-    },
-    {
-      "x": 10,
-      "z": 11
-    },
-    {
-      "x": 11,
-      "z": 11
-    },
-    {
-      "x": 12,
-      "z": 11
-    },
-    {
-      "x": 13,
-      "z": 11
-    },
-    {
-      "x": 14,
-      "z": 11
-    },
-    {
-      "x": 15,
-      "z": 11
-    },
-    {
-      "x": 16,
-      "z": 11
-    },
-    {
-      "x": 16,
+      "x": 2,
       "z": 10
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 9
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 8
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 7
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 6
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 5
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 4
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 3
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 2
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 1
     },
     {
-      "x": 16,
+      "x": 2,
       "z": 0
     },
     {
-      "x": 16,
+      "x": 2,
       "z": -1
     },
     {
-      "x": 16,
+      "x": 2,
       "z": -2
     },
     {
-      "x": 16,
+      "x": 2,
       "z": -3
     },
     {
-      "x": 16,
+      "x": 2,
       "z": -4
     },
     {
-      "x": 16,
+      "x": 2,
       "z": -5
     },
     {
-      "x": 15,
-      "z": -5
-    },
-    {
-      "x": 14,
-      "z": -5
-    },
-    {
-      "x": 13,
-      "z": -5
-    },
-    {
-      "x": 12,
-      "z": -5
-    },
-    {
-      "x": 11,
-      "z": -5
-    },
-    {
-      "x": 10,
-      "z": -5
-    },
-    {
-      "x": 9,
-      "z": -5
-    },
-    {
-      "x": 8,
-      "z": -5
-    },
-    {
-      "x": 7,
-      "z": -5
-    },
-    {
-      "x": 6,
-      "z": -5
-    },
-    {
-      "x": 5,
-      "z": -5
-    },
-    {
-      "x": 4,
-      "z": -5
-    },
-    {
-      "x": 3,
-      "z": -5
-    },
-    {
-      "x": 3,
+      "x": 2,
       "z": -6
+    },
+    {
+      "x": 2,
+      "z": -7
     },
     {
       "x": 3,
       "z": -7
     },
     {
-      "x": 3,
-      "z": -8
-    },
-    {
-      "x": 3,
-      "z": -9
-    },
-    {
-      "x": 3,
-      "z": -10
-    },
-    {
-      "x": 3,
-      "z": -11
-    },
-    {
-      "x": 3,
-      "z": -12
-    },
-    {
       "x": 4,
-      "z": -12
+      "z": -7
     },
     {
       "x": 5,
-      "z": -12
+      "z": -7
     },
     {
       "x": 6,
-      "z": -12
+      "z": -7
     },
     {
       "x": 7,
-      "z": -12
+      "z": -7
     },
     {
       "x": 8,
-      "z": -12
+      "z": -7
     },
     {
       "x": 9,
-      "z": -12
+      "z": -7
+    },
+    {
+      "x": 10,
+      "z": -7
+    },
+    {
+      "x": 10,
+      "z": -8
+    },
+    {
+      "x": 10,
+      "z": -9
+    },
+    {
+      "x": 10,
+      "z": -10
+    },
+    {
+      "x": 10,
+      "z": -11
     },
     {
       "x": 10,
       "z": -12
     },
     {
+      "x": 10,
+      "z": -13
+    },
+    {
       "x": 9,
-      "z": -12
+      "z": -13
     },
     {
       "x": 8,
-      "z": -12
+      "z": -13
     },
     {
       "x": 7,
-      "z": -12
+      "z": -13
     },
     {
       "x": 6,
-      "z": -12
+      "z": -13
     },
     {
       "x": 5,
-      "z": -12
+      "z": -13
     },
     {
       "x": 4,
-      "z": -12
+      "z": -13
     },
     {
       "x": 3,
-      "z": -12
+      "z": -13
     },
     {
       "x": 2,
-      "z": -12
+      "z": -13
     },
     {
       "x": 1,
-      "z": -12
-    },
-    {
-      "x": 0,
-      "z": -12
+      "z": -13
     },
     {
       "x": 0,

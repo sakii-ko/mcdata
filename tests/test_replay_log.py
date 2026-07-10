@@ -219,6 +219,34 @@ def test_failed_advanced_camera_input_never_claims_execution(
         )
 
 
+@pytest.mark.parametrize("phase", ["press", "release"])
+def test_failed_deliberate_jump_input_aborts_replay_evidence(
+    phase: str,
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(replay, "_send_backend_event", lambda *_args, **_kwargs: False)
+    action = "down" if phase == "press" else "up"
+
+    with pytest.raises(RuntimeError, match=f"Deliberate jump {phase} input dispatch failed"):
+        replay._dispatch_replay_event(
+            {
+                "t": 1.0,
+                "key": "space",
+                "action": action,
+                "semantic_action": "deliberate_jump",
+                "semantic_phase": phase,
+                "jump_id": "jump_test",
+                "route_index": 2,
+                "hold_duration_sec": 0.16,
+            },
+            backend="xdotool",
+            semantic_executor=None,
+            warned=set(),
+            stop_event=None,
+            held=set(),
+        )
+
+
 def test_update_held_tracks_key_lifecycle() -> None:
     held: set[str] = set()
 

@@ -9,7 +9,9 @@ def trajectory_route_stop_indices(
     values = [
         event["route_index"]
         for event in trajectory.get("events", [])
-        if isinstance(event, dict) and "route_index" in event
+        if isinstance(event, dict)
+        and "route_index" in event
+        and event.get("semantic_action") != "deliberate_jump"
     ]
     invalid = [
         value
