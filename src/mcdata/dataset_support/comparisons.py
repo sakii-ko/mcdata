@@ -108,6 +108,8 @@ def _validate_comparison_evidence(
         artifact_keys = ["manifest", "video", "trajectory", "positions"]
         if "navigation" in episode:
             artifact_keys.append("navigation")
+        if episode.get("action_effect") is not None:
+            artifact_keys.append("action_effect")
         validate_report_evidence(
             {key: value for key, value in item.items() if key != "input"},
             {key: episode[key] for key in artifact_keys},

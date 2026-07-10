@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_effect import REPORT_FILENAME
 from mcdata.action_curriculum import (
     ActionCurriculumError,
     summarize_action_run,
@@ -21,6 +22,7 @@ from mcdata.dataset_support.core import (
     shader_runtime,
     validate_report_evidence,
 )
+from mcdata.dataset_support.action_effects import accepted_action_effect
 
 
 def _require_close(actual: Any, expected: float, label: str, tolerance: float = 0.01) -> None:
@@ -302,6 +304,9 @@ def _episode_evidence(
     execution_mode = manifest.get("trajectory", {}).get("execution_mode", "open_loop_event_replay")
     if execution_mode == "online_position_yaw_feedback":
         evidence["navigation"] = artifact(root, run_dir / "navigation_log.jsonl")
+    effect_path = run_dir / REPORT_FILENAME
+    if effect_path.exists() or effect_path.is_symlink():
+        evidence["action_effect"] = artifact(root, effect_path)
     video_facts = _validate_capture(
         manifest, qa, width=width, height=height, fps=fps, duration=duration
     )
@@ -310,7 +315,14 @@ def _episode_evidence(
         qa.get("evidence"),
         {
             key: evidence[key]
-            for key in ("manifest", "video", "trajectory", "positions", "navigation")
+            for key in (
+                "manifest",
+                "video",
+                "trajectory",
+                "positions",
+                "navigation",
+                "action_effect",
+            )
             if key in evidence
         },
         f"QA report for {run_dir.name}",
@@ -445,6 +457,7 @@ def episode_from_run(
     action_curriculum, action_curriculum_source = _action_curriculum_facts(
         manifest, root, run_dir
     )
+    action_effect = accepted_action_effect(manifest, root, run_dir, action_curriculum)
     profile = require_mapping(manifest["profile"], "manifest.profile")
     resources = _episode_resources(manifest, run_dir)
     episode = {
@@ -458,6 +471,7 @@ def episode_from_run(
         "trajectory": trajectory_facts,
         "action_curriculum": action_curriculum,
         "action_curriculum_source": action_curriculum_source,
+        "action_effect": action_effect,
         "positions": evidence["positions"],
         "qa": {**artifact(root, run_dir / "qa_report.json"), **qa_facts},
         "client_log": evidence["client_log"],

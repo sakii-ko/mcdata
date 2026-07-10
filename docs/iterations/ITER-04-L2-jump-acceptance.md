@@ -40,19 +40,23 @@ The generated trajectory, checked-in golden, and documented JSON are byte-identi
 
 ## Mandatory physical-effect gate
 
-Input dispatch is necessary but not sufficient. Until physical effect evidence is added to the
-manifest schema, every candidate L2/L3/L4 run must pass a separate independent audit bound to the
-exact trajectory, replay-log, positions, and video SHA-256 values. The audit must use position probes
-at no worse than 0.10-second cadence and prove all of the following:
+Input dispatch is necessary but not sufficient. The capture pipeline now writes deterministic
+`action_effect_report.json` after `positions.jsonl` and before `manifest.json`. Schema v1 binds the
+exact trajectory, replay log, and position trace SHA-256 values; the manifest binds the report SHA and
+`report_id`. The audit requires a maximum observed position-sample gap of 0.20 seconds (formal action
+showcases request 0.10 seconds) and proves all of the following:
 
 - four planned and four fully dispatched press/release pairs, with no inherited/released-key anomaly;
 - for each actual press time, a baseline-relative `peak_delta_y >= 0.8` block before the next jump;
 - a post-peak sample returning within 0.05 block of that jump's grounded baseline;
-- exactly four disjoint elevation groups attributable to the four declared windows and no comparable
-  unplanned vertical excursion;
-- route-reference PASS at `max_deviation <= 3.0` blocks, no route warning, and visible rise/landing in
-  independently extracted keyframes.
+- every press/release dispatch is `executed`, aligned to its trajectory time within 0.05 seconds, and
+  belongs to the semantic down/hold/up sequence rather than recovery Space;
+- every evidence window is fully covered without missing/non-monotonic samples.
 
-The manifest's semantic count alone must not override this gate. L3 and L4 may be launched for final
-acceptance only after the fresh L2 run passes it; otherwise the cascade stops and all higher buckets
-remain empty.
+`mcdata qa-run` recomputes the report, includes its hash in QA evidence, emits a warning and exits 2
+when it fails. Dataset indexing recomputes it again and requires `accepted=true`, four planned/four
+verified jumps, exact semantic-count agreement, and an exact manifest claim; this cumulative gate also
+applies to L3/L4 without weakening their server receipt gates. The compact checked-in regression data
+at `tests/fixtures/action_effect_first_l2_rejected.json` preserves the first rejected run's exact four
+scheduled/actual dispatch times and measured peak deltas: all four legacy semantic tap inputs were
+dispatched, but only one reached the 0.8-block rise and landing threshold, so it remains rejected.

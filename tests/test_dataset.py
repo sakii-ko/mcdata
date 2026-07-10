@@ -7,6 +7,11 @@ from pathlib import Path
 import pytest
 from jsonschema import validate
 
+from mcdata.action_effect import (
+    REPORT_FILENAME,
+    action_effect_manifest_evidence,
+    write_action_effect_report,
+)
 from mcdata.action_curriculum import summarize_action_run
 from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
 
@@ -33,6 +38,8 @@ def _write_episode(
     shader: str | None = None,
     manifest_schema_version: int = 3,
     include_action_curriculum: bool = True,
+    advanced_action: bool = False,
+    physical_jumps: bool = True,
 ) -> Path:
     material_name = material or profile
     world_state = {
@@ -48,17 +55,23 @@ def _write_episode(
     run_dir = root / f"run_{profile}"
     run_dir.mkdir(parents=True)
     (run_dir / "capture.mp4").write_bytes(f"video-{profile}".encode())
-    (run_dir / "positions.jsonl").write_text('{"idx": 0}\n', encoding="utf-8")
+    if advanced_action:
+        _write_advanced_positions(run_dir / "positions.jsonl", physical_jumps)
+    else:
+        (run_dir / "positions.jsonl").write_text('{"idx": 0}\n', encoding="utf-8")
     trajectory_path = run_dir / "trajectory.json"
-    trajectory_path.write_text(
-        (
-            '{"type":"feedback_roam","route":[{"x":0,"z":0},{"x":1,"z":0},'
-            '{"x":0,"z":0}],"events":[]}\n'
-            if feedback
-            else '{"events": [{"t": 0, "key": "w", "action": "tap"}]}\n'
-        ),
-        encoding="utf-8",
-    )
+    if advanced_action:
+        _write_json(trajectory_path, _advanced_trajectory())
+    else:
+        trajectory_path.write_text(
+            (
+                '{"type":"feedback_roam","route":[{"x":0,"z":0},{"x":1,"z":0},'
+                '{"x":0,"z":0}],"events":[]}\n'
+                if feedback
+                else '{"events": [{"t": 0, "key": "w", "action": "tap"}]}\n'
+            ),
+            encoding="utf-8",
+        )
     trajectory_sha = _sha256(trajectory_path)
     if feedback:
         (run_dir / "navigation_log.jsonl").write_text(
@@ -69,6 +82,24 @@ def _write_episode(
         )
         action_evidence = run_dir / "navigation_log.jsonl"
         execution_mode = "online_position_yaw_feedback"
+    elif advanced_action:
+        trajectory = json.loads(trajectory_path.read_text())
+        records = [{"event": "start", "mono": 1.0}]
+        records.extend(
+            {
+                "actual_t": event["t"] + 0.01,
+                "event": event,
+                "scheduled_t": event["t"],
+                "execution_status": "executed",
+            }
+            for event in trajectory["events"]
+        )
+        (run_dir / "replay_log.jsonl").write_text(
+            "".join(json.dumps(record, sort_keys=True) + "\n" for record in records),
+            encoding="utf-8",
+        )
+        action_evidence = run_dir / "replay_log.jsonl"
+        execution_mode = "open_loop_event_replay"
     else:
         replay_record = {
             "actual_t": 0.0,
@@ -167,7 +198,11 @@ def _write_episode(
         "world": {"seed": 1, "profile": "render_matrix_base", "state": world_state},
         "trajectory": {
             "sha256": trajectory_sha,
-            "event_count": 0 if feedback else 1,
+            "event_count": (
+                0
+                if feedback
+                else len(json.loads(trajectory_path.read_text())["events"])
+            ),
             "duration_sec": 604.0 if feedback else 38.937,
             "type": "feedback_roam" if feedback else "astar_walk",
             "execution_mode": (
@@ -204,6 +239,11 @@ def _write_episode(
             action_evidence,
             execution_mode=execution_mode,
         )
+    if advanced_action:
+        effect = write_action_effect_report(run_dir)
+        manifest["action_effect"] = action_effect_manifest_evidence(
+            run_dir / REPORT_FILENAME, effect
+        )
     _write_json(run_dir / "manifest.json", manifest)
     evidence_paths = {
         "manifest": run_dir / "manifest.json",
@@ -213,6 +253,8 @@ def _write_episode(
     }
     if feedback:
         evidence_paths["navigation"] = run_dir / "navigation_log.jsonl"
+    if advanced_action:
+        evidence_paths["action_effect"] = run_dir / REPORT_FILENAME
     evidence = {
         key: {
             "path": str(path),
@@ -286,6 +328,8 @@ def _write_compare(root: Path, name: str, runs: list[Path]) -> Path:
         }
         if (run / "navigation_log.jsonl").exists():
             evidence_paths["navigation"] = run / "navigation_log.jsonl"
+        if (run / REPORT_FILENAME).exists():
+            evidence_paths["action_effect"] = run / REPORT_FILENAME
         evidence.append(
             {
                 "input": f"/remote/runs/{run.name}",
@@ -340,14 +384,33 @@ def _write_pair_manifest(root: Path, pairs: list[dict[str, str]]) -> Path:
     return path
 
 
-def _fixture(root: Path) -> tuple[list[str], Path, Path, Path, Path]:
+def _fixture(
+    root: Path, *, advanced_action: bool = False, physical_jumps: bool = True
+) -> tuple[list[str], Path, Path, Path, Path]:
     profiles = ["matrix_low", "matrix_textured", "matrix_night"]
-    low = _write_episode(root, profiles[0], {"time": "noon", "weather": "clear"}, material="base")
+    low = _write_episode(
+        root,
+        profiles[0],
+        {"time": "noon", "weather": "clear"},
+        material="base",
+        advanced_action=advanced_action,
+        physical_jumps=physical_jumps,
+    )
     textured = _write_episode(
-        root, profiles[1], {"time": "noon", "weather": "clear"}, material="textured"
+        root,
+        profiles[1],
+        {"time": "noon", "weather": "clear"},
+        material="textured",
+        advanced_action=advanced_action,
+        physical_jumps=physical_jumps,
     )
     night = _write_episode(
-        root, profiles[2], {"time": "midnight", "weather": "clear"}, material="base"
+        root,
+        profiles[2],
+        {"time": "midnight", "weather": "clear"},
+        material="base",
+        advanced_action=advanced_action,
+        physical_jumps=physical_jumps,
     )
     strict = _write_compare(root, "compare_strict", [low, textured])
     diagnostic = _write_compare(root, "compare_all", [low, textured, night])
@@ -370,6 +433,60 @@ def _fixture(root: Path) -> tuple[list[str], Path, Path, Path, Path]:
         ],
     )
     return profiles, strict, diagnostic, review, pairs
+
+
+def _advanced_trajectory() -> dict:
+    events = [{"t": 0.0, "key": "w", "action": "down"}]
+    for index, press_t in enumerate((1.0, 3.0, 5.0, 7.0), 1):
+        common = {
+            "key": "space",
+            "semantic_action": "deliberate_jump",
+            "jump_id": f"jump_{index}",
+            "route_index": index * 10,
+            "hold_duration_sec": 0.16,
+        }
+        events.extend(
+            [
+                {
+                    "t": press_t,
+                    "action": "down",
+                    "semantic_phase": "press",
+                    **common,
+                },
+                {
+                    "t": press_t + 0.16,
+                    "action": "up",
+                    "semantic_phase": "release",
+                    **common,
+                },
+            ]
+        )
+    events.append({"t": 9.0, "key": "w", "action": "up"})
+    return {
+        "action_curriculum": {
+            "taxonomy_version": 1,
+            "planned_level": 2,
+            "capabilities": ["navigation", "deliberate_jump"],
+        },
+        "events": events,
+    }
+
+
+def _write_advanced_positions(path: Path, physical_jumps: bool) -> None:
+    rows = []
+    for index in range(96):
+        t_rel = round(index * 0.1, 6)
+        delta = 0.0
+        if physical_jumps:
+            for press_t in (1.01, 3.01, 5.01, 7.01):
+                age = t_rel - press_t
+                if 0.0 <= age <= 0.8:
+                    delta = max(delta, 1.2 * max(0.0, 1.0 - abs(age - 0.3) / 0.3))
+        rows.append({"idx": index, "t_rel": t_rel, "x": t_rel, "y": 64 + delta, "z": 0})
+    path.write_text(
+        "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+        encoding="utf-8",
+    )
 
 
 def _refresh_manifest_evidence(
@@ -989,6 +1106,74 @@ def test_dataset_rejects_missing_or_tampered_action_evidence(tmp_path: Path) -> 
     with pytest.raises(DatasetValidationError, match="does not match replay evidence"):
         write_dataset_index(
             root,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
+def test_advanced_bucket_is_bound_to_accepted_physical_jump_report(tmp_path: Path) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(
+        tmp_path, advanced_action=True
+    )
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile="matrix_low",
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+        visual_review=review,
+    )
+
+    assert index["action_buckets"]["l1_l2"]["episode_count"] == len(profiles)
+    assert index["action_buckets"]["l1"]["episode_count"] == 0
+    for episode in index["episodes"]:
+        effect = episode["action_effect"]
+        claim = json.loads(
+            (tmp_path / episode["run_dir"] / "manifest.json").read_text()
+        )["action_effect"]
+        assert effect["accepted"] is True
+        assert effect["planned_jump_count"] == effect["verified_jump_count"] == 4
+        assert effect["sha256"] == claim["sha256"]
+        assert effect["report_id"] == claim["report_id"]
+
+
+def test_advanced_bucket_rejects_missing_or_nonphysical_jump_report(tmp_path: Path) -> None:
+    missing = tmp_path / "missing"
+    profiles, strict, diagnostic, review, pairs = _fixture(
+        missing, advanced_action=True
+    )
+    manifest_path = missing / "run_matrix_textured/manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest.pop("action_effect")
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+    with pytest.raises(DatasetValidationError, match="requires a physical action-effect report"):
+        write_dataset_index(
+            missing,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+    failed = tmp_path / "failed"
+    profiles, strict, diagnostic, review, pairs = _fixture(
+        failed, advanced_action=True, physical_jumps=False
+    )
+    with pytest.raises(DatasetValidationError, match="jump gate did not pass"):
+        write_dataset_index(
+            failed,
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,

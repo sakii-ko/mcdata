@@ -27,6 +27,12 @@ from mcdata.action_curriculum import (
     summarize_action_run,
     validate_action_summary,
 )
+from mcdata.action_effect import (
+    REPORT_FILENAME,
+    action_effect_manifest_evidence,
+    action_effect_required,
+    write_action_effect_report,
+)
 from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
@@ -1021,9 +1027,11 @@ def _write_run_manifest_for_plan(
     resources = dict(plan.resources)
     resources["resourcepack_runtime"] = state.resourcepack_runtime
     action_curriculum, action_error = _action_curriculum_for_plan(plan)
-    raise_action_failure = bool(action_error and state.error is None)
-    if action_error and state.error is None:
-        state.error = f"action curriculum validation failed: {action_error}"
+    action_effect, effect_error = _action_effect_for_plan(plan, runlog)
+    action_errors = [item for item in (action_error, effect_error) if item]
+    raise_action_failure = bool(action_errors and state.error is None)
+    if action_errors and state.error is None:
+        state.error = f"action validation failed: {'; '.join(action_errors)}"
     manifest = build_run_manifest(
         run_id=plan.run_dir.name,
         profile_name=plan.profile_name,
@@ -1032,6 +1040,7 @@ def _write_run_manifest_for_plan(
         resources=resources,
         trajectory=plan.trajectory_info,
         action_curriculum=action_curriculum,
+        action_effect=action_effect,
         capture=_capture_manifest(
             enabled=plan.capture,
             settings=plan.capture_settings,
@@ -1048,6 +1057,35 @@ def _write_run_manifest_for_plan(
     write_run_manifest(plan.run_dir, manifest)
     runlog.log("teardown", "manifest_written", path=str(plan.run_dir / "manifest.json"))
     return state.error if raise_action_failure else None
+
+
+def _action_effect_for_plan(
+    plan: RunPlan, runlog: RunLogger
+) -> tuple[dict[str, Any] | None, str | None]:
+    if plan.run_trajectory_path is None or not plan.run_trajectory_path.is_file():
+        return None, None
+    try:
+        trajectory = json.loads(plan.run_trajectory_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None, None
+    if not action_effect_required(trajectory):
+        return None, None
+    report = write_action_effect_report(plan.run_dir)
+    path = plan.run_dir / REPORT_FILENAME
+    evidence = action_effect_manifest_evidence(path, report)
+    runlog.log(
+        "action_effect",
+        "report_written",
+        report_id=report["report_id"],
+        accepted=report["accepted"],
+        planned_jump_count=report["planned_jump_count"],
+        verified_jump_count=report["verified_jump_count"],
+        path=str(path),
+    )
+    if not plan.replay_actions or plan.dry_run or report["accepted"]:
+        return evidence, None
+    failures = ", ".join(report["failure_reasons"][:8])
+    return evidence, f"physical deliberate-jump effect gate failed ({failures})"
 
 
 def _action_curriculum_for_plan(

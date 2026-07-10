@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 
 from PIL import Image
+from typer.testing import CliRunner
 
+from mcdata import cli
 from mcdata.qa import report
 from mcdata.qa import route
 
@@ -31,6 +33,65 @@ def test_requested_capture_duration_falls_back_for_incomplete_manifest(tmp_path:
     (tmp_path / "manifest.json").write_text("{}\n", encoding="utf-8")
 
     assert report.requested_capture_duration(tmp_path, 60.0) == 60.0
+
+
+def test_qa_run_generates_and_hashes_failed_physical_effect_report(
+    tmp_path: Path, monkeypatch
+) -> None:
+    run = tmp_path / "advanced"
+    run.mkdir()
+    (run / "capture.mp4").write_bytes(b"video")
+    (run / "trajectory.json").write_text(
+        json.dumps({"action_curriculum": {"planned_level": 2}}), encoding="utf-8"
+    )
+    (run / "manifest.json").write_text("{}\n", encoding="utf-8")
+    effect = {
+        "accepted": False,
+        "planned_jump_count": 4,
+        "verified_jump_count": 1,
+        "report_id": "sha256:" + "a" * 64,
+    }
+
+    def fake_effect(path: Path) -> dict:
+        (path / "action_effect_report.json").write_text('{"accepted":false}\n')
+        return effect
+
+    monkeypatch.setattr(report, "write_action_effect_report", fake_effect)
+    monkeypatch.setattr(
+        report,
+        "summarize_probe",
+        lambda _path: {"duration_sec": 1.0, "width": 16, "height": 9, "fps": 24.0},
+    )
+    monkeypatch.setattr(report, "uniform_timestamps", lambda _duration, _frames: [0.5])
+    monkeypatch.setattr(
+        report,
+        "extract_frames_at",
+        lambda _video, _timestamps: [Image.new("RGB", (16, 9), "green")],
+    )
+    monkeypatch.setattr(report, "route_reference_report", lambda *_args, **_kwargs: None)
+
+    result = report.write_run_report(run, frames=1)
+
+    assert result["action_effect"] == effect
+    assert "physical deliberate-jump effect check failed" in result["warnings"]
+    assert result["evidence"]["action_effect"]["sha256"] == hashlib.sha256(
+        b'{"accepted":false}\n'
+    ).hexdigest()
+
+
+def test_qa_run_cli_exits_nonzero_for_failed_physical_effect(monkeypatch) -> None:
+    monkeypatch.setattr(
+        cli,
+        "write_run_report",
+        lambda *_args, **_kwargs: {
+            "action_effect": {"accepted": False},
+            "outputs": {"markdown": "qa_report.md"},
+        },
+    )
+
+    result = CliRunner().invoke(cli.app, ["qa-run", "run"])
+
+    assert result.exit_code == 2
 
 
 def test_position_alignment_passes_with_small_offsets(tmp_path: Path) -> None:

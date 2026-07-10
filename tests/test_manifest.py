@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-from jsonschema import validate
+import pytest
+from jsonschema import ValidationError, validate
 
 from mcdata.manifest import build_run_manifest, write_run_manifest
 
@@ -56,6 +57,7 @@ def _sample_manifest() -> dict:
             "bucket": "l1",
             "evidence": None,
         },
+        action_effect=None,
         capture={
             "enabled": False,
             "settings": {"width": 1280, "height": 720, "fps": 24},
@@ -95,6 +97,34 @@ def test_example_run_manifest_validates_against_schema() -> None:
     )
 
     validate(instance=example, schema=schema)
+
+
+def test_v3_advanced_manifest_requires_hashed_physical_effect_report() -> None:
+    schema = json.loads(
+        (ROOT / "src/mcdata/schemas/manifest.schema.json").read_text(encoding="utf-8")
+    )
+    manifest = _sample_manifest()
+    manifest["action_curriculum"].update(
+        planned_level=2,
+        planned_capabilities=["navigation", "deliberate_jump"],
+        bucket="l1_l2",
+    )
+
+    with pytest.raises(ValidationError):
+        validate(instance=manifest, schema=schema)
+
+    manifest["action_effect"] = {
+        "kind": "physical_deliberate_jump",
+        "schema_version": 1,
+        "path": "runs/example/action_effect_report.json",
+        "sha256": "1" * 64,
+        "size_bytes": 123,
+        "report_id": "sha256:" + "2" * 64,
+        "planned_jump_count": 4,
+        "verified_jump_count": 1,
+        "accepted": False,
+    }
+    validate(instance=manifest, schema=schema)
 
 
 def test_write_run_manifest_round_trips_json(tmp_path: Path) -> None:

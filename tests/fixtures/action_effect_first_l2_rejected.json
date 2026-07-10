@@ -1,0 +1,32 @@
+{
+  "baseline_y": 64.0,
+  "jumps": [
+    {
+      "actual_dispatch_t_sec": 8.431062444928102,
+      "peak_delta_y": 0.0,
+      "route_index": 12,
+      "scheduled_t_sec": 8.431
+    },
+    {
+      "actual_dispatch_t_sec": 19.630067392950878,
+      "peak_delta_y": 1.2491870787446828,
+      "peak_t_sec": 19.83646098896861,
+      "route_index": 34,
+      "scheduled_t_sec": 19.63
+    },
+    {
+      "actual_dispatch_t_sec": 25.78907098399941,
+      "peak_delta_y": 0.0,
+      "route_index": 39,
+      "scheduled_t_sec": 25.789
+    },
+    {
+      "actual_dispatch_t_sec": 54.603066943003796,
+      "peak_delta_y": 0.0,
+      "route_index": 104,
+      "scheduled_t_sec": 54.603
+    }
+  ],
+  "position_sample_step_sec": 0.1,
+  "source_run_id": "20260710T153322Z_feedback_legendary_rt_unbound_1080p__iter04_action_l2_e8ed51b_01"
+}

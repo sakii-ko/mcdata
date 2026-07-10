@@ -208,6 +208,8 @@ def qa_run(
         border_var_threshold=border_var_threshold,
     )
     console.print(f"Wrote QA report: {report['outputs']['markdown']}")
+    if report.get("action_effect") is not None and not report["action_effect"].get("accepted"):
+        raise typer.Exit(code=2)
 
 
 @app.command("qa-compare")

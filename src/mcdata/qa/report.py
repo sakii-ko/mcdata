@@ -9,6 +9,11 @@ from typing import Any
 import numpy as np
 from PIL import Image, ImageDraw
 
+from mcdata.action_effect import (
+    REPORT_FILENAME,
+    action_effect_required,
+    write_action_effect_report,
+)
 from mcdata.qa.frames import extract_frames_at, uniform_timestamps
 from mcdata.qa.metrics import black_border_metrics, brightness_percentiles, zero_mean_ncc
 from mcdata.qa.probe import summarize_probe
@@ -35,6 +40,7 @@ def _run_evidence(input_path: Path, video: Path, run_dir: Path) -> dict[str, Any
         ("trajectory", "trajectory.json"),
         ("positions", "positions.jsonl"),
         ("navigation", "navigation_log.jsonl"),
+        ("action_effect", REPORT_FILENAME),
     ):
         path = run_dir / filename
         if path.is_file() and not path.is_symlink():
@@ -71,6 +77,7 @@ def write_run_report(
     video, default_out_dir = resolve_video(input_path)
     out = out_dir or default_out_dir
     out.mkdir(parents=True, exist_ok=True)
+    action_effect = _run_action_effect(input_path, default_out_dir)
     probe = summarize_probe(video)
     observed_duration = float(probe.get("duration_sec") or 0)
     requested_duration = requested_capture_duration(default_out_dir, observed_duration)
@@ -112,6 +119,8 @@ def write_run_report(
     )
     if route_reference and not route_reference.get("passed"):
         warnings.append("route reference check failed")
+    if action_effect is not None and not action_effect["accepted"]:
+        warnings.append("physical deliberate-jump effect check failed")
 
     report = {
         "input": str(input_path),
@@ -120,6 +129,7 @@ def write_run_report(
         "probe": probe,
         "expected": expected,
         "route_reference": route_reference,
+        "action_effect": action_effect,
         "frames": frame_metrics,
         "warnings": warnings,
         "outputs": {
@@ -132,6 +142,17 @@ def write_run_report(
     _write_run_markdown(out / "qa_report.md", report)
     _write_contact_sheet(out / "contact_sheet.jpg", images, timestamps)
     return report
+
+
+def _run_action_effect(input_path: Path, run_dir: Path) -> dict[str, Any] | None:
+    if not input_path.is_dir():
+        return None
+    trajectory_path = run_dir / "trajectory.json"
+    try:
+        trajectory = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return write_action_effect_report(run_dir) if action_effect_required(trajectory) else None
 
 
 def write_compare_report(
@@ -273,6 +294,7 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
                 "",
             ]
         )
+    lines.extend(_action_effect_markdown(report.get("action_effect")))
     lines.extend(
         [
             f"- video: `{report['video']}`",
@@ -296,6 +318,19 @@ def _write_run_markdown(path: Path, report: dict[str, Any]) -> None:
         lines.extend(["", "## Warnings", ""])
         lines.extend(f"- {warning}" for warning in report["warnings"])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _action_effect_markdown(action_effect: Any) -> list[str]:
+    if not isinstance(action_effect, dict):
+        return []
+    status = "PASS" if action_effect.get("accepted") else "FAIL"
+    return [
+        f"- action_effect: `{status}`",
+        f"- physical_jumps: `{action_effect.get('verified_jump_count')}/"
+        f"{action_effect.get('planned_jump_count')}`",
+        f"- action_effect_report_id: `{action_effect.get('report_id')}`",
+        "",
+    ]
 
 
 def _write_compare_markdown(path: Path, report: dict[str, Any]) -> None:

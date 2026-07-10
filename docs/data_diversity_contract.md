@@ -91,8 +91,9 @@ capture 后完成；receipt line 和 `server.log` prefix SHA-256 全部进入 re
 加入固定 UUID/tag、NoAI、20 HP、1.0 抗击退的 iron-golem sparring target；玩家真实选木剑槽并左键，
 5 秒有效期内用 `execute on attacker` 证明攻击者身份，capture 后再证明 `0 < health_after < health_before`
 并清理实体、武器和掉落物。任何 server probe/score、objective create/remove receipt、日志前缀或
-低层动作缺失都拒绝。L2 还必须由 0.10 秒位置采样独立证明四次 `peak_delta_y>=0.8` 与落地；当前
-manifest 只证明输入，不承载这项物理效果，因此独立审计未通过时不得升级。L3/L4 在各自真 GPU
+低层动作缺失都拒绝。L2 还必须由正式 `action_effect_report.json` 证明四次
+`peak_delta_y>=0.8` 与落地、完整时间窗及 `max_position_gap<=0.20s`；manifest 与 dataset index
+都 SHA 绑定该报告，并在消费时从三份源 artifact 复算，未通过时不得升级。L3/L4 在各自真 GPU
 showcase、独立 manifest 复算、route QA 和视频目检通过前，accepted 桶仍保持为空。dataset index
 的 `action_buckets` 只保存每组精确、
 稳定排序的 episode ID 和数量，不复制 capture；训练可以先用 L1，再逐步调整四组采样比例。

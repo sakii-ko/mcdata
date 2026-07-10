@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/action_effect_report.schema.json",
+  "title": "mcdata physical action-effect report",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "thresholds",
+    "source_artifacts",
+    "planned_level",
+    "planned_jump_count",
+    "verified_jump_count",
+    "position_trace",
+    "jumps",
+    "checks",
+    "failure_reasons",
+    "accepted",
+    "report_id"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "physical_deliberate_jump"},
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "required_jump_count",
+        "max_position_gap_sec",
+        "max_dispatch_lateness_sec",
+        "pre_ground_window_sec",
+        "effect_window_sec",
+        "min_peak_delta_y",
+        "ground_tolerance_y",
+        "min_ground_samples"
+      ],
+      "properties": {
+        "required_jump_count": {"const": 4},
+        "max_position_gap_sec": {"const": 0.2},
+        "max_dispatch_lateness_sec": {"const": 0.05},
+        "pre_ground_window_sec": {"const": 0.5},
+        "effect_window_sec": {"const": 1.5},
+        "min_peak_delta_y": {"const": 0.8},
+        "ground_tolerance_y": {"const": 0.05},
+        "min_ground_samples": {"const": 2}
+      },
+      "additionalProperties": false
+    },
+    "source_artifacts": {
+      "type": "object",
+      "required": ["trajectory", "replay_log", "positions"],
+      "properties": {
+        "trajectory": {"$ref": "#/$defs/sourceArtifact"},
+        "replay_log": {"$ref": "#/$defs/sourceArtifact"},
+        "positions": {"$ref": "#/$defs/sourceArtifact"}
+      },
+      "additionalProperties": false
+    },
+    "planned_level": {"type": "integer", "minimum": 1, "maximum": 4},
+    "planned_jump_count": {"type": "integer", "minimum": 0},
+    "verified_jump_count": {"type": "integer", "minimum": 0},
+    "position_trace": {
+      "type": "object",
+      "required": [
+        "sample_count",
+        "relevant_sample_count",
+        "t_min_sec",
+        "t_max_sec",
+        "relevant_t_start_sec",
+        "relevant_t_end_sec",
+        "max_gap_sec",
+        "cadence_passed",
+        "window_coverage_passed"
+      ],
+      "properties": {
+        "sample_count": {"type": "integer", "minimum": 0},
+        "relevant_sample_count": {"type": "integer", "minimum": 0},
+        "t_min_sec": {"type": ["number", "null"]},
+        "t_max_sec": {"type": ["number", "null"]},
+        "relevant_t_start_sec": {"type": ["number", "null"]},
+        "relevant_t_end_sec": {"type": ["number", "null"]},
+        "max_gap_sec": {"type": ["number", "null"], "minimum": 0},
+        "cadence_passed": {"type": "boolean"},
+        "window_coverage_passed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "jumps": {"type": "array", "items": {"$ref": "#/$defs/jump"}},
+    "checks": {
+      "type": "object",
+      "required": [
+        "planned_level_requires_jump_evidence",
+        "source_artifacts_complete",
+        "canonical_jump_sequences",
+        "exact_required_jump_count",
+        "replay_semantic_alignment",
+        "semantic_jump_inputs_dispatched",
+        "replay_dispatch_complete",
+        "replay_timing_aligned",
+        "position_rows_valid",
+        "position_cadence",
+        "position_window_coverage",
+        "all_jumps_physical"
+      ],
+      "additionalProperties": {"type": "boolean"}
+    },
+    "failure_reasons": {"type": "array", "items": {"type": "string"}},
+    "accepted": {"type": "boolean"},
+    "report_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "sourceArtifact": {
+      "type": "object",
+      "required": ["path", "present", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "present": {"type": "boolean"},
+        "sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": ["integer", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "optionalNumber": {"type": ["number", "null"]},
+    "jump": {
+      "type": "object",
+      "required": [
+        "jump_id",
+        "route_index",
+        "scheduled_press_t_sec",
+        "scheduled_release_t_sec",
+        "actual_press_t_sec",
+        "actual_release_t_sec",
+        "input_sequence",
+        "dispatch",
+        "pre_ground",
+        "peak",
+        "landing",
+        "physical_effect_passed",
+        "failure_reasons",
+        "status"
+      ],
+      "properties": {
+        "jump_id": {"type": "string", "minLength": 1},
+        "route_index": {"type": ["integer", "null"], "minimum": 0},
+        "scheduled_press_t_sec": {"$ref": "#/$defs/optionalNumber"},
+        "scheduled_release_t_sec": {"$ref": "#/$defs/optionalNumber"},
+        "actual_press_t_sec": {"$ref": "#/$defs/optionalNumber"},
+        "actual_release_t_sec": {"$ref": "#/$defs/optionalNumber"},
+        "input_sequence": {"enum": ["down_hold_up", "noncanonical"]},
+        "dispatch": {
+          "type": "object",
+          "required": [
+            "press_status",
+            "release_status",
+            "press_lateness_sec",
+            "release_lateness_sec",
+            "input_dispatch_observed",
+            "passed",
+            "timing_passed"
+          ],
+          "properties": {
+            "press_status": {"type": ["string", "null"]},
+            "release_status": {"type": ["string", "null"]},
+            "press_lateness_sec": {"$ref": "#/$defs/optionalNumber"},
+            "release_lateness_sec": {"$ref": "#/$defs/optionalNumber"},
+            "input_dispatch_observed": {"type": "boolean"},
+            "passed": {"type": "boolean"},
+            "timing_passed": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "pre_ground": {
+          "type": "object",
+          "required": [
+            "baseline_y",
+            "sample_count",
+            "span_y",
+            "nearest_pre_sample_gap_sec",
+            "passed"
+          ],
+          "properties": {
+            "baseline_y": {"$ref": "#/$defs/optionalNumber"},
+            "sample_count": {"type": "integer", "minimum": 0},
+            "span_y": {"$ref": "#/$defs/optionalNumber"},
+            "nearest_pre_sample_gap_sec": {"$ref": "#/$defs/optionalNumber"},
+            "passed": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "peak": {
+          "type": "object",
+          "required": ["t_sec", "y", "delta_y", "passed"],
+          "properties": {
+            "t_sec": {"$ref": "#/$defs/optionalNumber"},
+            "y": {"$ref": "#/$defs/optionalNumber"},
+            "delta_y": {"$ref": "#/$defs/optionalNumber"},
+            "passed": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "landing": {
+          "type": "object",
+          "required": [
+            "t_sec",
+            "y",
+            "delta_from_baseline_y",
+            "consecutive_ground_sample_count",
+            "passed"
+          ],
+          "properties": {
+            "t_sec": {"$ref": "#/$defs/optionalNumber"},
+            "y": {"$ref": "#/$defs/optionalNumber"},
+            "delta_from_baseline_y": {"$ref": "#/$defs/optionalNumber"},
+            "consecutive_ground_sample_count": {"type": "integer", "minimum": 0},
+            "passed": {"type": "boolean"}
+          },
+          "additionalProperties": false
+        },
+        "physical_effect_passed": {"type": "boolean"},
+        "failure_reasons": {"type": "array", "items": {"type": "string"}},
+        "status": {"enum": ["pass", "fail"]}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -82,6 +82,12 @@
         {"$ref": "#/$defs/actionCurriculum"}
       ]
     },
+    "action_effect": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/actionEffectEvidence"}
+      ]
+    },
     "capture": {
       "type": "object",
       "required": ["enabled", "settings", "ffmpeg_cmd", "ffprobe"],
@@ -108,6 +114,24 @@
     "error": { "type": ["string", "null"] }
   },
   "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": ["action_curriculum"],
+        "properties": {
+          "action_curriculum": {
+            "type": "object",
+            "required": ["planned_level"],
+            "properties": {"planned_level": {"minimum": 2}}
+          }
+        }
+      },
+      "then": {
+        "required": ["action_effect"],
+        "properties": {"action_effect": {"$ref": "#/$defs/actionEffectEvidence"}}
+      }
+    }
+  ],
   "$defs": {
     "actionCounts": {
       "type": "object",
@@ -146,6 +170,32 @@
         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "size_bytes": {"type": "integer", "minimum": 0},
         "record_count": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "actionEffectEvidence": {
+      "type": "object",
+      "required": [
+        "kind",
+        "schema_version",
+        "path",
+        "sha256",
+        "size_bytes",
+        "report_id",
+        "planned_jump_count",
+        "verified_jump_count",
+        "accepted"
+      ],
+      "properties": {
+        "kind": {"const": "physical_deliberate_jump"},
+        "schema_version": {"const": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "report_id": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "planned_jump_count": {"type": "integer", "minimum": 0},
+        "verified_jump_count": {"type": "integer", "minimum": 0},
+        "accepted": {"type": "boolean"}
       },
       "additionalProperties": false
     },

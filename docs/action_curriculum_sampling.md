@@ -37,9 +37,10 @@ mcdata curriculum-plan runs/accepted/dataset_index.json \
 真 GPU showcase、独立复算与视频目检，也不能提前生成假计划。
 
 L2 同样不能只凭 replay 中的 `executed` 输入进入 accepted index：语义 jump 必须是完整的
-0.12–0.18 秒 Space down/up 对，且当前还要由独立的 0.10 秒位置审计逐次证明 rise + landing。
-在该物理效果尚未进入 manifest schema 前，审计缺失或四次中任一次失败都使 L2 及其累计 L3/L4
-样本不可用于 schedule。
+0.12–0.18 秒 Space down/up 对，并由 `action_effect_report.json` 对四次动作逐次证明稳定落地
+baseline、`peak_delta_y>=0.8`、落回 baseline、完整时间窗和 `max_position_gap<=0.20s`。manifest
+和 dataset episode 都 SHA 绑定同一 report；indexer 会从 trajectory/replay/positions 重新计算，
+缺报告、报告被篡改、4/4 任一次失败都会使 L2 及其累计 L3/L4 样本不可用于 schedule。
 
 `--samples` 是该 epoch 展开的 pair 样本数，不是 episode 或 frame 数。整数计数由最大余数法得到；
 余数相同时按固定顺序 `l1, l1_l2, l1_l2_l3, l1_l2_l3_l4` 决胜。桶内先完整遍历一次
