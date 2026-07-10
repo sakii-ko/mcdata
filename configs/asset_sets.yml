@@ -44,6 +44,19 @@ assets:
       provider: "modrinth"
       slug: "patrix-32x"
       type: "resourcepack"
+    patrix-32x-full:
+      provider: "modrinth"
+      slug: "patrix-32x"
+      type: "resourcepack"
+      file_patterns:
+        - "Patrix_*_32x_basic.zip"
+        - "Patrix_*_32x_addon.zip"
+        - "Patrix_*_32x_bonus.zip"
+        - "Patrix_*_models.zip"
+    modernarch-128x:
+      provider: "modrinth"
+      slug: "modernarch"
+      type: "resourcepack"
     better-leaves:
       provider: "modrinth"
       slug: "better-leaves"
@@ -249,4 +262,22 @@ asset_sets:
     description: "Solas shader plus Patrix 32x for stylized lighting over LabPBR materials."
     resourcepacks:
       - patrix-32x
+    shaderpack: solas-shader
+
+  modernarch_high_no_shader:
+    description: "ModernArch 128x realistic architecture materials without shaders."
+    resourcepacks:
+      - modernarch-128x
+    shaderpack: null
+
+  modernarch_solas:
+    description: "ModernArch 128x LabPBR/POM materials with Solas 3.7 lighting and water."
+    resourcepacks:
+      - modernarch-128x
+    shaderpack: solas-shader
+
+  patrix_full_solas:
+    description: "All public Patrix 32x components with Solas 3.7 LabPBR lighting and water."
+    resourcepacks:
+      - patrix-32x-full
     shaderpack: solas-shader

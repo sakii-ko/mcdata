@@ -552,3 +552,187 @@ profiles:
     height: 720
     server_port: 25570
     world_profile: "render_matrix_base"
+
+  feedback_vanilla_1080p:
+    description: "Feedback-roam cohort baseline: vanilla resources at aligned high-quality 1080p settings."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "vanilla"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  feedback_modernarch_1080p:
+    description: "Feedback-roam cohort material pass: ModernArch 128x at aligned high-quality 1080p settings."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "modernarch_high_no_shader"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  feedback_modernarch_solas_1080p:
+    description: "Feedback-roam cohort shader pass: ModernArch 128x and Solas 3.7 Ultra/LabPBR at 1080p."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "modernarch_solas"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options:
+      ADVANCED_MATERIALS: "true"
+      GENERATED_NORMALS: "false"
+      GENERATED_SPECULAR: "false"
+      LPV_CLOUDY_FOG: "true"
+      MATERIAL_FORMAT: "1"
+      PARALLAX: "true"
+      PARALLAX_DISTANCE: "32"
+      PARALLAX_QUALITY: "64"
+      REFLECTION: "2"
+      REFLECTION_ROUGH: "true"
+      REFLECTION_SPECULAR: "true"
+      REFRACTION: "true"
+      REFRACTION_STRENGTH: "0.6"
+      SELF_SHADOW: "true"
+      SELF_SHADOW_QUALITY: "6"
+      SHADOW_ENTITIES: "true"
+      VL_SAMPLES: "12"
+      VOXEL_VOLUME_SIZE: "256"
+      WATER_CAUSTICS: "true"
+      WATER_CAUSTICS_STRENGTH: "2.50"
+      WATER_FOG: "true"
+      WATER_NORMALS: "3"
+      WATER_REFLECTIONS: "true"
+      shadowDistance: "512.0"
+      shadowMapResolution: "4096"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18
+
+  preview_patrix_full_solas_1080p:
+    description: "Visual preview: all public Patrix 32x components with Solas 3.7 Ultra/LabPBR at 1080p."
+    game_version: "26.2"
+    loader: "fabric"
+    quality: "high"
+    mods:
+      - fabric-api
+      - sodium
+      - iris
+      - modmenu
+      - advancementdisable
+      - no-chat-reports
+      - continuity
+      - entity-model-features
+      - entitytexturefeatures
+    asset_set: "patrix_full_solas"
+    width: 1920
+    height: 1080
+    server_port: 25570
+    world_profile: "render_matrix_base"
+    shader_options:
+      ADVANCED_MATERIALS: "true"
+      GENERATED_NORMALS: "false"
+      GENERATED_SPECULAR: "false"
+      LPV_CLOUDY_FOG: "true"
+      MATERIAL_FORMAT: "1"
+      PARALLAX: "true"
+      PARALLAX_DISTANCE: "32"
+      PARALLAX_QUALITY: "64"
+      REFLECTION: "2"
+      REFLECTION_ROUGH: "true"
+      REFLECTION_SPECULAR: "true"
+      REFRACTION: "true"
+      REFRACTION_STRENGTH: "0.6"
+      SELF_SHADOW: "true"
+      SELF_SHADOW_QUALITY: "6"
+      SHADOW_ENTITIES: "true"
+      VL_SAMPLES: "12"
+      VOXEL_VOLUME_SIZE: "256"
+      WATER_CAUSTICS: "true"
+      WATER_CAUSTICS_STRENGTH: "2.50"
+      WATER_FOG: "true"
+      WATER_NORMALS: "3"
+      WATER_REFLECTIONS: "true"
+      shadowDistance: "512.0"
+      shadowMapResolution: "4096"
+    world_state:
+      clear_non_player_entities: true
+      gamerules:
+        advance_time: false
+        advance_weather: false
+        spawn_mobs: false
+      player:
+        x: 0
+        y: 64
+        z: -14
+        yaw: 90
+        pitch: 18

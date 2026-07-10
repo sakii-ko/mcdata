@@ -3,6 +3,7 @@ import ast
 
 from mcdata.actions.strategies import STRATEGY_BUILDERS, build_trajectory
 from mcdata.config import load_profile, load_yaml
+from mcdata.render.options import write_iris_config
 from mcdata.render.scene import _scene_commands
 from mcdata.scene_model import load_scene, scene_commands, scene_mapping
 
@@ -146,6 +147,141 @@ def test_iter03_supported_expansion_combinations() -> None:
     assert solas_patrix["asset_set"] == "solas_patrix"
     assert asset_sets["solas_patrix"]["resourcepacks"] == ["patrix-32x"]
     assert asset_sets["solas_patrix"]["shaderpack"] == "solas-shader"
+
+
+def test_feedback_visual_profiles_are_policy_aligned_at_1080p() -> None:
+    names = [
+        "feedback_vanilla_1080p",
+        "feedback_modernarch_1080p",
+        "feedback_modernarch_solas_1080p",
+    ]
+    resolved = [load_profile(ROOT / "configs", name) for name in names]
+    invariant = [
+        {
+            key: value
+            for key, value in profile.items()
+            if key not in {"description", "asset_set", "shader_options"}
+        }
+        for profile in resolved
+    ]
+
+    assert invariant[1:] == invariant[:-1]
+    assert {profile["game_version"] for profile in resolved} == {"26.2"}
+    assert {(profile["width"], profile["height"]) for profile in resolved} == {
+        (1920, 1080)
+    }
+    assert {profile["quality"] for profile in resolved} == {"high"}
+    assert [profile["asset_set"] for profile in resolved] == [
+        "vanilla",
+        "modernarch_high_no_shader",
+        "modernarch_solas",
+    ]
+    assert resolved[0]["shader_options"] == {}
+    assert resolved[1]["shader_options"] == {}
+    assert resolved[0]["world_state"]["player"] == {
+        "x": 0,
+        "y": 64,
+        "z": -14,
+        "yaw": 90,
+        "pitch": 18,
+    }
+    assert resolved[0]["world_state"]["gamerules"] == {
+        "advance_time": False,
+        "advance_weather": False,
+        "command_block_output": False,
+        "keep_inventory": True,
+        "random_tick_speed": 0,
+        "send_command_feedback": False,
+        "show_death_messages": False,
+        "spawn_mobs": False,
+    }
+
+
+def test_feedback_visual_profiles_share_required_fabric_superset() -> None:
+    names = [
+        "feedback_vanilla_1080p",
+        "feedback_modernarch_1080p",
+        "feedback_modernarch_solas_1080p",
+        "preview_patrix_full_solas_1080p",
+    ]
+    expected = [
+        "fabric-api",
+        "sodium",
+        "iris",
+        "modmenu",
+        "advancementdisable",
+        "no-chat-reports",
+        "continuity",
+        "entity-model-features",
+        "entitytexturefeatures",
+    ]
+
+    assert [load_profile(ROOT / "configs", name)["mods"] for name in names] == [
+        expected
+    ] * len(names)
+    assert load_profile(
+        ROOT / "configs", "preview_patrix_full_solas_1080p"
+    )["game_version"] == "26.2"
+
+
+def test_iter04_resource_pack_selection_and_priority_order() -> None:
+    config = load_yaml(ROOT / "configs" / "asset_sets.yml")
+    assets = config["assets"]["resourcepacks"]
+    asset_sets = config["asset_sets"]
+
+    assert assets["modernarch-128x"] == {
+        "provider": "modrinth",
+        "slug": "modernarch",
+        "type": "resourcepack",
+    }
+    assert assets["patrix-32x-full"]["file_patterns"] == [
+        "Patrix_*_32x_basic.zip",
+        "Patrix_*_32x_addon.zip",
+        "Patrix_*_32x_bonus.zip",
+        "Patrix_*_models.zip",
+    ]
+    assert asset_sets["modernarch_high_no_shader"] == {
+        "description": "ModernArch 128x realistic architecture materials without shaders.",
+        "resourcepacks": ["modernarch-128x"],
+        "shaderpack": None,
+    }
+    assert asset_sets["modernarch_solas"]["resourcepacks"] == ["modernarch-128x"]
+    assert asset_sets["modernarch_solas"]["shaderpack"] == "solas-shader"
+    assert asset_sets["patrix_full_solas"]["resourcepacks"] == ["patrix-32x-full"]
+    assert asset_sets["patrix_full_solas"]["shaderpack"] == "solas-shader"
+
+
+def test_solas_profiles_emit_verified_ultra_labpbr_options(tmp_path: Path) -> None:
+    modernarch = load_profile(
+        ROOT / "configs", "feedback_modernarch_solas_1080p"
+    )["shader_options"]
+    patrix = load_profile(
+        ROOT / "configs", "preview_patrix_full_solas_1080p"
+    )["shader_options"]
+
+    assert modernarch == patrix
+    assert modernarch["MATERIAL_FORMAT"] == "1"
+    assert modernarch["ADVANCED_MATERIALS"] == "true"
+    assert modernarch["GENERATED_NORMALS"] == "false"
+    assert modernarch["GENERATED_SPECULAR"] == "false"
+    assert modernarch["WATER_NORMALS"] == "3"
+    assert modernarch["WATER_REFLECTIONS"] == "true"
+    assert modernarch["WATER_CAUSTICS"] == "true"
+    assert modernarch["REFRACTION"] == "true"
+    assert modernarch["shadowMapResolution"] == "4096"
+    assert modernarch["shadowDistance"] == "512.0"
+
+    write_iris_config(
+        tmp_path,
+        shaderpack="Solas Shader V3.7.zip",
+        enabled=True,
+        shader_options=modernarch,
+    )
+    actual = (tmp_path / "shaderpacks" / "Solas Shader V3.7.zip.txt").read_bytes()
+    expected = (
+        ROOT / "tests" / "golden" / "solas_3_7_ultra_labpbr_options.txt"
+    ).read_bytes()
+    assert actual == expected
 
 
 def test_action_strategy_types_are_registered() -> None:
