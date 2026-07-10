@@ -163,9 +163,10 @@ def test_resource_manifest_consistency_rejects_effective_sha_mismatch() -> None:
 
 def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, monkeypatch) -> None:
     profile = {
-        "loader": "vanilla",
+        "loader": "fabric",
         "quality": "low",
         "asset_set": "vanilla",
+        "mods": ["respackopts", "libjf"],
         "width": 320,
         "height": 180,
         "username": "mcdata_bot",
@@ -182,6 +183,14 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
     monkeypatch.setattr(pipeline, "load_profile", lambda _configs, _name: dict(profile))
     monkeypatch.setattr(pipeline, "load_asset_config", lambda _configs: {})
     monkeypatch.setattr(pipeline, "resolve_game_version", lambda _profile: "26.2")
+    installed_mods = ["respackopts-26.2.0.jar", "libjf-26.2.0.jar"]
+    monkeypatch.setattr(
+        pipeline,
+        "install_mods",
+        lambda _work_dir, *, game_version, slugs: installed_mods
+        if (game_version, slugs) == ("26.2", ["respackopts", "libjf"])
+        else pytest.fail("bootstrap passed unexpected mod resolver inputs"),
+    )
     monkeypatch.setattr(
         pipeline,
         "install_asset_set",
@@ -222,6 +231,7 @@ def test_bootstrap_manifest_records_lane_server_dir_and_port(tmp_path: Path, mon
     )
     assert manifest["server_port"] == 25604
     assert manifest["lane"] == "gpu4"
+    assert manifest["mods"] == installed_mods
     assert manifest["server_dir"].endswith("servers/render_matrix_base__gpu4")
     assert manifest["resourcepack_resolution"] == resourcepack_resolution
     sidecar = Path(result["work_dir"]) / "shaderpacks" / "Example Shader.zip.txt"

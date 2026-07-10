@@ -529,6 +529,7 @@ def test_style_lookdev_profiles_are_aligned_and_distinct() -> None:
         "no-chat-reports",
         "continuity",
         "polytone",
+        "libjf",
         "respackopts",
         "entity-model-features",
         "entitytexturefeatures",
@@ -544,6 +545,18 @@ def test_style_lookdev_profiles_are_aligned_and_distinct() -> None:
     assert assets["jeelh-simplified"]["slug"] == "jeelh-simplified"
     assert assets["quadral"]["slug"] == "quadral"
     assert assets["bare-bones-pbr-128x"]["slug"] == "bare-bones-pbr-x128"
+
+
+def test_every_respackopts_profile_also_installs_libjf() -> None:
+    profiles = load_yaml(ROOT / "configs" / "profiles.yml")["profiles"]
+    users = {
+        name: profile["mods"]
+        for name, profile in profiles.items()
+        if "respackopts" in profile.get("mods", [])
+    }
+
+    assert users
+    assert all("libjf" in mods for mods in users.values())
 
 
 def test_action_strategy_types_are_registered() -> None:

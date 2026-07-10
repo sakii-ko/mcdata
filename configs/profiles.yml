@@ -1449,6 +1449,7 @@ profiles:
       - no-chat-reports
       - continuity
       - polytone
+      - libjf
       - respackopts
       - entity-model-features
       - entitytexturefeatures

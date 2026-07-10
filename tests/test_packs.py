@@ -78,6 +78,60 @@ def _asset_config() -> dict:
     }
 
 
+def test_install_mods_resolves_fabric_libjf_and_replaces_stale_jar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mods_dir = tmp_path / "mods"
+    mods_dir.mkdir()
+    stale = mods_dir / "libjf-26.1.0.jar"
+    unrelated = mods_dir / "other-mod-1.0.jar"
+    stale.write_bytes(b"stale")
+    unrelated.write_bytes(b"unrelated")
+    payload = b"libjf 26.2.0"
+    version = ProjectVersion(
+        project="libjf",
+        version_number="26.2.0",
+        version_type="release",
+        game_versions=["26.2"],
+        loaders=["fabric"],
+        files=[
+            VersionFile(
+                filename="libjf-26.2.0.jar",
+                url="https://example.invalid/libjf-26.2.0.jar",
+                primary=True,
+                sha512=hashlib.sha512(payload).hexdigest(),
+                size=len(payload),
+            )
+        ],
+    )
+    calls: list[tuple[str, str | None, list[str] | None, list[str] | None]] = []
+
+    def fake_latest_project_version(
+        slug: str,
+        *,
+        game_version: str | None = None,
+        loaders: list[str] | None = None,
+        version_types: list[str] | None = None,
+    ) -> ProjectVersion:
+        calls.append((slug, game_version, loaders, version_types))
+        return version
+
+    monkeypatch.setattr(packs, "latest_project_version", fake_latest_project_version)
+    monkeypatch.setattr(
+        packs,
+        "download_file",
+        lambda _url, dest: dest.write_bytes(payload),
+    )
+
+    installed = packs.install_mods(tmp_path, game_version="26.2", slugs=["libjf"])
+
+    assert calls == [("libjf", "26.2", ["fabric"], ["release", "beta"])]
+    assert installed == ["libjf-26.2.0.jar"]
+    assert (mods_dir / installed[0]).read_bytes() == payload
+    assert not stale.exists()
+    assert unrelated.read_bytes() == b"unrelated"
+
+
 def _config_with_patterns(patterns: object) -> dict:
     config = _asset_config()
     config["assets"]["resourcepacks"]["example"]["file_patterns"] = patterns
