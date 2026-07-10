@@ -72,9 +72,34 @@
         "execution_mode": {
           "enum": ["open_loop_event_replay", "online_position_yaw_feedback"]
         },
-        "route_point_count": { "type": "integer", "minimum": 0 }
+        "route_point_count": { "type": "integer", "minimum": 0 },
+        "action_source": {"$ref": "#/$defs/actionSource"},
+        "native_trace": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/nativeTraceRef"}
+          ]
+        },
+        "curriculum_binding": {"$ref": "#/$defs/nativeCurriculumBinding"}
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "required": ["action_source"],
+            "properties": {
+              "action_source": {
+                "properties": {
+                  "id": {
+                    "enum": ["human_demo", "learned_visual_policy", "llm_skill_agent"]
+                  }
+                }
+              }
+            }
+          },
+          "then": {"required": ["native_trace", "curriculum_binding"]}
+        }
+      ]
     },
     "action_curriculum": {
       "oneOf": [
@@ -133,6 +158,52 @@
     }
   ],
   "$defs": {
+    "actionSource": {
+      "type": "object",
+      "required": ["taxonomy_version", "id", "provenance"],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "id": {
+          "enum": [
+            "scripted_astar",
+            "feedback_planner",
+            "human_demo",
+            "learned_visual_policy",
+            "llm_skill_agent"
+          ]
+        },
+        "provenance": {"enum": ["declared", "derived_legacy_trajectory"]}
+      },
+      "additionalProperties": false
+    },
+    "nativeTraceRef": {
+      "type": "object",
+      "required": ["schema_version", "sha256", "tick_rate_hz"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "tick_rate_hz": {"const": 20}
+      },
+      "additionalProperties": false
+    },
+    "nativeCurriculumBinding": {
+      "type": "object",
+      "required": [
+        "status",
+        "has_jump_input",
+        "has_use_input",
+        "has_attack_input"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["l1_candidate", "requires_semantic_effect_validation"]
+        },
+        "has_jump_input": {"type": "boolean"},
+        "has_use_input": {"type": "boolean"},
+        "has_attack_input": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
     "actionCounts": {
       "type": "object",
       "required": [

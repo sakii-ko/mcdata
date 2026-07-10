@@ -173,6 +173,11 @@
   "schema_version": 3,
   "started_at": "2026-07-08T05:33:12.601019+00:00",
   "trajectory": {
+    "action_source": {
+      "id": "scripted_astar",
+      "provenance": "derived_legacy_trajectory",
+      "taxonomy_version": 1
+    },
     "duration_sec": 52.09,
     "event_count": 46,
     "path": "/root/nas/bigdata1/cjw/projs/mcdata/runs/20260708T053312Z_matrix_low/trajectory.json",

@@ -13,6 +13,7 @@ from mcdata.action_effect import (
     write_action_effect_report,
 )
 from mcdata.action_curriculum import summarize_action_run
+from mcdata.action_source import declared_action_source
 from mcdata.dataset import DatasetValidationError, collect_runtime_logs, write_dataset_index
 
 GENERATOR_COMMIT = "f" * 40
@@ -811,6 +812,74 @@ def test_dataset_rejects_pair_invariant_drift(tmp_path: Path, drift: str) -> Non
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
+        )
+
+
+def test_external_pair_requires_the_same_canonical_native_trace(tmp_path: Path) -> None:
+    base = _write_episode(tmp_path, "base", {}, material="base")
+    styled = _write_episode(tmp_path, "styled", {}, material="styled")
+    profiles = ["base", "styled"]
+    strict = _write_compare(tmp_path, "compare_strict", [base, styled])
+    diagnostic = _write_compare(tmp_path, "compare_all", [base, styled])
+    pairs = _write_pair_manifest(
+        tmp_path,
+        [
+            {
+                "prompt": "Apply the learned-policy-aligned material edit.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-styled",
+                "edit_axis": "material_style",
+            }
+        ],
+    )
+    for run in (base, styled):
+        manifest_path = run / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["trajectory"].update(
+            {
+                "action_source": declared_action_source("learned_visual_policy"),
+                "native_trace": {
+                    "schema_version": 1,
+                    "sha256": "a" * 64,
+                    "tick_rate_hz": 20,
+                },
+                "curriculum_binding": {
+                    "status": "l1_candidate",
+                    "has_jump_input": False,
+                    "has_use_input": False,
+                    "has_attack_input": False,
+                },
+            }
+        )
+        _write_json(manifest_path, manifest)
+        _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile="base",
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+    )
+    assert index["pairs"][0]["invariants"]["native_trace_sha256"] == "a" * 64
+    assert index["action_sources"]["learned_visual_policy"]["episode_count"] == 2
+
+    target_manifest_path = styled / "manifest.json"
+    target_manifest = json.loads(target_manifest_path.read_text(encoding="utf-8"))
+    target_manifest["trajectory"]["native_trace"]["sha256"] = "b" * 64
+    _write_json(target_manifest_path, target_manifest)
+    _refresh_manifest_evidence(target_manifest_path, (strict, diagnostic))
+    with pytest.raises(DatasetValidationError, match="canonical native action trace"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="base",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
         )
 
 

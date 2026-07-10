@@ -48,6 +48,9 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     },
     "resourcepack_catalog": {"config"},
     "action_curriculum": {"action_combat", "action_jump", "action_placement"},
+    "action_source": set(),
+    "action_trace": {"action_source"},
+    "external_action_adapters": {"action_trace"},
     "action_effect": {"action_jump"},
     "action_combat": {"action_placement"},
     "action_jump": set(),
@@ -58,8 +61,10 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "packs": {"net", "paths", "modrinth", "config"},
     "resourcepack_format": set(),
     "resourcepacks": {"resourcepack_format"},
-    "dataset": {"action_curriculum", "dataset_support"},
-    "dataset_support": {"action_curriculum", "action_effect", "dataset_support"},
+    "dataset": {"action_curriculum", "action_source", "dataset_support"},
+    "dataset_support": {
+        "action_curriculum", "action_effect", "action_source", "dataset_support",
+    },
     "manifest": {"paths"},
     "runlog": {"paths"},
     "settings": {"config", "paths"},
@@ -71,7 +76,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "render": {
         "config", "paths", "packs", "resourcepacks", "mojang", "modrinth", "net", "scene_model",
         "manifest", "runlog", "settings", "action_curriculum", "action_combat",
-        "action_placement", "action_effect",
+        "action_placement", "action_effect", "action_source",
         "actions.replay", "qa.probe", "render",
     },  # "render" target covers render-internal modules: pipeline/server/scene/probe/options.
     "qa": {"paths", "qa", "action_effect"},

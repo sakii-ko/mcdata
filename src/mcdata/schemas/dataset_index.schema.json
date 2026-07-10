@@ -13,6 +13,7 @@
     "cohorts",
     "episodes",
     "action_buckets",
+    "action_sources",
     "pair_manifest",
     "pairs",
     "comparisons",
@@ -108,6 +109,8 @@
           "trajectory",
           "action_curriculum",
           "action_curriculum_source",
+          "action_source",
+          "native_trace_sha256",
           "action_effect",
           "positions",
           "qa",
@@ -168,6 +171,13 @@
           "action_curriculum": {"$ref": "#/$defs/acceptedActionCurriculum"},
           "action_curriculum_source": {
             "enum": ["manifest", "derived_legacy_replay"]
+          },
+          "action_source": {"$ref": "#/$defs/actionSource"},
+          "native_trace_sha256": {
+            "oneOf": [
+              {"type": "null"},
+              {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            ]
           },
           "action_effect": {
             "oneOf": [
@@ -230,6 +240,27 @@
                 "action_effect": {"$ref": "#/$defs/acceptedActionEffect"}
               }
             }
+          },
+          {
+            "if": {
+              "properties": {
+                "action_source": {
+                  "properties": {
+                    "id": {
+                      "enum": ["human_demo", "learned_visual_policy", "llm_skill_agent"]
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "native_trace_sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
           }
         ]
       }
@@ -243,6 +274,26 @@
         "l1_l2": {"$ref": "#/$defs/actionBucket"},
         "l1_l2_l3": {"$ref": "#/$defs/actionBucket"},
         "l1_l2_l3_l4": {"$ref": "#/$defs/actionBucket"}
+      },
+      "additionalProperties": false
+    },
+    "action_sources": {
+      "type": "object",
+      "required": [
+        "taxonomy_version",
+        "scripted_astar",
+        "feedback_planner",
+        "human_demo",
+        "learned_visual_policy",
+        "llm_skill_agent"
+      ],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "scripted_astar": {"$ref": "#/$defs/actionSourceBucket"},
+        "feedback_planner": {"$ref": "#/$defs/actionSourceBucket"},
+        "human_demo": {"$ref": "#/$defs/actionSourceBucket"},
+        "learned_visual_policy": {"$ref": "#/$defs/actionSourceBucket"},
+        "llm_skill_agent": {"$ref": "#/$defs/actionSourceBucket"}
       },
       "additionalProperties": false
     },
@@ -295,6 +346,8 @@
               "spawn_sha256",
               "trajectory_sha256",
               "trajectory_contract_sha256",
+              "action_source",
+              "native_trace_sha256",
               "capture_spec_sha256",
               "static_state_sha256",
               "qa_passed"
@@ -310,6 +363,21 @@
               "trajectory_contract_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$"
+              },
+              "action_source": {
+                "enum": [
+                  "scripted_astar",
+                  "feedback_planner",
+                  "human_demo",
+                  "learned_visual_policy",
+                  "llm_skill_agent"
+                ]
+              },
+              "native_trace_sha256": {
+                "oneOf": [
+                  {"type": "null"},
+                  {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+                ]
               },
               "capture_spec_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
               "static_state_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
@@ -398,6 +466,43 @@
     }
   },
   "$defs": {
+    "actionSource": {
+      "type": "object",
+      "required": ["taxonomy_version", "id", "provenance"],
+      "properties": {
+        "taxonomy_version": {"const": 1},
+        "id": {
+          "enum": [
+            "scripted_astar",
+            "feedback_planner",
+            "human_demo",
+            "learned_visual_policy",
+            "llm_skill_agent"
+          ]
+        },
+        "provenance": {"enum": ["declared", "derived_legacy_trajectory"]}
+      },
+      "additionalProperties": false
+    },
+    "actionSourceBucket": {
+      "type": "object",
+      "required": ["episode_count", "episode_ids", "pair_count", "pair_ids"],
+      "properties": {
+        "episode_count": {"type": "integer", "minimum": 0},
+        "episode_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "pair_count": {"type": "integer", "minimum": 0},
+        "pair_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "additionalProperties": false
+    },
     "actionBucket": {
       "type": "object",
       "required": ["episode_count", "episode_ids"],

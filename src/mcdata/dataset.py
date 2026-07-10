@@ -6,6 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from mcdata.action_curriculum import ActionCurriculumError, action_buckets
+from mcdata.action_source import (
+    ActionSourceError,
+    action_source_index,
+    attach_episode_action_sources,
+)
 from mcdata.dataset_support.comparisons import cohorts, comparisons, manual_review
 from mcdata.dataset_support.core import (
     DatasetValidationError,
@@ -76,6 +81,10 @@ def _build_index(
     fps: float,
     duration: float,
 ) -> dict[str, Any]:
+    try:
+        attach_episode_action_sources(episodes, manifests)
+    except ActionSourceError as exc:
+        raise DatasetValidationError(str(exc)) from exc
     episodes.sort(key=lambda item: item["profile_name"])
     invariants = global_invariants(
         manifests, width=width, height=height, fps=fps, duration=duration
@@ -103,6 +112,7 @@ def _build_index(
         "cohorts": cohort_items,
         "episodes": episodes,
         "action_buckets": bucket_index,
+        "action_sources": action_source_index(episodes, pair_items),
         "pair_manifest": pair_manifest_artifact,
         "pairs": pair_items,
         "comparisons": comparison_items,

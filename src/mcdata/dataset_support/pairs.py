@@ -4,6 +4,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from mcdata.action_source import (
+    ActionSourceError,
+    resolve_manifest_action_source,
+    validate_native_trace_ref,
+)
 from mcdata.dataset_support.core import (
     DatasetValidationError,
     artifact,
@@ -104,6 +109,12 @@ def _episode_state(manifest: dict[str, Any], episode: dict[str, Any]) -> dict[st
     world_static = {
         key: value for key, value in world_state.items() if key not in {"time", "weather"}
     }
+    try:
+        action_source = resolve_manifest_action_source(manifest)
+        native_value = manifest.get("trajectory", {}).get("native_trace")
+        native_trace = validate_native_trace_ref(native_value) if native_value is not None else None
+    except ActionSourceError as exc:
+        raise DatasetValidationError(str(exc)) from exc
     return {
         "mc_version": require_nonempty_string(manifest.get("mc_version"), "Minecraft version"),
         "git_commit": require_nonempty_string(git.get("commit"), "capture git commit"),
@@ -112,6 +123,8 @@ def _episode_state(manifest: dict[str, Any], episode: dict[str, Any]) -> dict[st
         "scene": scene,
         "spawn": spawn,
         "trajectory": _trajectory_contract(manifest),
+        "action_source": action_source,
+        "native_trace_sha256": native_trace["sha256"] if native_trace else None,
         "capture_spec": capture_spec,
         "material_style": material,
         "material_fingerprint": [item["sha256"] for item in material],
@@ -239,6 +252,10 @@ def _invariants(source: dict[str, Any], target: dict[str, Any]) -> dict[str, Any
     scene = _require_shared(source, target, "scene", "scene")
     spawn = _require_shared(source, target, "spawn", "spawn")
     trajectory = _require_shared(source, target, "trajectory", "trajectory")
+    action_source = _require_shared(source, target, "action_source", "action source")
+    native_trace_sha256 = _require_shared(
+        source, target, "native_trace_sha256", "canonical native action trace"
+    )
     capture_spec = _require_shared(source, target, "capture_spec", "capture specification")
     static = _require_shared(source, target, "static", "static episode state")
     return {
@@ -250,6 +267,8 @@ def _invariants(source: dict[str, Any], target: dict[str, Any]) -> dict[str, Any
         "spawn_sha256": value_sha256(spawn),
         "trajectory_sha256": require_hash(trajectory.get("sha256"), 64, "pair trajectory sha256"),
         "trajectory_contract_sha256": value_sha256(trajectory),
+        "action_source": action_source["id"],
+        "native_trace_sha256": native_trace_sha256,
         "capture_spec_sha256": value_sha256(capture_spec),
         "static_state_sha256": value_sha256(static),
         "qa_passed": True,

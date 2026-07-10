@@ -33,6 +33,7 @@ from mcdata.action_effect import (
     action_effect_required,
     write_action_effect_report,
 )
+from mcdata.action_source import resolve_manifest_action_source, validate_native_trace_ref
 from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
 from mcdata.mojang import latest_release, release_versions
@@ -1668,9 +1669,10 @@ def _trajectory_manifest(
     if trajectory_path is None:
         return None
     data = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    _require_native_trace_curriculum_ready(data)
     planned_action_contract(data)
     route = data.get("route", [])
-    return {
+    result = {
         "strategy": strategy,
         "path": str(trajectory_path),
         "source_path": str(source_path) if source_path else None,
@@ -1685,6 +1687,35 @@ def _trajectory_manifest(
         ),
         "route_point_count": len(route) if isinstance(route, list) else 0,
     }
+    if data.get("native_trace") is not None:
+        result["native_trace"] = validate_native_trace_ref(data["native_trace"])
+    if data.get("curriculum_binding") is not None:
+        result["curriculum_binding"] = data["curriculum_binding"]
+    if data.get("action_source") is not None:
+        result["action_source"] = data["action_source"]
+    result["action_source"] = resolve_manifest_action_source({"trajectory": result})
+    return result
+
+
+def _require_native_trace_curriculum_ready(data: dict[str, Any]) -> None:
+    if data.get("type") != "native_action_trace_replay":
+        return
+    binding = data.get("curriculum_binding")
+    expected_fields = {
+        "status",
+        "has_jump_input",
+        "has_use_input",
+        "has_attack_input",
+    }
+    if not isinstance(binding, dict) or set(binding) != expected_fields:
+        raise ActionCurriculumError("native trace replay has no stable curriculum binding")
+    flags = [binding[field] for field in sorted(expected_fields - {"status"})]
+    if any(not isinstance(value, bool) for value in flags):
+        raise ActionCurriculumError("native trace curriculum input flags must be boolean")
+    if binding.get("status") != "l1_candidate" or any(flags):
+        raise ActionCurriculumError(
+            "native trace has jump/use/attack input that still requires semantic effect validation"
+        )
 
 
 def _is_feedback_navigation(plan: RunPlan) -> bool:
