@@ -365,7 +365,9 @@ def test_unbound_profiles_emit_verified_cinematic_labpbr_options(tmp_path: Path)
     assert actual == expected
 
 
-def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed() -> None:
+def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed(
+    tmp_path: Path,
+) -> None:
     names = [
         "lookdev_pair_legendary_unbound_noon_1080p",
         "lookdev_pair_legendary_unbound_golden_hour_1080p",
@@ -398,11 +400,69 @@ def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed() -> 
     } == {
         "LIGHT_NOON_I": "1.30",
         "LIGHT_MORNING_I": "1.30",
-        "LIGHT_NIGHT_I": "1.50",
+        "LIGHT_NIGHT_I": "2.00",
         "LIGHT_RAIN_I": "0.80",
         "IMPROVED_RAIN_DEFINE": "1",
         "WEATHER_TEX_OPACITY": "150",
     }
+    assert {
+        key: profiles[0]["shader_options"][key]
+        for key in (
+            "LIGHT_NIGHT_R",
+            "LIGHT_NIGHT_G",
+            "LIGHT_NIGHT_B",
+            "LIGHT_NIGHT_I",
+            "ATM_NIGHT_R",
+            "ATM_NIGHT_G",
+            "ATM_NIGHT_B",
+            "ATM_NIGHT_I",
+            "LIGHTSHAFT_NIGHT_I",
+            "MOON_PHASE_INF_LIGHT",
+            "MOON_PHASE_INF_ATMOSPHERE",
+            "MOON_PHASE_INF_REFLECTION",
+            "MOON_PHASE_FULL",
+            "MOON_PHASE_PARTIAL",
+            "MOON_PHASE_DARK",
+        )
+    } == {
+        "LIGHT_NIGHT_R": "0.80",
+        "LIGHT_NIGHT_G": "1.30",
+        "LIGHT_NIGHT_B": "1.80",
+        "LIGHT_NIGHT_I": "2.00",
+        "ATM_NIGHT_R": "0.80",
+        "ATM_NIGHT_G": "1.20",
+        "ATM_NIGHT_B": "1.60",
+        "ATM_NIGHT_I": "1.80",
+        "LIGHTSHAFT_NIGHT_I": "200",
+        "MOON_PHASE_INF_LIGHT": "true",
+        "MOON_PHASE_INF_ATMOSPHERE": "true",
+        "MOON_PHASE_INF_REFLECTION": "true",
+        "MOON_PHASE_FULL": "1.50",
+        "MOON_PHASE_PARTIAL": "1.30",
+        "MOON_PHASE_DARK": "1.10",
+    }
+    assert "TM_EXPOSURE" not in profiles[0]["shader_options"]
+
+    sidecars = []
+    for name, profile in zip(names, profiles, strict=True):
+        work_dir = tmp_path / name
+        write_iris_config(
+            work_dir,
+            shaderpack="ComplementaryUnbound_r5.8.1.zip",
+            enabled=True,
+            shader_options=profile["shader_options"],
+        )
+        sidecars.append(
+            (
+                work_dir
+                / "shaderpacks"
+                / "ComplementaryUnbound_r5.8.1.zip.txt"
+            ).read_bytes()
+        )
+    assert sidecars[1:] == sidecars[:-1]
+    assert sidecars[0] == (
+        ROOT / "tests" / "golden" / "complementary_unbound_5_8_cinematic_options.txt"
+    ).read_bytes()
     capture_specs = {
         (profile["width"], profile["height"], profile["capture_fps"]) for profile in profiles
     }
@@ -431,6 +491,43 @@ def test_lighting_weather_pair_profiles_are_single_axis_and_renderer_fixed() -> 
     assert snow_clear["weather"] == "clear"
     assert snow["weather"] == "rain"
     assert without_weather(snow) == without_weather(snow_clear)
+    assert "additions" not in noon["scene"]
+    assert "additions" not in rain["scene"]
+
+    snow_scene = snow_clear["scene"]
+    assert snow_scene == snow["scene"]
+    assert snow_scene["origin"] == [0, 64, 0]
+    assert snow_scene["variant"] == "snow_accumulation_v1"
+    assert len(snow_scene["additions"]) == 12
+    assert all(entry["kind"] == "fill" for entry in snow_scene["additions"])
+    assert all(entry["from"][1] == entry["to"][1] == -1 for entry in snow_scene["additions"])
+    assert all(entry.get("replace") for entry in snow_scene["additions"])
+    assert {entry["block"] for entry in snow_scene["additions"]} == {
+        "minecraft:snow_block",
+        "minecraft:ice",
+    }
+
+
+def test_snow_surface_overlay_runs_after_base_scene_without_new_route_obstacles() -> None:
+    profile = load_profile(
+        ROOT / "configs", "lookdev_pair_legendary_unbound_snow_clear_1080p"
+    )
+    base_spec = load_scene(ROOT / "configs")
+    runtime_scene = dict(profile["world_state"]["scene"])
+    runtime_scene["entries"] = scene_mapping(base_spec)["entries"]
+    commands = _scene_commands(runtime_scene)
+    additions = commands[-12:]
+
+    assert commands[:EXPECTED_SCENE_COMMAND_COUNT] == scene_commands(base_spec)
+    assert additions[0] == (
+        "fill -22 63 -22 22 63 22 minecraft:snow_block "
+        "replace minecraft:polished_andesite"
+    )
+    assert additions[-2:] == [
+        "fill -13 63 -2 -6 63 8 minecraft:ice replace minecraft:water",
+        "fill 6 63 -2 13 63 8 minecraft:ice replace minecraft:water",
+    ]
+    assert len(walk_obstacles(base_spec)) == 429
 
 
 def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:

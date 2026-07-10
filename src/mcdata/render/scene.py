@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from mcdata.scene_model import parse_scene, scene_commands
+from mcdata.scene_model import MAX_FILL_VOLUME, parse_scene, scene_commands
 
 SCENE_FAILURE_PATTERNS = (
     "Too many blocks",
@@ -184,7 +184,35 @@ def _tp_command(target: str, player: dict[str, Any]) -> str:
 def _scene_commands(scene: dict[str, Any]) -> list[str]:
     if not scene.get("enabled", True):
         return []
-    return scene_commands(parse_scene(scene))
+    additions = scene.get("additions")
+    if additions is None:
+        return scene_commands(parse_scene(scene))
+    variant = scene.get("variant")
+    if not isinstance(variant, str) or not variant.strip():
+        raise ValueError("world_state.scene.variant must identify configured scene additions")
+    if not isinstance(additions, list) or not additions:
+        raise ValueError("world_state.scene.additions must be a non-empty list")
+    if any(not isinstance(entry, dict) for entry in additions):
+        raise ValueError("world_state.scene.additions entries must be mappings")
+    origin = _coordinate_triple(scene.get("origin"), "scene additions origin")
+    for index, entry in enumerate(additions):
+        if entry.get("kind") != "fill":
+            continue
+        start = _coordinate_triple(entry.get("from"), f"scene addition {index} from")
+        end = _coordinate_triple(entry.get("to"), f"scene addition {index} to")
+        volume = 1
+        for left, right in zip(start, end, strict=True):
+            volume *= abs(right - left) + 1
+        if volume > MAX_FILL_VOLUME:
+            raise ValueError(
+                f"world_state.scene.additions[{index}] volume {volume} exceeds "
+                f"{MAX_FILL_VOLUME}"
+            )
+    addition_spec = parse_scene({"origin": list(origin), "entries": additions})
+    if any(entry.kind == "forceload" for entry in addition_spec.entries):
+        raise ValueError("world_state.scene.additions cannot contain forceload entries")
+    base = scene_commands(parse_scene(scene))
+    return [*base, *scene_commands(addition_spec)]
 
 
 def _bool_or_value(value: Any) -> str:

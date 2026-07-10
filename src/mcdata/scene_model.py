@@ -19,6 +19,7 @@ class SceneEntry:
     block: str | None
     start: tuple[int, int, int]
     end: tuple[int, int, int]
+    replace: str | None = None
     region: str | None = None
     split_axis: str | None = None
     walk_obstacle: bool = False
@@ -76,6 +77,8 @@ def walk_obstacles(spec: SceneSpec) -> set[tuple[int, int]]:
 
 def _parse_entry(data: dict[str, Any]) -> SceneEntry:
     kind = str(data.get("kind", ""))
+    if kind != "fill" and data.get("replace") is not None:
+        raise ValueError("scene replace filter is only valid for fill entries")
     if kind == "setblock":
         at = _triple(data["at"])
         return SceneEntry(
@@ -92,6 +95,7 @@ def _parse_entry(data: dict[str, Any]) -> SceneEntry:
             block=str(data["block"]),
             start=_triple(data["from"]),
             end=_triple(data["to"]),
+            replace=_optional_block_filter(data.get("replace")),
             region=_optional_str(data.get("region")),
             split_axis=_optional_str(data.get("split_axis")),
             walk_obstacle=bool(data.get("walk_obstacle", False)),
@@ -112,6 +116,8 @@ def _entry_mapping(entry: SceneEntry) -> dict[str, Any]:
         data["to"] = list(entry.end)
     if entry.block is not None:
         data["block"] = entry.block
+    if entry.replace is not None:
+        data["replace"] = entry.replace
     if entry.region:
         data["region"] = entry.region
     if entry.split_axis:
@@ -131,7 +137,7 @@ def _entry_commands(origin: tuple[int, int, int], entry: SceneEntry) -> list[str
         return [f"forceload add {start[0]} {start[2]} {end[0]} {end[2]}"]
     if entry.kind == "fill":
         return [
-            _fill_command(origin, start, end, str(entry.block))
+            _fill_command(origin, start, end, str(entry.block), replace=entry.replace)
             for start, end in _split_fill(entry)
         ]
     raise ValueError(f"Unsupported scene entry kind: {entry.kind}")
@@ -169,10 +175,15 @@ def _fill_command(
     start: tuple[int, int, int],
     end: tuple[int, int, int],
     block: str,
+    *,
+    replace: str | None = None,
 ) -> str:
     sx, sy, sz = _abs_point(origin, start)
     ex, ey, ez = _abs_point(origin, end)
-    return f"fill {sx} {sy} {sz} {ex} {ey} {ez} {block}"
+    command = f"fill {sx} {sy} {sz} {ex} {ey} {ez} {block}"
+    if replace is not None:
+        command += f" replace {replace}"
+    return command
 
 
 def _abs_point(origin: tuple[int, int, int], point: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -219,6 +230,15 @@ def _triple(value: Any) -> tuple[int, int, int]:
 
 def _optional_str(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _optional_block_filter(value: Any) -> str | None:
+    if value is None:
+        return None
+    block_filter = str(value)
+    if not block_filter or any(character.isspace() for character in block_filter):
+        raise ValueError("fill replace filter must be one non-empty block-state token")
+    return block_filter
 
 
 def _is_non_solid(block: str) -> bool:

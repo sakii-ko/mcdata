@@ -844,9 +844,9 @@ profiles:
       ATM_MORNING_G: "1.00"
       ATM_MORNING_I: "1.20"
       ATM_MORNING_R: "1.20"
-      ATM_NIGHT_B: "1.40"
-      ATM_NIGHT_G: "1.10"
-      ATM_NIGHT_I: "1.30"
+      ATM_NIGHT_B: "1.60"
+      ATM_NIGHT_G: "1.20"
+      ATM_NIGHT_I: "1.80"
       ATM_NIGHT_R: "0.80"
       ATM_NOON_I: "1.10"
       ATM_RAIN_B: "1.00"
@@ -869,9 +869,9 @@ profiles:
       LIGHT_MORNING_G: "1.10"
       LIGHT_MORNING_I: "1.30"
       LIGHT_MORNING_R: "1.30"
-      LIGHT_NIGHT_B: "1.40"
-      LIGHT_NIGHT_G: "1.10"
-      LIGHT_NIGHT_I: "1.50"
+      LIGHT_NIGHT_B: "1.80"
+      LIGHT_NIGHT_G: "1.30"
+      LIGHT_NIGHT_I: "2.00"
       LIGHT_NIGHT_R: "0.80"
       LIGHT_NOON_I: "1.30"
       LIGHT_RAIN_B: "1.00"
@@ -879,11 +879,17 @@ profiles:
       LIGHT_RAIN_I: "0.80"
       LIGHT_RAIN_R: "0.80"
       LIGHTSHAFT_DAY_I: "150"
-      LIGHTSHAFT_NIGHT_I: "140"
+      LIGHTSHAFT_NIGHT_I: "200"
       LIGHTSHAFT_QUALI_DEFINE: "4"
       LIGHTSHAFT_RAIN_I: "110"
       LIGHTSHAFT_SUNSET_SATURATION: "0.50"
       MOTION_BLUR_EFFECT: "-1"
+      MOON_PHASE_DARK: "1.10"
+      MOON_PHASE_FULL: "1.50"
+      MOON_PHASE_INF_ATMOSPHERE: "true"
+      MOON_PHASE_INF_LIGHT: "true"
+      MOON_PHASE_INF_REFLECTION: "true"
+      MOON_PHASE_PARTIAL: "1.30"
       NORMAL_MAP_STRENGTH: "100"
       POM: "true"
       POM_ALLOW_CUTOUT: "false"
@@ -1577,6 +1583,23 @@ profiles:
         id: "minecraft:snowy_plains"
         precipitation: "snow"
         regions: *lookdev_pair_biome_regions
+      scene:
+        variant: "snow_accumulation_v1"
+        additions: &lookdev_pair_snow_surface_overlay
+          # Full-block replacements preserve the y=63 collision surface while
+          # making accumulation visible from every showcase camera moment.
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:polished_andesite", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:mud_bricks", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:cut_sandstone", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:waxed_oxidized_cut_copper", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:mossy_stone_bricks", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:deepslate_tiles", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:stone_bricks", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:polished_blackstone_bricks", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:dark_oak_planks", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:snow_block", replace: "minecraft:stripped_spruce_wood[axis=z]", from: [-22, -1, -22], to: [22, -1, 22], region: snow_surface}
+          - {kind: fill, block: "minecraft:ice", replace: "minecraft:water", from: [-13, -1, -2], to: [-6, -1, 8], region: frozen_basin_surface}
+          - {kind: fill, block: "minecraft:ice", replace: "minecraft:water", from: [6, -1, -2], to: [13, -1, 8], region: frozen_basin_surface}
 
   lookdev_pair_legendary_unbound_snow_1080p:
     <<: *lookdev_pair_legendary_unbound_snow_clear_profile
