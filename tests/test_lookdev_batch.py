@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -222,6 +223,34 @@ def test_batch_summary_requires_exact_profile_order_and_all_passes() -> None:
     assert reordered["profile_order_passed"] is False
 
 
+def test_batch_summary_supports_an_exact_repair_subset() -> None:
+    subset = [
+        "feedback_vanilla_1080p",
+        "lookdev_legendary_rt_bliss_1080p",
+        "lookdev_style_natural_1080p",
+    ]
+    records = [{"profile": profile, "passed": True} for profile in subset]
+
+    passing = summarize_batch(
+        records,
+        expected_profiles=subset,
+        config_unchanged=True,
+        bootstrap_unchanged=True,
+    )
+    missing = summarize_batch(
+        records[:-1],
+        expected_profiles=subset,
+        config_unchanged=True,
+        bootstrap_unchanged=True,
+    )
+
+    assert passing["passed"] is True
+    assert passing["expected_profile_count"] == len(subset)
+    assert passing["record_count"] == len(subset)
+    assert missing["passed"] is False
+    assert missing["profile_order_passed"] is False
+
+
 def test_batch_script_exposes_exact_accepted_profile_set() -> None:
     result = subprocess.run(
         ["bash", str(ROOT / "scripts" / "lookdev_render_batch.sh"), "--print-profiles"],
@@ -232,6 +261,72 @@ def test_batch_script_exposes_exact_accepted_profile_set() -> None:
 
     assert result.stdout.splitlines() == ACCEPTED_PROFILES
     assert all("yitalith" not in profile for profile in ACCEPTED_PROFILES)
+
+
+def test_batch_script_prints_a_valid_subset_without_creating_run_root(
+    tmp_path: Path,
+) -> None:
+    profiles_file = tmp_path / "repair-profiles.txt"
+    profiles_file.write_text(
+        "\nfeedback_vanilla_1080p\nlookdev_legendary_rt_bliss_1080p\n\n",
+        encoding="utf-8",
+    )
+    runtime_root = tmp_path / "runtime"
+    result = subprocess.run(
+        ["bash", str(ROOT / "scripts" / "lookdev_render_batch.sh"), "--print-profiles"],
+        check=True,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "BATCH_PROFILES_FILE": str(profiles_file),
+            "BATCH_ID": "must_not_be_created",
+            "MCDATA_TMP_ROOT": str(runtime_root),
+        },
+    )
+
+    assert result.stdout.splitlines() == [
+        "feedback_vanilla_1080p",
+        "lookdev_legendary_rt_bliss_1080p",
+    ]
+    assert not runtime_root.exists()
+
+
+def test_batch_script_rejects_empty_duplicate_and_invalid_subsets_before_output(
+    tmp_path: Path,
+) -> None:
+    cases = {
+        "empty": ("\n\n", "does not contain any profiles"),
+        "duplicate": (
+            "feedback_vanilla_1080p\nfeedback_vanilla_1080p\n",
+            "duplicate profile",
+        ),
+        "invalid": ("feedback_vanilla_1080p\n../escape\n", "invalid profile name"),
+    }
+    runtime_root = tmp_path / "runtime"
+    for case_name, (contents, expected_error) in cases.items():
+        profiles_file = tmp_path / f"{case_name}.txt"
+        profiles_file.write_text(contents, encoding="utf-8")
+        result = subprocess.run(
+            [
+                "bash",
+                str(ROOT / "scripts" / "lookdev_render_batch.sh"),
+                "--print-profiles",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "BATCH_PROFILES_FILE": str(profiles_file),
+                "BATCH_ID": "must_not_be_created",
+                "MCDATA_TMP_ROOT": str(runtime_root),
+            },
+        )
+
+        assert result.returncode == 2
+        assert expected_error in result.stderr
+        assert not runtime_root.exists()
 
 
 def test_accepted_profiles_resolve_to_the_shared_capture_contract() -> None:

@@ -30,6 +30,49 @@ PROFILES=(
   lookdev_style_natural_1080p
 )
 
+PROFILE_SOURCE_KIND="builtin"
+PROFILE_SOURCE_PATH=""
+PROFILE_SOURCE_SHA256=""
+if [[ -n "${BATCH_PROFILES_FILE+x}" ]]; then
+  if [[ -z "$BATCH_PROFILES_FILE" ]]; then
+    echo "BATCH_PROFILES_FILE must not be empty when set" >&2
+    exit 2
+  fi
+  if [[ ! -f "$BATCH_PROFILES_FILE" || ! -r "$BATCH_PROFILES_FILE" ]]; then
+    echo "BATCH_PROFILES_FILE must be a readable regular file: $BATCH_PROFILES_FILE" >&2
+    exit 2
+  fi
+
+  PROFILE_SOURCE_KIND="file"
+  PROFILE_SOURCE_PATH="$(realpath "$BATCH_PROFILES_FILE")"
+  PROFILE_SOURCE_SHA256="$(sha256sum "$PROFILE_SOURCE_PATH" | awk '{print $1}')"
+  PROFILES=()
+  declare -A seen_profiles=()
+  line_number=0
+  while IFS= read -r profile || [[ -n "$profile" ]]; do
+    ((line_number += 1))
+    [[ -z "$profile" ]] && continue
+    if [[ ! "$profile" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+      echo "invalid profile name at $PROFILE_SOURCE_PATH:$line_number: $profile" >&2
+      exit 2
+    fi
+    if [[ -n "${seen_profiles[$profile]+x}" ]]; then
+      echo "duplicate profile at $PROFILE_SOURCE_PATH:$line_number: $profile" >&2
+      exit 2
+    fi
+    seen_profiles["$profile"]=1
+    PROFILES+=("$profile")
+  done < "$PROFILE_SOURCE_PATH"
+  if [[ ${#PROFILES[@]} -eq 0 ]]; then
+    echo "BATCH_PROFILES_FILE does not contain any profiles: $PROFILE_SOURCE_PATH" >&2
+    exit 2
+  fi
+  if [[ "$(sha256sum "$PROFILE_SOURCE_PATH" | awk '{print $1}')" != "$PROFILE_SOURCE_SHA256" ]]; then
+    echo "BATCH_PROFILES_FILE changed while it was being read: $PROFILE_SOURCE_PATH" >&2
+    exit 2
+  fi
+fi
+
 if [[ "${1:-}" == "--print-profiles" ]]; then
   printf '%s\n' "${PROFILES[@]}"
   exit 0
@@ -73,8 +116,8 @@ if [[ ! "$SERVER_PORT" =~ ^[0-9]+$ ]] || (( SERVER_PORT < 1024 || SERVER_PORT > 
   echo "SERVER_PORT must be an unprivileged TCP port" >&2
   exit 2
 fi
-if [[ ${#PROFILES[@]} -ne 26 ]]; then
-  echo "internal error: expected exactly 26 accepted profiles" >&2
+if [[ ${#PROFILES[@]} -eq 0 ]]; then
+  echo "internal error: selected profile list is empty" >&2
   exit 2
 fi
 
@@ -147,8 +190,8 @@ ACTUAL_SYNC="$(tr -d '[:space:]' < .sync_commit)"
 [[ "$ACTUAL_SYNC" == "$EXPECTED_SYNC" ]] || \
   preflight_fail "sync mismatch: expected $EXPECTED_SYNC, found $ACTUAL_SYNC"
 
-if [[ "$(printf '%s\n' "${PROFILES[@]}" | sort -u | wc -l)" -ne 26 ]]; then
-  preflight_fail "accepted profile list contains duplicates"
+if [[ "$(printf '%s\n' "${PROFILES[@]}" | sort -u | wc -l)" -ne ${#PROFILES[@]} ]]; then
+  preflight_fail "selected profile list contains duplicates"
 fi
 if pgrep -af '[m]cdata.cli bootstrap' > "$BATCH_DIR/bootstrap_processes.txt"; then
   preflight_fail "a bootstrap process is still running"
@@ -295,7 +338,11 @@ BATCH_MANIFEST="$BATCH_MANIFEST" PROFILES_FILE="$PROFILES_FILE" \
   BATCH_STARTED_AT="$STARTED_AT" BATCH_ID_VALUE="$BATCH_ID" \
   BATCH_LANE="$LANE" BATCH_PORT="$SERVER_PORT" BATCH_DISPLAY="$DISPLAY_NUM" \
   BATCH_STRATEGY="$STRATEGY" BATCH_EXPECTED_SYNC="$EXPECTED_SYNC" \
-  BATCH_TRAJECTORY_SHA="$EXPECTED_TRAJECTORY_SHA256" "$PYTHON" - <<'PY'
+  BATCH_TRAJECTORY_SHA="$EXPECTED_TRAJECTORY_SHA256" \
+  BATCH_PROFILE_SOURCE_KIND="$PROFILE_SOURCE_KIND" \
+  BATCH_PROFILE_SOURCE_PATH="$PROFILE_SOURCE_PATH" \
+  BATCH_PROFILE_SOURCE_SHA256="$PROFILE_SOURCE_SHA256" \
+  BATCH_PROFILE_COUNT="${#PROFILES[@]}" "$PYTHON" - <<'PY'
 import json
 import os
 from pathlib import Path
@@ -305,6 +352,19 @@ profiles = [
     for line in Path(os.environ["PROFILES_FILE"]).read_text().splitlines()
     if line.strip()
 ]
+profile_count = int(os.environ["BATCH_PROFILE_COUNT"])
+if len(profiles) != profile_count:
+    raise SystemExit(
+        f"profile count drifted while writing batch manifest: {len(profiles)} != {profile_count}"
+    )
+profile_source = {"kind": os.environ["BATCH_PROFILE_SOURCE_KIND"]}
+if profile_source["kind"] == "file":
+    profile_source.update(
+        {
+            "path": os.environ["BATCH_PROFILE_SOURCE_PATH"],
+            "sha256": os.environ["BATCH_PROFILE_SOURCE_SHA256"],
+        }
+    )
 manifest = {
     "started_at": os.environ["BATCH_STARTED_AT"],
     "batch_id": os.environ["BATCH_ID_VALUE"],
@@ -315,6 +375,8 @@ manifest = {
     "strategy": os.environ["BATCH_STRATEGY"],
     "expected_sync": os.environ["BATCH_EXPECTED_SYNC"],
     "expected_trajectory_sha256": os.environ["BATCH_TRAJECTORY_SHA"],
+    "profile_count": profile_count,
+    "profile_source": profile_source,
     "profiles": profiles,
 }
 Path(os.environ["BATCH_MANIFEST"]).write_text(
