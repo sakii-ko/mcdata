@@ -1,0 +1,3 @@
+lookdev_style_retro_vanilla_8x8_1080p
+lookdev_style_fantasy_legacy_32x_1080p
+lookdev_style_ms_painted_128x_1080p

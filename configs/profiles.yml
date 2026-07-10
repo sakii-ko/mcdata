@@ -1512,6 +1512,21 @@ profiles:
     description: "Style look-dev fallback: Natural Texture Pack's soft-line Legacy Console aesthetic."
     asset_set: "style_natural"
 
+  lookdev_style_retro_vanilla_8x8_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: complete 8x8 retro materials with deliberately visible pixels."
+    asset_set: "style_retro_vanilla_8x8"
+
+  lookdev_style_fantasy_legacy_32x_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: complete 32x Legacy Console medieval/fantasy art direction."
+    asset_set: "style_fantasy_legacy_32x"
+
+  lookdev_style_ms_painted_128x_1080p:
+    <<: *style_lookdev_profile
+    description: "Style look-dev: MS Painted's extreme twenty-colour, mouse-drawn cartoon overhaul."
+    asset_set: "style_ms_painted_128x"
+
   lookdev_legendary_rt_unbound_seuspbr_1080p:
     <<: *legendary_rt_unbound_profile
     description: "Material-format calibration: Legendary RT with Unbound SEUS PBR decoding."

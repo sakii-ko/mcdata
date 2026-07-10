@@ -12,26 +12,31 @@ loading, and permission to publish a showcase video are **not** ML-training auth
 
 ## Current result
 
-The snapshot dated 2026-07-10 contains 43 candidates across 36 lineages and maps all 33 resource
-pack keys already present in `configs/asset_sets.yml`. It covers all nine required visual families:
+The snapshot dated 2026-07-10 contains 47 candidates across 39 lineages and maps all 36 resource
+pack keys present in `configs/asset_sets.yml`. It covers all nine required visual families:
 
 | Family | Representative candidates |
 |---|---|
 | `realism_pbr` | Legendary RT, Patrix, Optimum Realism, PrettyRealistic, Yitalith |
 | `architectural_cinematic` | ModernArch, Stylista, Luna HD |
 | `vanilla_plus` | Faithful, Default HD, Reimagined, Natural |
-| `handpainted_fantasy_medieval` | Ashen, Conquest, Excalibur |
+| `handpainted_fantasy_medieval` | Ashen, Fantasy Texture Pack, Conquest, Excalibur |
 | `cartoon_minimal` | Bare Bones, Quadral, Simplified, MS Painted |
-| `retro_lowres` | F8thful 8x |
+| `retro_lowres` | Vanilla 8x8, F8thful 8x |
 | `scifi_cyber` | Genesis |
 | `dark_horror` | Dark Fantasy Visuals |
-| `accessibility_high_contrast` | Minecraft built-in High Contrast UI control |
+| `accessibility_high_contrast` | Minecraft built-in High Contrast and High Contrast Extended UI controls |
 
-All 43 currently remain `research_only` for train and held-out publication because none of the
+All 47 currently remain `research_only` for train and held-out publication because none of the
 reviewed official pages explicitly grants ML-training use. This is a fail-closed rights status,
-not a claim that authorization is impossible. The catalog also makes no new Minecraft 26.2
-runtime claims: existing installer entries are `configured_not_runtime_verified`, while new
-research candidates are `research_only` or `compatibility_unknown`.
+not a claim that authorization is impossible. Vanilla 8x8, Fantasy Texture Pack, and MS Painted
+have exact upstream 26.2 files and fail-closed installer entries, but remain
+`configured_not_runtime_verified`; source compatibility is not a runtime visual claim. Other
+research candidates remain `research_only` or `compatibility_unknown`.
+
+The exact 26.2 version/file/hash audit, executable profile subset, and honest overlay/partial-pack
+rejections are documented in
+[`ITER-04-style-expansion-26.2.md`](iterations/ITER-04-style-expansion-26.2.md).
 
 ## Are the highest-resolution packs paid?
 

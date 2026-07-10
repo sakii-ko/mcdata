@@ -607,6 +607,9 @@ def test_style_lookdev_profiles_are_aligned_and_distinct() -> None:
         "lookdev_style_quadral_1080p",
         "lookdev_style_bare_bones_pbr_1080p",
         "lookdev_style_natural_1080p",
+        "lookdev_style_retro_vanilla_8x8_1080p",
+        "lookdev_style_fantasy_legacy_32x_1080p",
+        "lookdev_style_ms_painted_128x_1080p",
     ]
     resolved = [load_profile(ROOT / "configs", name) for name in names]
     invariant = [
@@ -642,6 +645,18 @@ def test_style_lookdev_profiles_are_aligned_and_distinct() -> None:
     assert assets["jeelh-simplified"]["slug"] == "jeelh-simplified"
     assert assets["quadral"]["slug"] == "quadral"
     assert assets["bare-bones-pbr-128x"]["slug"] == "bare-bones-pbr-x128"
+    assert assets["vanilla-8x8"] == {
+        "provider": "modrinth",
+        "slug": "8x8-textures",
+        "type": "resourcepack",
+        "file_patterns": ["Chaos Cubed.zip"],
+    }
+    assert assets["fantasy-texture-pack-32x"]["file_patterns"] == [
+        "Fantasy Texture Pack.zip"
+    ]
+    assert assets["ms-painted-128x"]["file_patterns"] == [
+        "MS Painted for 26.1-26.2 (v2.47).zip"
+    ]
 
 
 def test_every_respackopts_profile_also_installs_libjf() -> None:

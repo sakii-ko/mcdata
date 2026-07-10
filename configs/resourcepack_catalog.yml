@@ -519,8 +519,42 @@ candidates:
     eligibility: *research_only
     notes: Connected-texture overlay.
 
-  # Research candidates below are metadata only. They have not been added to asset_sets.yml,
-  # downloaded, or claimed to have run on Minecraft 26.2.
+  - candidate_id: vanilla-8x8-8x-free
+    lineage_id: vanilla-8x8
+    display_name: Vanilla 8x8
+    candidate_role: primary_style
+    style_family: retro_lowres
+    source: {provider: modrinth, project_id: 8x8-textures, project_url: "https://modrinth.com/resourcepack/8x8-textures", author_contact_url: "https://modrinth.com/resourcepack/8x8-textures"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [vanilla-8x8], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: CC-BY-NC-SA-4.0, label: CC BY-NC-SA 4.0, source_url: "https://modrinth.com/resourcepack/8x8-textures"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/CC-BY-NC-SA-4.0.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [8]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Complete public 26.2 low-resolution candidate; configured for fail-closed look-dev but not runtime-verified or ML-authorized.
+
+  - candidate_id: fantasy-texture-pack-32x-free
+    lineage_id: fantasy-texture-pack
+    display_name: Fantasy Texture Pack
+    candidate_role: primary_style
+    style_family: handpainted_fantasy_medieval
+    source: {provider: modrinth, project_id: fantasy-texture-pack, project_url: "https://modrinth.com/resourcepack/fantasy-texture-pack", author_contact_url: "https://modrinth.com/resourcepack/fantasy-texture-pack"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [fantasy-texture-pack-32x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/fantasy-texture-pack"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [32]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Complete public 26.2 Legacy Console medieval/fantasy port; configured for look-dev only and not ML-authorized.
+
+  # Remaining entries preserve the broader rights/compatibility research audit. An entry is
+  # executable only when its integration status explicitly names a configured asset key; none
+  # of these entries claims a runtime-verified 26.2 run.
   - candidate_id: patrix-hires-paid
     lineage_id: patrix
     display_name: Patrix high-resolution Patreon tiers
@@ -589,18 +623,33 @@ candidates:
 
   - candidate_id: genesis-scifi-research
     lineage_id: genesis-scifi
-    display_name: Genesis resource pack
+    display_name: Genesis resource pack 64x public tier
     candidate_role: primary_style
     style_family: scifi_cyber
     source: {provider: modrinth, project_id: genesis_pack, project_url: "https://modrinth.com/resourcepack/genesis_pack", author_contact_url: "https://modrinth.com/resourcepack/genesis_pack"}
-    access_tier: paid
+    access_tier: free
     integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
     license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/genesis_pack"}
     permissions: *permissions_unknown
-    resolution: {status: range, values_px: [64, 128, 256, 512]}
+    resolution: {status: exact, values_px: [64]}
     pbr_capability: pbr
     eligibility: *research_only
-    notes: Alien/science-fiction PBR candidate; Modrinth currently exposes no downloadable versions.
+    notes: Alien/science-fiction PBR candidate; public version 2.2 stops at 1.21.5 and is not selectable by the 26.2 downloader.
+
+  - candidate_id: genesis-scifi-hires-paid
+    lineage_id: genesis-scifi
+    display_name: Genesis resource pack high-resolution tiers
+    candidate_role: primary_style
+    style_family: scifi_cyber
+    source: {provider: creator_site, project_id: genesis-scifi-patreon, project_url: "https://www.patreon.com/c/G3N3ZIS", author_contact_url: "https://www.patreon.com/c/G3N3ZIS"}
+    access_tier: paid
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/genesis_pack"}
+    permissions: *permissions_unknown
+    resolution: {status: range, values_px: [256, 512, 1024]}
+    pbr_capability: pbr
+    eligibility: *research_only
+    notes: Same Genesis lineage as the public 64x file; paid access is not a 26.2 compatibility or ML-rights grant.
 
   - candidate_id: f8thful-8x-research
     lineage_id: f8thful
@@ -615,7 +664,7 @@ candidates:
     resolution: {status: exact, values_px: [8]}
     pbr_capability: none
     eligibility: *research_only
-    notes: Strong low-resolution control style; no 26.2 pipeline run is claimed.
+    notes: Strong low-resolution control style; no Modrinth version declares 26.2 as of this snapshot (latest 13.0 stops at 1.21.11).
 
   - candidate_id: conquest-32x-research
     lineage_id: conquest
@@ -630,7 +679,7 @@ candidates:
     resolution: {status: exact, values_px: [32]}
     pbr_capability: none
     eligibility: *research_only
-    notes: Painterly medieval lineage; compatibility and rights require direct audit.
+    notes: Painterly medieval lineage; no Modrinth version declares 26.2 as of this snapshot (latest is 1.21.11).
 
   - candidate_id: excalibur-16x-research
     lineage_id: excalibur
@@ -648,17 +697,17 @@ candidates:
     resolution: {status: exact, values_px: [16]}
     pbr_capability: none
     eligibility: *research_only
-    notes: Video permission on the project page is not treated as ML-training permission.
+    notes: CurseForge-only distribution is unsupported by the fail-closed downloader; video permission is not ML-training permission.
 
-  - candidate_id: ms-painted-128x-research
+  - candidate_id: ms-painted-128x-free
     lineage_id: ms-painted
     display_name: MS Painted
     candidate_role: primary_style
     style_family: cartoon_minimal
-    source: {provider: planetminecraft, project_id: ms-painted, project_url: "https://www.planetminecraft.com/texture-pack/ms-painted/", author_contact_url: "https://www.planetminecraft.com/member/stridey/"}
+    source: {provider: modrinth, project_id: ms-painted, project_url: "https://modrinth.com/resourcepack/ms-painted", author_contact_url: "https://www.planetminecraft.com/member/stridey/"}
     access_tier: free
-    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
-    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://www.planetminecraft.com/texture-pack/ms-painted/"}
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [ms-painted-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/ms-painted"}
     permissions:
       ml_training: {status: unknown, evidence_url: null}
       redistribution: {status: denied, evidence_url: "https://www.planetminecraft.com/texture-pack/ms-painted/"}
@@ -666,7 +715,7 @@ candidates:
     resolution: {status: exact, values_px: [128]}
     pbr_capability: none
     eligibility: *research_only
-    notes: Official page declares 26.2 support, but this catalog does not claim a pipeline run.
+    notes: Official Modrinth 26.2 file is configured for fail-closed look-dev; no runtime or ML-rights claim is made.
 
   - candidate_id: dark-fantasy-visuals-16x-research
     lineage_id: dark-fantasy-visuals
@@ -681,7 +730,7 @@ candidates:
     resolution: {status: exact, values_px: [16]}
     pbr_capability: none
     eligibility: *research_only
-    notes: Grim full-style candidate; current upstream version is not asserted as 26.2-compatible.
+    notes: Grim full-style candidate; CurseForge-only distribution is unsupported by the current fail-closed downloader.
 
   - candidate_id: minecraft-high-contrast-builtin
     lineage_id: minecraft-high-contrast
@@ -697,3 +746,21 @@ candidates:
     pbr_capability: none
     eligibility: *research_only
     notes: UI-only accessibility control; it does not provide a high-contrast world-material style.
+
+  - candidate_id: high-contrast-extended-ui-free
+    lineage_id: high-contrast-extended
+    display_name: High Contrast Extended
+    candidate_role: ui_only
+    style_family: accessibility_high_contrast
+    source: {provider: modrinth, project_id: high-contrast-extended, project_url: "https://modrinth.com/resourcepack/high-contrast-extended", author_contact_url: "https://github.com/ADHDMC/High_Contrast_Extended"}
+    access_tier: free
+    integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: CC0-1.0, label: CC0 1.0 Universal, source_url: "https://github.com/ADHDMC/High_Contrast_Extended/blob/master/LICENSE"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/CC0-1.0.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Exact 26.2 file exists, but the project explicitly extends GUI contrast only and is not a world-material candidate.

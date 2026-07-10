@@ -41,24 +41,24 @@ def test_canonical_catalog_validates_and_maps_every_configured_resourcepack() ->
     report = catalog_coverage_report(document, asset_config=load_yaml(ASSET_CONFIG_PATH))
 
     assert tuple(document["required_style_families"]) == REQUIRED_STYLE_FAMILIES
-    assert report["candidate_count"] == 43
-    assert report["lineage_count"] == 36
+    assert report["candidate_count"] == 47
+    assert report["lineage_count"] == 39
     assert report["missing_required_families"] == []
     assert report["configured_asset_mapping"] == {
-        "configured_count": 33,
-        "mapped_count": 33,
+        "configured_count": 36,
+        "mapped_count": 36,
         "missing": [],
         "unknown": [],
     }
 
 
-def test_every_style_family_has_a_primary_candidate_except_builtin_ui_control() -> None:
+def test_every_style_family_has_a_primary_candidate_except_ui_only_controls() -> None:
     report = catalog_coverage_report(_catalog())
 
     for family, coverage in report["family_coverage"].items():
         if family == "accessibility_high_contrast":
             assert coverage["primary_styles"] == 0
-            assert coverage["candidates"] == 1
+            assert coverage["candidates"] == 2
         else:
             assert coverage["primary_styles"] >= 1
 
@@ -73,12 +73,16 @@ def test_named_diversity_candidates_are_recorded_without_fake_runtime_claims() -
         "luna-hd-64x-free": "architectural_cinematic",
         "luna-hd-hires-paid": "architectural_cinematic",
         "genesis-scifi-research": "scifi_cyber",
+        "genesis-scifi-hires-paid": "scifi_cyber",
         "bare-bones-16x-free": "cartoon_minimal",
         "f8thful-8x-research": "retro_lowres",
+        "vanilla-8x8-8x-free": "retro_lowres",
         "conquest-32x-research": "handpainted_fantasy_medieval",
         "excalibur-16x-research": "handpainted_fantasy_medieval",
-        "ms-painted-128x-research": "cartoon_minimal",
+        "fantasy-texture-pack-32x-free": "handpainted_fantasy_medieval",
+        "ms-painted-128x-free": "cartoon_minimal",
         "minecraft-high-contrast-builtin": "accessibility_high_contrast",
+        "high-contrast-extended-ui-free": "accessibility_high_contrast",
     }
     for candidate_id, family in expected.items():
         candidate = _candidate(document, candidate_id)
@@ -107,6 +111,12 @@ def test_resolution_variants_share_lineage() -> None:
         _candidate(document, candidate_id)["lineage_id"]
         for candidate_id in ("default-hd-64x-free", "default-hd-128x-free")
     } == {"default-hd"}
+    assert {
+        _candidate(document, candidate_id)["lineage_id"]
+        for candidate_id in ("genesis-scifi-research", "genesis-scifi-hires-paid")
+    } == {"genesis-scifi"}
+    assert _candidate(document, "genesis-scifi-research")["access_tier"] == "free"
+    assert _candidate(document, "genesis-scifi-hires-paid")["access_tier"] == "paid"
 
 
 @pytest.mark.parametrize(
@@ -246,13 +256,13 @@ def test_lineage_split_validation_allows_same_lineage_in_one_split() -> None:
 def test_coverage_report_exposes_current_legal_and_runtime_gaps() -> None:
     report = catalog_coverage_report(_catalog())
 
-    assert report["ml_training_permission_counts"] == {"unknown": 43}
+    assert report["ml_training_permission_counts"] == {"unknown": 47}
     assert report["integration_status_counts"] == {
         "compatibility_unknown": 7,
-        "configured_not_runtime_verified": 32,
-        "research_only": 4,
+        "configured_not_runtime_verified": 35,
+        "research_only": 5,
     }
-    assert report["access_tier_counts"] == {"free": 39, "paid": 4}
+    assert report["access_tier_counts"] == {"free": 43, "paid": 4}
     assert report["families_without_publishable_train"] == list(
         REQUIRED_STYLE_FAMILIES
     )

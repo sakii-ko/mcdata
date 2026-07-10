@@ -137,6 +137,24 @@ assets:
       provider: "modrinth"
       slug: "mt-ct-d"
       type: "resourcepack"
+    vanilla-8x8:
+      provider: "modrinth"
+      slug: "8x8-textures"
+      type: "resourcepack"
+      file_patterns:
+        - "Chaos Cubed.zip"
+    fantasy-texture-pack-32x:
+      provider: "modrinth"
+      slug: "fantasy-texture-pack"
+      type: "resourcepack"
+      file_patterns:
+        - "Fantasy Texture Pack.zip"
+    ms-painted-128x:
+      provider: "modrinth"
+      slug: "ms-painted"
+      type: "resourcepack"
+      file_patterns:
+        - "MS Painted for 26.1-26.2 (v2.47).zip"
 
   shaderpacks:
     complementary-reimagined:
@@ -445,6 +463,24 @@ asset_sets:
     description: "Natural Texture Pack's soft-line Legacy Console art direction."
     resourcepacks:
       - natural-texture-pack
+    shaderpack: null
+
+  style_retro_vanilla_8x8:
+    description: "Vanilla 8x8's complete low-resolution retro treatment without a shader."
+    resourcepacks:
+      - vanilla-8x8
+    shaderpack: null
+
+  style_fantasy_legacy_32x:
+    description: "Fantasy Texture Pack's complete 32x Legacy Console medieval/fantasy treatment."
+    resourcepacks:
+      - fantasy-texture-pack-32x
+    shaderpack: null
+
+  style_ms_painted_128x:
+    description: "MS Painted's full 128x, twenty-colour mouse-painted overhaul without a shader."
+    resourcepacks:
+      - ms-painted-128x
     shaderpack: null
 
   stylista_unbound:

@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-07-10",
+  "target_game_version": "26.2",
+  "target_resource_format": 88,
+  "policy": {
+    "configured_is_runtime_verified": false,
+    "configured_is_training_eligible": false,
+    "exact_modrinth_game_version_required": true,
+    "full_world_material_required_for_profile": true
+  },
+  "accepted": [
+    {
+      "style_family": "retro_lowres",
+      "candidate_id": "vanilla-8x8-8x-free",
+      "asset_key": "vanilla-8x8",
+      "asset_set": "style_retro_vanilla_8x8",
+      "profile": "lookdev_style_retro_vanilla_8x8_1080p",
+      "project_slug": "8x8-textures",
+      "project_id": "ehiW2aR9",
+      "project_url": "https://modrinth.com/resourcepack/8x8-textures",
+      "version_query": "https://api.modrinth.com/v2/project/8x8-textures/version?game_versions=%5B%2226.2%22%5D",
+      "version_id": "Jei4kTDm",
+      "version_number": "26.2",
+      "published_at": "2026-06-18T22:22:01.034812Z",
+      "declared_game_versions": ["1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2"],
+      "file": {
+        "filename": "Chaos Cubed.zip",
+        "size": 2327486,
+        "sha256": "bf9fa39018b8564b2eaaf8b3b5847ed2e488f76de2966979630d687901441bed",
+        "sha1": "caf3e7c5d9e69c7750f630a9eaf1e0b352afa45e",
+        "sha512": "3f5bc6bab3cff39e45f5651d2364392356489fab2b638b4144ff0c91a34007d817d972c6d9a2b806c3b4f309ac1c2aa0fe230afc4c25d3a3a9016d4ceaa761f2"
+      },
+      "archive_inspection": {
+        "upstream_sha512_matched": true,
+        "root_pack_mcmeta_count": 1,
+        "pack_format": 88,
+        "min_format": 75,
+        "max_format": 99,
+        "requires_normalization": false,
+        "effective_sha256": "bf9fa39018b8564b2eaaf8b3b5847ed2e488f76de2966979630d687901441bed",
+        "supports_target_resource_format": true
+      },
+      "access_tier": "free",
+      "license": "CC-BY-NC-SA-4.0",
+      "eligibility": "research_only"
+    },
+    {
+      "style_family": "handpainted_fantasy_medieval",
+      "candidate_id": "fantasy-texture-pack-32x-free",
+      "asset_key": "fantasy-texture-pack-32x",
+      "asset_set": "style_fantasy_legacy_32x",
+      "profile": "lookdev_style_fantasy_legacy_32x_1080p",
+      "project_slug": "fantasy-texture-pack",
+      "project_id": "kFbEIMmd",
+      "project_url": "https://modrinth.com/resourcepack/fantasy-texture-pack",
+      "version_query": "https://api.modrinth.com/v2/project/fantasy-texture-pack/version?game_versions=%5B%2226.2%22%5D",
+      "version_id": "z6ctmmBE",
+      "version_number": "1.0.14",
+      "published_at": "2026-06-21T02:45:30.130155Z",
+      "declared_game_versions": ["1.20.2", "1.20.3", "1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2"],
+      "file": {
+        "filename": "Fantasy Texture Pack.zip",
+        "size": 37625709,
+        "sha256": "a1a987600af3f328bd5892519586f06898ad9286fd0155cb60a14823a9e99485",
+        "sha1": "3d82154ef2c05b7ca8068a0b575dd0b1b64b1ade",
+        "sha512": "4bf0b82f3171b4f8d8e529723173fd01b7ccbcb3e2e9563e32b93147d6624ca777af1536fe1bc12c7cb87012db0b0c661a9e8ead61c9a454cc81cc224820e1c9"
+      },
+      "archive_inspection": {
+        "upstream_sha512_matched": true,
+        "root_pack_mcmeta_count": 1,
+        "pack_format": 999,
+        "min_format": 18,
+        "max_format": 999,
+        "requires_normalization": false,
+        "effective_sha256": "a1a987600af3f328bd5892519586f06898ad9286fd0155cb60a14823a9e99485",
+        "supports_target_resource_format": true
+      },
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "eligibility": "research_only"
+    },
+    {
+      "style_family": "cartoon_minimal",
+      "candidate_id": "ms-painted-128x-free",
+      "asset_key": "ms-painted-128x",
+      "asset_set": "style_ms_painted_128x",
+      "profile": "lookdev_style_ms_painted_128x_1080p",
+      "project_slug": "ms-painted",
+      "project_id": "1nLC7eUa",
+      "project_url": "https://modrinth.com/resourcepack/ms-painted",
+      "version_query": "https://api.modrinth.com/v2/project/ms-painted/version?game_versions=%5B%2226.2%22%5D",
+      "version_id": "mIyJxNJR",
+      "version_number": "v2.47",
+      "published_at": "2026-06-17T19:01:29.564741Z",
+      "declared_game_versions": ["26.1", "26.2"],
+      "file": {
+        "filename": "MS Painted for 26.1-26.2 (v2.47).zip",
+        "size": 20273412,
+        "sha256": "ef45ae5d3d2b231e6a87c314476a5b02963c160ecac9f38a2159c785633024fd",
+        "sha1": "cfe0a187dea8bb20d57c77e71ec3f97fc64799e3",
+        "sha512": "bb088ade35ab26f39f98fcff91112f0d537239b0fd24c0e3f0d5a563afd13bac0cccd21867c35155fa6303d175d6346e5816384aaf6b6263905eec7905709481"
+      },
+      "archive_inspection": {
+        "upstream_sha512_matched": true,
+        "root_pack_mcmeta_count": 1,
+        "pack_format": null,
+        "min_format": 84,
+        "max_format": 88,
+        "requires_normalization": true,
+        "effective_sha256": "e2254556b9111b9bc763e8922678ffac34b117eed443a13eb3c696fde907b419",
+        "supports_target_resource_format": true
+      },
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "eligibility": "research_only"
+    }
+  ],
+  "rejected": [
+    {
+      "style_family": "retro_lowres",
+      "project": "F8thful",
+      "project_url": "https://modrinth.com/resourcepack/f8thful",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "no_exact_26_2_version",
+      "evidence": "The filtered Modrinth API query returned []; latest 13.0 declares only 1.21.9-1.21.11."
+    },
+    {
+      "style_family": "scifi_cyber",
+      "project": "Genesis resource pack",
+      "project_url": "https://modrinth.com/resourcepack/genesis_pack",
+      "access_tier": "free_64x_paid_hires",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "no_exact_26_2_version",
+      "evidence": "The filtered Modrinth API query returned []; public 64x version 2.2 declares versions only through 1.21.5."
+    },
+    {
+      "style_family": "scifi_cyber",
+      "project": "Cyberpunk Edgerunners",
+      "project_url": "https://modrinth.com/resourcepack/cyberpunk-edgerunners",
+      "access_tier": "free",
+      "license": "Apache-2.0",
+      "reason": "ui_audio_overlay_not_full_world_material",
+      "evidence": "Version 3.0 declares 26.2, but the author describes it as GUI-only with audio, fonts, and menu background.",
+      "audited_version": {
+        "version_id": "5K2Og6oW",
+        "version_number": "3.0",
+        "filename": "CyberpunkEdgerunnersV3.0.zip",
+        "size": 37582746,
+        "sha512": "cd2c5c77a8777a37e2d6a6ed798b7e5a2df708cedd68f61e9aa7d075ac339b01764ae26948170864378c0221957406f4b460a628074953525914e262bf72f708"
+      }
+    },
+    {
+      "style_family": "handpainted_fantasy_medieval",
+      "project": "Conquest_",
+      "project_url": "https://modrinth.com/resourcepack/conquest_",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "no_exact_26_2_version",
+      "evidence": "The filtered Modrinth API query returned []; latest 1.21.11 does not declare 26.2."
+    },
+    {
+      "style_family": "handpainted_fantasy_medieval",
+      "project": "Painted Pixels Pack",
+      "project_url": "https://modrinth.com/resourcepack/painted-pixels-pack",
+      "access_tier": "free",
+      "license": "CC-BY-ND-4.0",
+      "reason": "work_in_progress_blocks_environment_only",
+      "evidence": "Version 11 declares 26.2, but the author labels it work in progress and Modrinth lists only blocks/environment coverage.",
+      "audited_version": {
+        "version_id": "8vNUxh7S",
+        "version_number": "11",
+        "filename": "Painted Pixels Pack 26.2 M11.zip",
+        "size": 153835429,
+        "sha512": "2ec60e1a81187682afad6d5a1fba9041dd471a378b6c89d34b2c22767d4748bc371ab439779520f037797a36babb5e57dac21b2337c32dc4aebb214d385754a8"
+      }
+    },
+    {
+      "style_family": "dark_horror",
+      "project": "Backrooms Retextured",
+      "project_url": "https://modrinth.com/resourcepack/backrooms-retextured",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "map_building_subset_not_full_world_material",
+      "evidence": "Version 4.1 declares 26.2, but the project explicitly replaces multiple selected blocks for Backrooms map building.",
+      "audited_version": {
+        "version_id": "7EJfSleK",
+        "version_number": "4.1",
+        "filename": "Backrooms Retextured 4.1.zip",
+        "size": 1902039,
+        "sha512": "1a3cbdafe6062693cd5b9f850b50b0ac2e770dfe23fc50dd8b78a5336f27b16573f258ac0731d540fbca46147cd773426b3c9b16d5066b7268ee3f87e3d7cd46"
+      }
+    },
+    {
+      "style_family": "dark_horror",
+      "project": "Drakon",
+      "project_url": "https://modrinth.com/resourcepack/drakon",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "partial_environment_recolour_not_full_world_material",
+      "evidence": "Version 1.0 declares 26.2, but the author's change list is a subset of trees, blocks, items, sky, water, clouds, and colourmaps.",
+      "audited_version": {
+        "version_id": "7ixoReyf",
+        "version_number": "1.0",
+        "filename": "Drakon[26.2].zip",
+        "size": 6724834,
+        "sha512": "73f45bb7b816f5245bae0eb5b9a6b13416fa9174ecd44d364080177c437b81683defdace031927e8c721013d0b2813cafe2c2378a6ab4e4aada34e9ff66327f4"
+      }
+    },
+    {
+      "style_family": "dark_horror",
+      "project": "The Night of the Living Pumpkins",
+      "project_url": "https://modrinth.com/resourcepack/the-night-of-the-living-pumpkins",
+      "access_tier": "free",
+      "license": "MIT",
+      "reason": "seasonal_overlay_not_full_world_material",
+      "evidence": "Hotfix version R26.2_v02_00_hotfix declares 26.2, but coverage is a themed audio/block/entity/environment/item subset.",
+      "audited_version": {
+        "version_id": "Vxp9uX4g",
+        "version_number": "R26.2_v02_00_hotfix",
+        "filename": "R26.2_TNotLP_v02_00_hotfix.zip",
+        "size": 7546692,
+        "sha512": "53ef4041bb18a8831848fa92a5ca7c4a43a90d930754437f2c87cafc4762da66cc35bdffef0d9a02a7ab54a0422357b00ed924710b90f520db4019d38be432ae"
+      }
+    },
+    {
+      "style_family": "accessibility_high_contrast",
+      "project": "High Contrast Extended",
+      "project_url": "https://modrinth.com/resourcepack/high-contrast-extended",
+      "access_tier": "free",
+      "license": "CC0-1.0",
+      "reason": "ui_only_not_world_material",
+      "evidence": "Version 2.0.7 declares 26.2; the author states that it extends the built-in high-contrast treatment to GUIs.",
+      "audited_version": {
+        "version_id": "gmksl6gP",
+        "version_number": "2.0.7",
+        "filename": "High_Contrast_Extended.zip",
+        "size": 983847,
+        "sha512": "35b162277e950341b7953b7a81ab0f312dc75598af23b56f23ae962dcd10d9ae270f09a57b4052bfa549e8d24b0269ac473817799673a4b4e11c1d57fb7ab406"
+      }
+    },
+    {
+      "style_family": "handpainted_fantasy_medieval",
+      "project": "Excalibur",
+      "project_url": "https://www.curseforge.com/minecraft/texture-packs/excalibur",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "provider_not_supported_by_fail_closed_downloader",
+      "evidence": "The official distribution is CurseForge-only for this audit; no Modrinth resource-pack version/file/hash is available to the current downloader."
+    },
+    {
+      "style_family": "dark_horror",
+      "project": "Dark Fantasy Visuals",
+      "project_url": "https://www.curseforge.com/minecraft/texture-packs/dark-fantasy-java-resource-pack",
+      "access_tier": "free",
+      "license": "LicenseRef-All-Rights-Reserved",
+      "reason": "provider_not_supported_by_fail_closed_downloader",
+      "evidence": "The official distribution is CurseForge-only for this audit; no Modrinth resource-pack version/file/hash is available to the current downloader."
+    }
+  ]
+}
