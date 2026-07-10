@@ -28,7 +28,20 @@ def _write_episode(
     *,
     commit: str = "abc123",
     feedback: bool = False,
+    material: str | None = None,
+    shader: str | None = None,
 ) -> Path:
+    material_name = material or profile
+    world_state = {
+        "time": "noon",
+        "weather": "clear",
+        "weather_duration_sec": 999999,
+        "biome": {"id": "minecraft:plains", "precipitation": "rain"},
+        "player": {"x": 0, "y": 64, "z": -14, "yaw": 90, "pitch": 18},
+        "scene": {"enabled": True, "origin": [0, 64, 0]},
+        "gamerules": {"advance_time": False, "advance_weather": False},
+        **state,
+    }
     run_dir = root / f"run_{profile}"
     run_dir.mkdir(parents=True)
     (run_dir / "capture.mp4").write_bytes(f"video-{profile}".encode())
@@ -50,30 +63,53 @@ def _write_episode(
             '{"event":"control","t_rel":59.9,"moving":true,"yaw_error":1.0}\n',
             encoding="utf-8",
         )
-    (run_dir / "client_latest.log").write_text(
-        "[Render thread/INFO]: Shaders are disabled because enableShaders is set to false\n",
-        encoding="utf-8",
+    shader_filename = f"{shader}.zip" if shader else None
+    runtime_line = (
+        f"[Render thread/INFO]: Using shaderpack: {shader_filename}\n"
+        if shader_filename
+        else "[Render thread/INFO]: Shaders are disabled because enableShaders is set to false\n"
     )
+    (run_dir / "client_latest.log").write_text(runtime_line, encoding="utf-8")
     resource = {
-        "filename": f"{profile}.zip",
-        "path": f"/remote/instance/{profile}.zip",
-        "sha256": "1" * 64,
+        "filename": f"{material_name}.zip",
+        "path": f"/remote/instance/{material_name}.zip",
+        "sha256": hashlib.sha256(f"material-{material_name}".encode()).hexdigest(),
         "size_bytes": 123,
     }
+    shader_resource = (
+        {
+            "filename": shader_filename,
+            "path": f"/remote/instance/{shader_filename}",
+            "sha256": hashlib.sha256(f"shader-{shader}".encode()).hexdigest(),
+            "size_bytes": 456,
+        }
+        if shader_filename
+        else None
+    )
     manifest = {
         "schema_version": 2,
         "run_id": f"episode-{profile}",
         "lane": "gpu0",
-        "profile": {"name": profile, "asset_set": f"asset-{profile}"},
+        "profile": {
+            "name": profile,
+            "asset_set": f"asset-{material_name}-{shader or 'none'}",
+            "loader": "fabric",
+            "quality": "high",
+            "server_port": 25570,
+            "config": {
+                "options": {"gamma": "1.0", "fov": "0.0"},
+                "shader_options": {"preset": "ultra"} if shader else {},
+            },
+        },
         "mc_version": "26.2",
         "resources": {
             "mods": [],
             "resourcepacks": [resource],
-            "shaderpacks": [],
+            "shaderpacks": [shader_resource] if shader_resource else [],
             "resourcepack_runtime": {
                 "status": "pass",
-                "expected_file_packs": [f"file/{profile}.zip"],
-                "actual_file_packs": [f"file/{profile}.zip"],
+                "expected_file_packs": [f"file/{material_name}.zip"],
+                "actual_file_packs": [f"file/{material_name}.zip"],
                 "missing_file_packs": [],
                 "unexpected_file_packs": [],
                 "duplicate_file_packs": [],
@@ -106,7 +142,7 @@ def _write_episode(
                 ],
             },
         },
-        "world": {"seed": 1, "profile": "render_matrix_base", "state": state},
+        "world": {"seed": 1, "profile": "render_matrix_base", "state": world_state},
         "trajectory": {
             "sha256": trajectory_sha,
             "event_count": 0 if feedback else 60,
@@ -270,15 +306,42 @@ def _write_visual_review(root: Path, profiles: list[str]) -> Path:
     return review
 
 
-def _fixture(root: Path) -> tuple[list[str], Path, Path, Path]:
+def _write_pair_manifest(root: Path, pairs: list[dict[str, str]]) -> Path:
+    path = root / "edit_pairs.json"
+    _write_json(path, {"schema_version": 1, "pairs": pairs})
+    return path
+
+
+def _fixture(root: Path) -> tuple[list[str], Path, Path, Path, Path]:
     profiles = ["matrix_low", "matrix_textured", "matrix_night"]
-    low = _write_episode(root, profiles[0], {"time": "noon", "weather": "clear"})
-    textured = _write_episode(root, profiles[1], {"time": "noon", "weather": "clear"})
-    night = _write_episode(root, profiles[2], {"time": "midnight", "weather": "clear"})
+    low = _write_episode(root, profiles[0], {"time": "noon", "weather": "clear"}, material="base")
+    textured = _write_episode(
+        root, profiles[1], {"time": "noon", "weather": "clear"}, material="textured"
+    )
+    night = _write_episode(
+        root, profiles[2], {"time": "midnight", "weather": "clear"}, material="base"
+    )
     strict = _write_compare(root, "compare_strict", [low, textured])
     diagnostic = _write_compare(root, "compare_all", [low, textured, night])
     review = _write_visual_review(root, profiles)
-    return profiles, strict, diagnostic, review
+    pairs = _write_pair_manifest(
+        root,
+        [
+            {
+                "prompt": "Render the scene with a textured material style.",
+                "source_episode": "episode-matrix_low",
+                "target_episode": "episode-matrix_textured",
+                "edit_axis": "material_style",
+            },
+            {
+                "prompt": "Change the same scene from noon to midnight.",
+                "source_episode": "episode-matrix_low",
+                "target_episode": "episode-matrix_night",
+                "edit_axis": "time_of_day",
+            },
+        ],
+    )
+    return profiles, strict, diagnostic, review, pairs
 
 
 def _refresh_manifest_evidence(
@@ -299,13 +362,14 @@ def _refresh_manifest_evidence(
 
 
 def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
 
     index = write_dataset_index(
         tmp_path,
         expected_profiles=profiles,
         primary_profile="matrix_low",
         generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
         strict_compare_report=strict,
         diagnostic_compare_reports=(path for path in [diagnostic]),
         visual_review=review,
@@ -317,6 +381,7 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
         expected_profiles=list(reversed(profiles)),
         primary_profile="matrix_low",
         generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
         strict_compare_report=strict,
         diagnostic_compare_reports=[diagnostic],
         visual_review=review,
@@ -327,6 +392,12 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
     )
     variants = [item for item in index["cohorts"] if item["role"] == "world_state_variant"]
     assert index["status"] == "accepted"
+    assert index["schema_version"] == 2
+    assert index["pair_manifest"]["path"] == "edit_pairs.json"
+    assert {item["edit_axis"] for item in index["pairs"]} == {
+        "material_style",
+        "time_of_day",
+    }
     assert len(strict_cohort["profile_names"]) == 2
     assert len(variants) == 1 and variants[0]["profile_names"] == ["matrix_night"]
     assert index["dataset_id"] == repeated["dataset_id"]
@@ -343,14 +414,234 @@ def test_write_dataset_index_groups_variants_and_is_deterministic(tmp_path: Path
     validate(index, schema)
 
 
+def test_dataset_index_accepts_all_single_edit_axes(tmp_path: Path) -> None:
+    snow_biome = {"id": "minecraft:snowy_plains", "precipitation": "snow"}
+    specs = [
+        ("base", {}, "base", None),
+        ("styled", {}, "styled", None),
+        ("shader", {}, "base", "ultra"),
+        ("night", {"time": "midnight"}, "base", None),
+        ("rain", {"weather": "rain"}, "base", None),
+        ("snow_clear", {"biome": snow_biome}, "base", None),
+        ("snowfall", {"biome": snow_biome, "weather": "rain"}, "base", None),
+    ]
+    runs = [
+        _write_episode(tmp_path, name, state, material=material, shader=shader)
+        for name, state, material, shader in specs
+    ]
+    profiles = [item[0] for item in specs]
+    strict = _write_compare(tmp_path, "compare_strict", runs[:3])
+    diagnostic = _write_compare(tmp_path, "compare_all", runs)
+    review = _write_visual_review(tmp_path, profiles)
+    pairs = _write_pair_manifest(
+        tmp_path,
+        [
+            {
+                "prompt": "Use the stylized material treatment.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-styled",
+                "edit_axis": "material_style",
+            },
+            {
+                "prompt": "Enable the ultra-quality shader.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-shader",
+                "edit_axis": "shader_quality",
+            },
+            {
+                "prompt": "Turn noon into midnight.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-night",
+                "edit_axis": "time_of_day",
+            },
+            {
+                "prompt": "Make the clear day rainy.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-rain",
+                "edit_axis": "weather",
+            },
+            {
+                "prompt": "Make it snow in the fixed snowy biome.",
+                "source_episode": "episode-snow_clear",
+                "target_episode": "episode-snowfall",
+                "edit_axis": "snow_weather",
+            },
+        ],
+    )
+
+    index = write_dataset_index(
+        tmp_path,
+        expected_profiles=profiles,
+        primary_profile="base",
+        generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
+        strict_compare_report=strict,
+        diagnostic_compare_reports=[diagnostic],
+        visual_review=review,
+    )
+
+    by_axis = {item["edit_axis"]: item for item in index["pairs"]}
+    assert set(by_axis) == {
+        "material_style",
+        "shader_quality",
+        "time_of_day",
+        "weather",
+        "snow_weather",
+    }
+    assert by_axis["snow_weather"]["axis_values"]["target"] == "snow"
+    assert all(item["invariants"]["qa_passed"] is True for item in index["pairs"])
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "match"),
+    [
+        ("prompt", " ", "non-empty pair prompt"),
+        ("edit_axis", None, "required property"),
+        ("source_episode", "episode-missing", "missing source/target"),
+    ],
+)
+def test_dataset_rejects_unbound_prompt_or_missing_pair_endpoint(
+    tmp_path: Path,
+    field: str,
+    value: str | None,
+    match: str,
+) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    document = json.loads(pairs.read_text(encoding="utf-8"))
+    if value is None:
+        del document["pairs"][0][field]
+    else:
+        document["pairs"][0][field] = value
+    _write_json(pairs, document)
+
+    with pytest.raises(DatasetValidationError, match=match):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
+def test_dataset_rejects_compound_edit_declared_as_single_axis(tmp_path: Path) -> None:
+    base = _write_episode(tmp_path, "base", {}, material="base")
+    compound = _write_episode(
+        tmp_path,
+        "compound",
+        {"time": "midnight"},
+        material="styled",
+    )
+    profiles = ["base", "compound"]
+    strict = _write_compare(tmp_path, "compare_strict", [base])
+    diagnostic = _write_compare(tmp_path, "compare_all", [base, compound])
+    pairs = _write_pair_manifest(
+        tmp_path,
+        [
+            {
+                "prompt": "Change only the material style.",
+                "source_episode": "episode-base",
+                "target_episode": "episode-compound",
+                "edit_axis": "material_style",
+            }
+        ],
+    )
+
+    with pytest.raises(DatasetValidationError, match="actual differences"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="base",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+        )
+
+
+@pytest.mark.parametrize("drift", ["scene", "spawn", "trajectory", "capture"])
+def test_dataset_rejects_pair_invariant_drift(tmp_path: Path, drift: str) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    manifest_path = tmp_path / "run_matrix_textured" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if drift == "scene":
+        manifest["world"]["state"]["scene"]["origin"] = [1, 64, 0]
+    elif drift == "spawn":
+        manifest["world"]["state"]["player"]["x"] = 1
+    elif drift == "trajectory":
+        manifest["trajectory"]["strategy"] = "different_strategy"
+    else:
+        manifest["capture"]["settings"]["hide_hud"] = True
+    _write_json(manifest_path, manifest)
+    _refresh_manifest_evidence(manifest_path, (strict, diagnostic))
+
+    with pytest.raises(DatasetValidationError, match=f"crosses {drift}"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
+def test_dataset_rejects_conflicting_target_and_unpaired_episode(tmp_path: Path) -> None:
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
+    document = json.loads(pairs.read_text(encoding="utf-8"))
+    document["pairs"].append(
+        {
+            "prompt": "Reuse the target for a conflicting source.",
+            "source_episode": "episode-matrix_night",
+            "target_episode": "episode-matrix_textured",
+            "edit_axis": "material_style",
+        }
+    )
+    _write_json(pairs, document)
+    with pytest.raises(DatasetValidationError, match="conflicting target"):
+        write_dataset_index(
+            tmp_path,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+    isolated_root = tmp_path / "unpaired"
+    profiles, strict, diagnostic, review, pairs = _fixture(isolated_root)
+    document = json.loads(pairs.read_text(encoding="utf-8"))
+    document["pairs"] = document["pairs"][:1]
+    _write_json(pairs, document)
+    with pytest.raises(DatasetValidationError, match="do not cover every accepted episode"):
+        write_dataset_index(
+            isolated_root,
+            expected_profiles=profiles,
+            primary_profile="matrix_low",
+            generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
+            strict_compare_report=strict,
+            diagnostic_compare_reports=[diagnostic],
+            visual_review=review,
+        )
+
+
 def test_dataset_without_manual_review_is_only_automated_pass(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, _review = _fixture(tmp_path)
+    profiles, strict, diagnostic, _review, pairs = _fixture(tmp_path)
 
     index = write_dataset_index(
         tmp_path,
         expected_profiles=profiles,
         primary_profile="matrix_low",
         generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
         strict_compare_report=strict,
         diagnostic_compare_reports=[diagnostic],
     )
@@ -373,12 +664,24 @@ def test_feedback_dataset_is_policy_aligned_and_binds_navigation(tmp_path: Path)
     strict = _write_compare(tmp_path, "feedback_compare", runs)
     diagnostic = _write_compare(tmp_path, "feedback_diagnostic", runs)
     review = _write_visual_review(tmp_path, profiles)
+    pairs = _write_pair_manifest(
+        tmp_path,
+        [
+            {
+                "prompt": "Apply the material pack while preserving the feedback route.",
+                "source_episode": "episode-feedback_vanilla",
+                "target_episode": "episode-feedback_material",
+                "edit_axis": "material_style",
+            }
+        ],
+    )
 
     index = write_dataset_index(
         tmp_path,
         expected_profiles=profiles,
         primary_profile=profiles[0],
         generator_commit=GENERATOR_COMMIT,
+        pair_manifest=pairs,
         strict_compare_report=strict,
         diagnostic_compare_reports=[diagnostic],
         visual_review=review,
@@ -394,7 +697,7 @@ def test_feedback_dataset_is_policy_aligned_and_binds_navigation(tmp_path: Path)
 
 
 def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     manifest_path = tmp_path / "run_matrix_textured" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["git"]["commit"] = "different"
@@ -407,6 +710,7 @@ def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -414,7 +718,7 @@ def test_dataset_rejects_profile_or_commit_drift(tmp_path: Path) -> None:
 
 
 def test_dataset_rejects_missing_resource_provenance(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     manifest_path = tmp_path / "run_matrix_textured" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     del manifest["resources"]["resourcepacks"][0]["sha256"]
@@ -427,6 +731,7 @@ def test_dataset_rejects_missing_resource_provenance(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -434,7 +739,7 @@ def test_dataset_rejects_missing_resource_provenance(tmp_path: Path) -> None:
 
 
 def test_dataset_rejects_runtime_resolution_mismatch(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     manifest_path = tmp_path / "run_matrix_textured" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest["resources"]["resourcepack_runtime"]["expected_file_packs"] = []
@@ -448,6 +753,7 @@ def test_dataset_rejects_runtime_resolution_mismatch(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -455,7 +761,7 @@ def test_dataset_rejects_runtime_resolution_mismatch(tmp_path: Path) -> None:
 
 
 def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     positions = tmp_path / "run_matrix_textured" / "positions.jsonl"
     positions.write_text('{"idx": 0, "x": 99}\n', encoding="utf-8")
     with pytest.raises(DatasetValidationError, match="stale positions"):
@@ -464,12 +770,13 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
         )
 
-    profiles, strict, diagnostic, review = _fixture(tmp_path / "partial")
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path / "partial")
     report = json.loads(diagnostic.read_text(encoding="utf-8"))
     report["inputs"] = report["inputs"][:2]
     report["evidence"] = report["evidence"][:2]
@@ -481,6 +788,7 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -488,7 +796,7 @@ def test_dataset_rejects_stale_positions_and_partial_diagnostic(tmp_path: Path) 
 
 
 def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     review_data = json.loads(review.read_text(encoding="utf-8"))
     review_data["evidence"] = [review.relative_to(tmp_path).as_posix()]
     _write_json(review, review_data)
@@ -498,6 +806,7 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -509,12 +818,13 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             expected_fps=float("nan"),
         )
 
-    profiles, strict, diagnostic, review = _fixture(tmp_path / "symlink")
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path / "symlink")
     (tmp_path / "symlink" / "unsafe-link").symlink_to("/does/not/exist")
     with pytest.raises(DatasetValidationError, match="symlinks"):
         write_dataset_index(
@@ -522,6 +832,7 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -530,7 +841,7 @@ def test_dataset_rejects_self_review_nan_and_symlink(tmp_path: Path) -> None:
 
 
 def test_collect_runtime_logs_copies_exact_profile_set(tmp_path: Path) -> None:
-    profiles, _strict, _diagnostic, _review = _fixture(tmp_path)
+    profiles, _strict, _diagnostic, _review, _pairs = _fixture(tmp_path)
     for profile in profiles:
         manifest_path = tmp_path / f"run_{profile}" / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -550,7 +861,7 @@ def test_collect_runtime_logs_copies_exact_profile_set(tmp_path: Path) -> None:
 
 
 def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
-    profiles, strict, diagnostic, review = _fixture(tmp_path)
+    profiles, strict, diagnostic, review, pairs = _fixture(tmp_path)
     qa_path = tmp_path / "run_matrix_textured" / "qa_report.json"
     qa = json.loads(qa_path.read_text(encoding="utf-8"))
     qa["warnings"] = ["black border"]
@@ -561,6 +872,7 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,
@@ -577,6 +889,7 @@ def test_dataset_rejects_qa_and_strict_compare_failures(tmp_path: Path) -> None:
             expected_profiles=profiles,
             primary_profile="matrix_low",
             generator_commit=GENERATOR_COMMIT,
+            pair_manifest=pairs,
             strict_compare_report=strict,
             diagnostic_compare_reports=[diagnostic],
             visual_review=review,

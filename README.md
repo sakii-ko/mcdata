@@ -145,23 +145,42 @@ runs/
 ```
 
 After per-run QA, strict-cohort comparison, and manual visual review, build a deterministic
-batch index and checksum manifest:
+batch index and checksum manifest. The dataset-local `edit_pairs.json` uses this minimal shape
+(episode IDs are manifest `run_id` values):
+
+```json
+{
+  "schema_version": 1,
+  "pairs": [
+    {
+      "prompt": "Change the same scene from noon to midnight.",
+      "source_episode": "episode-noon",
+      "target_episode": "episode-midnight",
+      "edit_axis": "time_of_day"
+    }
+  ]
+}
+```
+
+Then build the index:
 
 ```bash
 mcdata dataset-index runs/accepted_full19 \
   --expected-profiles "$ALL_19_MATRIX_PROFILES" \
   --primary-profile matrix_low \
   --generator-commit "$(git rev-parse HEAD)" \
+  --pair-manifest runs/accepted_full19/edit_pairs.json \
   --strict-compare-report runs/accepted_full19/qa_compare_noon18/qa_compare_report.json \
   --diagnostic-compare-report runs/accepted_full19/qa_compare_all19/qa_compare_report.json \
   --visual-review runs/accepted_full19/visual_review/review.json
 sha256sum -c runs/accepted_full19/SHA256SUMS
 ```
 
-The index automatically groups the 18 identical noon world states into the strict rendering
-matrix and keeps the midnight run as a controlled variant. It is marked `accepted` only when the
-expected profile set, manifests, actual artifact hashes, 60-second 1280×720/24fps captures,
-resource-pack runtime gates, route/alignment QA, and explicit visual review all pass.
+The index automatically groups identical world states into rendering cohorts and keeps time or
+weather runs as controlled variants. Schema v2 also validates every declared prompt-edit pair
+against the actual episode manifests and rejects compound or provenance-drifting edits. It is
+marked `accepted` only when the expected profile set, manifests, actual artifact hashes, captures,
+resource-pack runtime gates, route/alignment QA, pair gates, and explicit visual review all pass.
 
 ## Notes
 

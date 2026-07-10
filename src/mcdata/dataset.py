@@ -15,8 +15,9 @@ from mcdata.dataset_support.core import (
     write_dataset_outputs,
 )
 from mcdata.dataset_support.episodes import global_invariants, load_episodes
+from mcdata.dataset_support.pairs import edit_pairs
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 __all__ = ["DatasetValidationError", "collect_runtime_logs", "write_dataset_index"]
 
@@ -65,6 +66,7 @@ def _build_index(
     expected: list[str],
     generator_commit: str,
     primary_profile: str,
+    pair_manifest: Path,
     strict_compare_report: Path,
     diagnostic_compare_reports: Iterable[Path],
     visual_review: Path | None,
@@ -78,6 +80,7 @@ def _build_index(
         manifests, width=width, height=height, fps=fps, duration=duration
     )
     cohort_items, primary_cohort_id = cohorts(episodes, manifests, primary_profile)
+    pair_manifest_artifact, pair_items = edit_pairs(root, pair_manifest, episodes, manifests)
     comparison_items = comparisons(
         root,
         strict_compare_report,
@@ -94,6 +97,8 @@ def _build_index(
         "invariants": invariants,
         "cohorts": cohort_items,
         "episodes": episodes,
+        "pair_manifest": pair_manifest_artifact,
+        "pairs": pair_items,
         "comparisons": comparison_items,
         "manual_review": review,
         "checksum_manifest": "SHA256SUMS",
@@ -117,6 +122,7 @@ def write_dataset_index(
     expected_profiles: Sequence[str],
     primary_profile: str,
     generator_commit: str,
+    pair_manifest: Path,
     strict_compare_report: Path,
     diagnostic_compare_reports: Iterable[Path] = (),
     visual_review: Path | None = None,
@@ -153,6 +159,7 @@ def write_dataset_index(
         expected=expected,
         generator_commit=generator_commit,
         primary_profile=primary_profile,
+        pair_manifest=pair_manifest,
         strict_compare_report=strict_compare_report,
         diagnostic_compare_reports=diagnostic_reports,
         visual_review=visual_review,

@@ -125,12 +125,29 @@ compare、资源包 runtime gate 与人工视觉 review；任何 profile 缺失/
 open-loop primary 组标为 `strict_rendering_matrix`，闭环反馈 primary 组标为
 `policy_aligned_rendering_matrix`，其余组标为 `world_state_variant`。
 
-产物 `dataset_index.json` 遵循 `src/mcdata/schemas/dataset_index.schema.json`；所有路径均为
-相对 dataset 根目录的 POSIX 路径，`dataset_id` 由不含自身 ID 的规范化索引内容计算，输出
-不写当前时间且稳定排序；`generator.git_commit` 单独记录索引器代码版本，不与 run manifest
-里的 capture commit 混淆。缺少显式 `visual_review/review.json` 时状态最多是
+产物 `dataset_index.json` 遵循 `src/mcdata/schemas/dataset_index.schema.json`；schema v2 起，
+`dataset-index` 必须通过 `--pair-manifest` 绑定 dataset 根目录内的 edit-pair manifest（输入
+schema 为 `src/mcdata/schemas/edit_pair_manifest.schema.json`）。输入的每条 pair 只声明自然语言
+`prompt`、`source_episode`、`target_episode` 和唯一 `edit_axis`；索引器从两端已通过 QA 的
+episode manifest 重新计算 `axis_values` 和 invariants，绝不采信调用方提交的差分结论。当前
+单轴集合为 `material_style`、`shader_quality`、`time_of_day`、`weather`、`snow_weather`；后者
+要求两端共享显式 `world.state.biome={id, precipitation: "snow"}`，底层 clear/rain 在索引中
+规范化为 clear/snow。一个 accepted episode 必须至少出现在一条 pair 中；同一 target 不能
+被不同 source/axis 冲突占用。
+
+每条 pair 强制共享 Minecraft 版本、capture commit、world seed/profile、scene、player spawn、
+trajectory contract 和 capture settings（只排除部署路由用的 display）。材质轴只允许实际
+resource-pack 内容哈希变化；光影轴要求无 shader 的 source 到启用 shader 的 target；时间轴
+只接受 noon/midnight；普通天气
+轴只接受非雪地 clear/rain。mods、client options、其余 world state、未声明的渲染轴或任一上述
+invariant 发生变化都会 fail closed。这样 time/weather episode 可以属于 world-state variant，
+但 pair 本身仍保持可机器证明的单变量 edit 契约。
+
+所有路径均为相对 dataset 根目录的 POSIX 路径，`dataset_id` 由不含自身 ID 的规范化索引内容
+计算，输出不写当前时间且稳定排序；`generator.git_commit` 单独记录索引器代码版本，不与 run
+manifest 里的 capture commit 混淆。缺少显式 `visual_review/review.json` 时状态最多是
 `automated_pass`；只有自动闸门和人工 review 都通过才是 `accepted`。同目录的
-`SHA256SUMS` 覆盖索引及批次内全部普通文件，用于回传后逐字节复验。
+`SHA256SUMS` 覆盖索引、pair manifest 及批次内全部普通文件，用于回传后逐字节复验。
 
 ## 测试策略分层
 

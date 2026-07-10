@@ -235,6 +235,7 @@ def dataset_index(
     expected_profiles: str = typer.Option(..., "--expected-profiles"),
     primary_profile: str = typer.Option(..., "--primary-profile"),
     generator_commit: str = typer.Option(..., "--generator-commit"),
+    pair_manifest: Path = typer.Option(..., "--pair-manifest"),
     strict_compare_report: Path = typer.Option(..., "--strict-compare-report"),
     diagnostic_compare_report: Optional[Path] = typer.Option(
         None, "--diagnostic-compare-report"
@@ -256,6 +257,7 @@ def dataset_index(
             expected_profiles=profiles,
             primary_profile=primary_profile,
             generator_commit=generator_commit,
+            pair_manifest=pair_manifest,
             strict_compare_report=strict_compare_report,
             diagnostic_compare_reports=diagnostic_reports,
             visual_review=visual_review,
