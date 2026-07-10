@@ -9,6 +9,7 @@ from typing import Any, Callable
 from mcdata.action_placement import (
     EPISODE_RESET_BASE_PHASES,
     PLACEMENT_RECEIPT_PHASES,
+    bind_receipt_marker,
     expected_input_events,
     placement_spec,
     placement_specs,
@@ -272,7 +273,7 @@ class PlacementExecutor:
                     f"see {self._log_path}"
                 )
             attempts += 1
-            write_commands(self._proc, [command.format(marker=marker)])
+            write_commands(self._proc, [bind_receipt_marker(command, marker)])
             line = _find_marker_line(self._log_path, marker, after_byte=after_byte)
             if line is not None:
                 return {

@@ -224,6 +224,44 @@ def test_l4_executor_never_claims_failed_left_click(tmp_path: Path, monkeypatch)
         executor.dispatch(_combat_event(), send)
 
 
+def test_l4_probe_binds_marker_without_formatting_snbt_braces(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    log_path = tmp_path / "server.log"
+    log_path.write_text("ready\n", encoding="utf-8")
+    proc = SimpleNamespace(stdin=StringIO(), poll=lambda: None)
+    executor = combat.CombatExecutor(
+        proc,
+        server_log_path=log_path,
+        username="mcdata_bot",
+        poll_sec=0,
+    )
+    spec = _combat_event()["combat"]
+    marker = receipt_marker(spec["action_id"], "target_absent")
+    sent: list[str] = []
+
+    def fake_write(_proc, commands: list[str]) -> None:
+        sent.extend(commands)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(f"[Server thread/INFO]: [Server] {marker}\n")
+
+    monkeypatch.setattr(combat, "write_commands", fake_write)
+
+    evidence = executor._probe(
+        f"execute unless entity {combat._identity_selector(spec)} run say {{marker}}",
+        spec["action_id"],
+        "target_absent",
+        timeout=0.1,
+    )
+
+    assert evidence["marker"] == marker
+    assert sent == [
+        f"execute unless entity {combat._identity_selector(spec)} run say {marker}"
+    ]
+    assert "nbt={UUID:" in sent[0]
+
+
 def test_l4_failure_cleanup_attempts_items_and_objective_after_target_probe_error(
     tmp_path: Path,
     monkeypatch,

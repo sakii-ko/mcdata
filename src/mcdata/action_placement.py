@@ -198,6 +198,16 @@ def receipt_marker(action_id: str, phase: str) -> str:
     return f"[MCDATA_ACTION_RECEIPT:{action_id}:{phase}]"
 
 
+def bind_receipt_marker(command_template: str, marker: str) -> str:
+    """Bind only the receipt token without interpreting Minecraft SNBT braces."""
+    token = "{marker}"
+    if command_template.count(token) != 1:
+        raise PlacementEvidenceError(
+            "receipt command template must contain exactly one {marker} token"
+        )
+    return command_template.replace(token, marker)
+
+
 def validate_episode_reset_evidence(
     value: Any,
     placement_events: list[dict[str, Any]],

@@ -19,7 +19,12 @@ from mcdata.action_combat import (
     health_score,
     uuid_int_array,
 )
-from mcdata.action_placement import placement_specs, receipt_marker, server_log_binding
+from mcdata.action_placement import (
+    bind_receipt_marker,
+    placement_specs,
+    receipt_marker,
+    server_log_binding,
+)
 from mcdata.render.placement import PlacementExecutor
 from mcdata.render.scene import write_commands
 
@@ -419,7 +424,7 @@ class CombatExecutor:
         while time.monotonic() <= deadline:
             self._ensure_server(action_id, phase)
             attempts += 1
-            write_commands(self._proc, [command.format(marker=marker)])
+            write_commands(self._proc, [bind_receipt_marker(command, marker)])
             line = _find_marker_line(self._log_path, marker, after_byte=after_byte)
             if line is not None:
                 return {
