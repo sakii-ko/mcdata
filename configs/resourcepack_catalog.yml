@@ -1,0 +1,699 @@
+schema_version: 1
+catalog_snapshot_date: "2026-07-10"
+
+required_style_families:
+  - realism_pbr
+  - architectural_cinematic
+  - vanilla_plus
+  - handpainted_fantasy_medieval
+  - cartoon_minimal
+  - retro_lowres
+  - scifi_cyber
+  - dark_horror
+  - accessibility_high_contrast
+
+# This is a candidate and rights catalog, not an asset installer. A configured asset is not
+# necessarily runtime-verified, and a runtime-verified pack is not necessarily lawful for ML.
+candidates:
+  - candidate_id: faithful-32x-free
+    lineage_id: faithful
+    display_name: Faithful 32x
+    candidate_role: primary_style
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: faithful-32x, project_url: "https://modrinth.com/resourcepack/faithful-32x", author_contact_url: "https://faithfulpack.net/contact"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [faithful-32x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-Faithful-License, label: Faithful License, source_url: "https://faithfulpack.net/license"}
+    permissions: &permissions_unknown
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: unknown, evidence_url: null}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [32]}
+    pbr_capability: none
+    eligibility: &research_only {train: research_only, heldout: research_only}
+    notes: Public installer candidate; ML rights were not inferred from download or video use.
+
+  - candidate_id: bare-bones-16x-free
+    lineage_id: bare-bones
+    display_name: Bare Bones
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: modrinth, project_id: bare-bones, project_url: "https://modrinth.com/resourcepack/bare-bones", author_contact_url: "https://modrinth.com/resourcepack/bare-bones"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [bare-bones], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/bare-bones"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Trailer-like flat-color style; configured status is not a 26.2 runtime claim.
+
+  - candidate_id: fresh-animations-base-free
+    lineage_id: fresh-animations
+    display_name: Fresh Animations
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: fresh-animations, project_url: "https://modrinth.com/resourcepack/fresh-animations", author_contact_url: "https://modrinth.com/resourcepack/fresh-animations"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [fresh-animations], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-See-Terms-of-Use-in-Description, label: See project terms, source_url: "https://modrinth.com/resourcepack/fresh-animations"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Entity-animation overlay, not an independent full material style.
+
+  - candidate_id: fresh-animations-extensions-free
+    lineage_id: fresh-animations
+    display_name: Fresh Animations Extensions
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: fresh-animations-extensions, project_url: "https://modrinth.com/resourcepack/fresh-animations-extensions", author_contact_url: "https://modrinth.com/resourcepack/fresh-animations-extensions"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [fresh-animations-extensions], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/fresh-animations-extensions"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Extension overlay shares the Fresh Animations lineage for split closure.
+
+  - candidate_id: fresh-animations-emissive-free
+    lineage_id: fresh-animations
+    display_name: Fresh Animations Emissive
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: fresh-animations-emissive, project_url: "https://modrinth.com/resourcepack/fresh-animations-emissive", author_contact_url: "https://modrinth.com/resourcepack/fresh-animations-emissive"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [fresh-animations-emissive], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/fresh-animations-emissive"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Emissive entity overlay; grouped with its upstream visual lineage.
+
+  - candidate_id: default-hd-64x-free
+    lineage_id: default-hd
+    display_name: Default HD 64x
+    candidate_role: primary_style
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: default-hd-64x, project_url: "https://modrinth.com/resourcepack/default-hd-64x", author_contact_url: "https://modrinth.com/resourcepack/default-hd-64x"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [default-hd-64x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/default-hd-64x"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [64]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Same visual lineage as Default HD 128x; never split by resolution.
+
+  - candidate_id: default-hd-128x-free
+    lineage_id: default-hd
+    display_name: Default HD 128x
+    candidate_role: primary_style
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: default-hd-128x, project_url: "https://modrinth.com/resourcepack/default-hd-128x", author_contact_url: "https://modrinth.com/resourcepack/default-hd-128x"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [default-hd-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/default-hd-128x"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Same visual lineage as Default HD 64x; never split by resolution.
+
+  - candidate_id: dramatic-skys-free
+    lineage_id: dramatic-skys
+    display_name: Dramatic Skys
+    candidate_role: visual_overlay
+    style_family: architectural_cinematic
+    source: {provider: modrinth, project_id: dramatic-skys, project_url: "https://modrinth.com/resourcepack/dramatic-skys", author_contact_url: "https://modrinth.com/resourcepack/dramatic-skys"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [dramatic-skys], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/dramatic-skys"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Sky overlay used for atmosphere diversity, not a full material pack.
+
+  - candidate_id: visual-enchantments-free
+    lineage_id: visual-enchantments
+    display_name: Visual Enchantments
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: visual-enchantments, project_url: "https://modrinth.com/resourcepack/visual-enchantments", author_contact_url: "https://modrinth.com/resourcepack/visual-enchantments"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [visual-enchantments], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/visual-enchantments"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Item overlay only.
+
+  - candidate_id: vanilla-glowing-ores-free
+    lineage_id: vanilla-glowing-ores
+    display_name: Vanilla Glowing Ores
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: vanilla-glowing-ores, project_url: "https://modrinth.com/resourcepack/vanilla-glowing-ores", author_contact_url: "https://modrinth.com/resourcepack/vanilla-glowing-ores"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [vanilla-glowing-ores], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: MIT, label: MIT License, source_url: "https://modrinth.com/resourcepack/vanilla-glowing-ores"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/MIT.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: MIT redistribution does not itself establish explicit ML-training permission.
+
+  - candidate_id: emissive-txf-free
+    lineage_id: emissive-txf
+    display_name: Emissive TXF
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: emissive-txf, project_url: "https://modrinth.com/resourcepack/emissive-txf", author_contact_url: "https://modrinth.com/resourcepack/emissive-txf"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [emissive-txf], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/emissive-txf"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Emissive overlay only.
+
+  - candidate_id: patrix-32x-free
+    lineage_id: patrix
+    display_name: Patrix 32x public components
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: patrix-32x, project_url: "https://modrinth.com/resourcepack/patrix-32x", author_contact_url: "https://modrinth.com/resourcepack/patrix-32x"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [patrix-32x, patrix-32x-full], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/patrix-32x"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [32]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Public Basic/Addon/Bonus/Models selection; no ML grant is stated.
+
+  - candidate_id: modernarch-128x-free
+    lineage_id: modernarch
+    display_name: ModernArch 128x
+    candidate_role: primary_style
+    style_family: architectural_cinematic
+    source: {provider: modrinth, project_id: modernarch, project_url: "https://modrinth.com/resourcepack/modernarch", author_contact_url: "https://www.designio.graphics/contact"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [modernarch-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/modernarch"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Public 128x project; higher paid resolutions share this lineage.
+
+  - candidate_id: legendary-rt-128x-free
+    lineage_id: legendary-rt
+    display_name: Legendary RT Java Textures 128x
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: legendary-rt-textures, project_url: "https://modrinth.com/resourcepack/legendary-rt-textures", author_contact_url: "https://modrinth.com/resourcepack/legendary-rt-textures"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [legendary-rt-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/legendary-rt-textures"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Configured look-dev asset; catalog deliberately makes no runtime-version claim.
+
+  - candidate_id: optimum-realism-64x-free
+    lineage_id: optimum-realism
+    display_name: Optimum Realism 64x
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: optimum-realism, project_url: "https://modrinth.com/resourcepack/optimum-realism", author_contact_url: "https://modrinth.com/resourcepack/optimum-realism"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [optimum-realism-64x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/optimum-realism"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [64]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Depth-write POM candidate.
+
+  - candidate_id: prettyrealistic-32x-free
+    lineage_id: prettyrealistic
+    display_name: PrettyRealistic PBR 32x
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: prettyrealistic, project_url: "https://modrinth.com/resourcepack/prettyrealistic", author_contact_url: "https://modrinth.com/resourcepack/prettyrealistic"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [prettyrealistic-32x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/prettyrealistic"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [32]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Faithful-style PBR/POM candidate.
+
+  - candidate_id: yitalith-128x-free
+    lineage_id: yitalith
+    display_name: Yitalith 128x
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: yitalith, project_url: "https://modrinth.com/resourcepack/yitalith", author_contact_url: "https://modrinth.com/resourcepack/yitalith"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [yitalith-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: GPL-3.0-or-later, label: GNU GPL v3.0 or later, source_url: "https://modrinth.com/resourcepack/yitalith"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/GPL-3.0-or-later.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: GPL redistribution is recorded separately from still-unknown ML permission.
+
+  - candidate_id: reimagined-16x-free
+    lineage_id: reimagined
+    display_name: Reimagined
+    candidate_role: primary_style
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: reimagined, project_url: "https://modrinth.com/resourcepack/reimagined", author_contact_url: "https://modrinth.com/resourcepack/reimagined"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [reimagined-style], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/reimagined"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Cozy immersive vanilla-plus art direction.
+
+  - candidate_id: ashen-16x-free
+    lineage_id: ashen
+    display_name: Ashen 16x
+    candidate_role: primary_style
+    style_family: handpainted_fantasy_medieval
+    source: {provider: modrinth, project_id: ashen, project_url: "https://modrinth.com/resourcepack/ashen", author_contact_url: "https://modrinth.com/resourcepack/ashen"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [ashen-16x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/ashen"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Medieval fantasy primary style.
+
+  - candidate_id: jeelh-simplified-free
+    lineage_id: jeelh-simplified
+    display_name: Simplified
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: modrinth, project_id: jeelh-simplified, project_url: "https://modrinth.com/resourcepack/jeelh-simplified", author_contact_url: "https://modrinth.com/resourcepack/jeelh-simplified"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [jeelh-simplified], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/jeelh-simplified"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Clean complete retexture.
+
+  - candidate_id: quadral-free
+    lineage_id: quadral
+    display_name: Quadral
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: modrinth, project_id: quadral, project_url: "https://modrinth.com/resourcepack/quadral", author_contact_url: "https://modrinth.com/resourcepack/quadral"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [quadral], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/quadral"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Bright crisp vibrant primary style.
+
+  - candidate_id: bare-bones-pbr-128x-free
+    lineage_id: bare-bones
+    display_name: Bare Bones PBR 128x
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: modrinth, project_id: bare-bones-pbr-x128, project_url: "https://modrinth.com/resourcepack/bare-bones-pbr-x128", author_contact_url: "https://modrinth.com/resourcepack/bare-bones-pbr-x128"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [bare-bones-pbr-128x], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: MIT, label: MIT License, source_url: "https://modrinth.com/resourcepack/bare-bones-pbr-x128"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/MIT.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Grouped with Bare Bones to prevent near-duplicate visual leakage.
+
+  - candidate_id: natural-texture-pack-free
+    lineage_id: natural-texture-pack
+    display_name: Natural Texture Pack
+    candidate_role: primary_style
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: natural-texture-pack, project_url: "https://modrinth.com/resourcepack/natural-texture-pack", author_contact_url: "https://modrinth.com/resourcepack/natural-texture-pack"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [natural-texture-pack], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/natural-texture-pack"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Legacy-console-inspired soft-line style; rights include upstream 4J material.
+
+  - candidate_id: better-leaves-free
+    lineage_id: better-leaves
+    display_name: Motschen's Better Leaves
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: better-leaves, project_url: "https://modrinth.com/resourcepack/better-leaves", author_contact_url: "https://modrinth.com/resourcepack/better-leaves"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [better-leaves], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: MIT, label: MIT License, source_url: "https://modrinth.com/resourcepack/better-leaves"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/MIT.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Foliage geometry/texture overlay.
+
+  - candidate_id: three-d-default-free
+    lineage_id: three-d-default
+    display_name: 3D Default
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: 3d-default, project_url: "https://modrinth.com/resourcepack/3d-default", author_contact_url: "https://modrinth.com/resourcepack/3d-default"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [3d-default], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: GPL-3.0-only, label: GNU GPL v3.0 only, source_url: "https://modrinth.com/resourcepack/3d-default"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/GPL-3.0-only.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: not_applicable, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Model overlay; retained because geometry changes are a useful edit family confound to track.
+
+  - candidate_id: stylista-free
+    lineage_id: stylista
+    display_name: Stylista
+    candidate_role: primary_style
+    style_family: architectural_cinematic
+    source: {provider: modrinth, project_id: stylista, project_url: "https://modrinth.com/resourcepack/stylista", author_contact_url: "https://modrinth.com/resourcepack/stylista"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [stylista], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/stylista"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Stylized LabPBR material candidate.
+
+  - candidate_id: simplista-free
+    lineage_id: simplista
+    display_name: Simplista LabPBR
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: modrinth, project_id: simplista, project_url: "https://modrinth.com/resourcepack/simplista", author_contact_url: "https://modrinth.com/resourcepack/simplista"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [simplista], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/simplista"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Simplified stylized LabPBR candidate.
+
+  - candidate_id: new-glowing-ores-free
+    lineage_id: new-glowing-ores
+    display_name: New Glowing Ores
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: new-glowing-ores, project_url: "https://modrinth.com/resourcepack/new-glowing-ores", author_contact_url: "https://modrinth.com/resourcepack/new-glowing-ores"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [new-glowing-ores], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: CC-BY-NC-SA-4.0, label: CC BY-NC-SA 4.0, source_url: "https://modrinth.com/resourcepack/new-glowing-ores"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/CC-BY-NC-SA-4.0.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Noncommercial/share-alike terms still do not explicitly answer ML-training use.
+
+  - candidate_id: subtly-glowing-ores-free
+    lineage_id: subtly-glowing-ores
+    display_name: Subtly Glowing Ores
+    candidate_role: visual_overlay
+    style_family: vanilla_plus
+    source: {provider: modrinth, project_id: subtly-glowing-ores, project_url: "https://modrinth.com/resourcepack/subtly-glowing-ores", author_contact_url: "https://modrinth.com/resourcepack/subtly-glowing-ores"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [subtly-glowing-ores], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: GPL-2.0-only, label: GNU GPL v2.0 only, source_url: "https://modrinth.com/resourcepack/subtly-glowing-ores"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: explicit, evidence_url: "https://spdx.org/licenses/GPL-2.0-only.html"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Open redistribution and ML permission are intentionally recorded as separate facts.
+
+  - candidate_id: realiscraft-demo-free
+    lineage_id: realiscraft
+    display_name: RealisCraft Java demo
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: modrinth, project_id: realiscraft-je-realistic-default-textures-1.1.0, project_url: "https://modrinth.com/resourcepack/realiscraft-je-realistic-default-textures-1.1.0", author_contact_url: "https://modrinth.com/resourcepack/realiscraft-je-realistic-default-textures-1.1.0"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [realiscraft-demo], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/realiscraft-je-realistic-default-textures-1.1.0"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: pbr
+    eligibility: *research_only
+    notes: Demo completeness must be tracked separately from visual quality.
+
+  - candidate_id: fusion-connected-glass-free
+    lineage_id: fusion-connected-glass
+    display_name: Fusion Connected Glass
+    candidate_role: visual_overlay
+    style_family: architectural_cinematic
+    source: {provider: modrinth, project_id: fusion-connected-glass, project_url: "https://modrinth.com/resourcepack/fusion-connected-glass", author_contact_url: "https://modrinth.com/resourcepack/fusion-connected-glass"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [fusion-connected-glass], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/fusion-connected-glass"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Architectural glass overlay.
+
+  - candidate_id: midnighttigger-connected-textures-free
+    lineage_id: midnighttigger-connected-textures
+    display_name: Midnighttigger's Default Connected Textures
+    candidate_role: visual_overlay
+    style_family: architectural_cinematic
+    source: {provider: modrinth, project_id: mt-ct-d, project_url: "https://modrinth.com/resourcepack/mt-ct-d", author_contact_url: "https://modrinth.com/resourcepack/mt-ct-d"}
+    access_tier: free
+    integration: {status: configured_not_runtime_verified, configured_asset_keys: [mt-ct-d], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/mt-ct-d"}
+    permissions: *permissions_unknown
+    resolution: {status: unknown, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Connected-texture overlay.
+
+  # Research candidates below are metadata only. They have not been added to asset_sets.yml,
+  # downloaded, or claimed to have run on Minecraft 26.2.
+  - candidate_id: patrix-hires-paid
+    lineage_id: patrix
+    display_name: Patrix high-resolution Patreon tiers
+    candidate_role: primary_style
+    style_family: realism_pbr
+    source: {provider: creator_site, project_id: patrix-patreon, project_url: "https://www.patreon.com/patrix", author_contact_url: "https://www.patreon.com/patrix"}
+    access_tier: paid
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/patrix-32x"}
+    permissions: *permissions_unknown
+    resolution: {status: range, values_px: [64, 128, 256]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Same lineage as public 32x; purchase never implies ML or redistribution permission.
+
+  - candidate_id: modernarch-hires-paid
+    lineage_id: modernarch
+    display_name: ModernArch 256x-1024x Patreon tiers
+    candidate_role: primary_style
+    style_family: architectural_cinematic
+    source: {provider: creator_site, project_id: modernarch-patreon, project_url: "https://www.patreon.com/designio", author_contact_url: "https://www.designio.graphics/contact"}
+    access_tier: paid
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/modernarch"}
+    permissions: *permissions_unknown
+    resolution: {status: range, values_px: [256, 512, 1024]}
+    pbr_capability: labpbr
+    eligibility: *research_only
+    notes: Same lineage as public 128x; no file or 26.2 runtime evidence is claimed here.
+
+  - candidate_id: luna-hd-64x-free
+    lineage_id: luna-hd
+    display_name: Luna HD 64x free tier
+    candidate_role: primary_style
+    style_family: architectural_cinematic
+    source: {provider: creator_site, project_id: luna-hd, project_url: "https://www.lunahd.com/", author_contact_url: "https://www.lunahd.com/"}
+    access_tier: free
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: unknown, label: Creator terms; unauthorized distribution prohibited, source_url: "https://www.lunahd.com/"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: denied, evidence_url: "https://www.lunahd.com/"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [64]}
+    pbr_capability: pbr
+    eligibility: *research_only
+    notes: Official site advertises a free tier; pipeline compatibility remains untested.
+
+  - candidate_id: luna-hd-hires-paid
+    lineage_id: luna-hd
+    display_name: Luna HD high-resolution Patreon tiers
+    candidate_role: primary_style
+    style_family: architectural_cinematic
+    source: {provider: creator_site, project_id: luna-hd-patreon, project_url: "https://www.lunahd.com/", author_contact_url: "https://www.lunahd.com/"}
+    access_tier: paid
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: unknown, label: Creator terms; unauthorized distribution prohibited, source_url: "https://www.lunahd.com/"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: denied, evidence_url: "https://www.lunahd.com/"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: range, values_px: [128, 256, 512, 1024]}
+    pbr_capability: pbr
+    eligibility: *research_only
+    notes: Same lineage as Luna 64x; paid access does not grant dataset publication rights.
+
+  - candidate_id: genesis-scifi-research
+    lineage_id: genesis-scifi
+    display_name: Genesis resource pack
+    candidate_role: primary_style
+    style_family: scifi_cyber
+    source: {provider: modrinth, project_id: genesis_pack, project_url: "https://modrinth.com/resourcepack/genesis_pack", author_contact_url: "https://modrinth.com/resourcepack/genesis_pack"}
+    access_tier: paid
+    integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/genesis_pack"}
+    permissions: *permissions_unknown
+    resolution: {status: range, values_px: [64, 128, 256, 512]}
+    pbr_capability: pbr
+    eligibility: *research_only
+    notes: Alien/science-fiction PBR candidate; Modrinth currently exposes no downloadable versions.
+
+  - candidate_id: f8thful-8x-research
+    lineage_id: f8thful
+    display_name: F8thful 8x
+    candidate_role: primary_style
+    style_family: retro_lowres
+    source: {provider: modrinth, project_id: f8thful, project_url: "https://modrinth.com/resourcepack/f8thful", author_contact_url: "https://modrinth.com/resourcepack/f8thful"}
+    access_tier: free
+    integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/f8thful"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [8]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Strong low-resolution control style; no 26.2 pipeline run is claimed.
+
+  - candidate_id: conquest-32x-research
+    lineage_id: conquest
+    display_name: Conquest
+    candidate_role: primary_style
+    style_family: handpainted_fantasy_medieval
+    source: {provider: modrinth, project_id: conquest_, project_url: "https://modrinth.com/resourcepack/conquest_", author_contact_url: "https://www.conquestreforged.com/"}
+    access_tier: free
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://modrinth.com/resourcepack/conquest_"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [32]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Painterly medieval lineage; compatibility and rights require direct audit.
+
+  - candidate_id: excalibur-16x-research
+    lineage_id: excalibur
+    display_name: Excalibur
+    candidate_role: primary_style
+    style_family: handpainted_fantasy_medieval
+    source: {provider: curseforge, project_id: "326818", project_url: "https://www.curseforge.com/minecraft/texture-packs/excalibur", author_contact_url: "https://www.curseforge.com/minecraft/texture-packs/excalibur"}
+    access_tier: free
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://www.curseforge.com/minecraft/texture-packs/excalibur"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: denied, evidence_url: "https://www.curseforge.com/minecraft/texture-packs/excalibur"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Video permission on the project page is not treated as ML-training permission.
+
+  - candidate_id: ms-painted-128x-research
+    lineage_id: ms-painted
+    display_name: MS Painted
+    candidate_role: primary_style
+    style_family: cartoon_minimal
+    source: {provider: planetminecraft, project_id: ms-painted, project_url: "https://www.planetminecraft.com/texture-pack/ms-painted/", author_contact_url: "https://www.planetminecraft.com/member/stridey/"}
+    access_tier: free
+    integration: {status: compatibility_unknown, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://www.planetminecraft.com/texture-pack/ms-painted/"}
+    permissions:
+      ml_training: {status: unknown, evidence_url: null}
+      redistribution: {status: denied, evidence_url: "https://www.planetminecraft.com/texture-pack/ms-painted/"}
+      written_authorization: {status: not_requested, evidence_path: null, scope: null, rights_holder: null}
+    resolution: {status: exact, values_px: [128]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Official page declares 26.2 support, but this catalog does not claim a pipeline run.
+
+  - candidate_id: dark-fantasy-visuals-16x-research
+    lineage_id: dark-fantasy-visuals
+    display_name: Dark Fantasy Visuals
+    candidate_role: primary_style
+    style_family: dark_horror
+    source: {provider: curseforge, project_id: "1556857", project_url: "https://www.curseforge.com/minecraft/texture-packs/dark-fantasy-java-resource-pack", author_contact_url: "https://www.curseforge.com/minecraft/texture-packs/dark-fantasy-java-resource-pack"}
+    access_tier: free
+    integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: LicenseRef-All-Rights-Reserved, label: All Rights Reserved, source_url: "https://www.curseforge.com/minecraft/texture-packs/dark-fantasy-java-resource-pack"}
+    permissions: *permissions_unknown
+    resolution: {status: exact, values_px: [16]}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: Grim full-style candidate; current upstream version is not asserted as 26.2-compatible.
+
+  - candidate_id: minecraft-high-contrast-builtin
+    lineage_id: minecraft-high-contrast
+    display_name: Minecraft built-in High Contrast UI
+    candidate_role: ui_only
+    style_family: accessibility_high_contrast
+    source: {provider: minecraft_builtin, project_id: minecraft-high-contrast, project_url: "https://feedback.minecraft.net/hc/en-us/articles/13332060932621-Minecraft-Java-Edition-1-19-4-Pre-release-1", author_contact_url: null}
+    access_tier: free
+    integration: {status: research_only, configured_asset_keys: [], runtime_verified_game_versions: [], evidence_paths: []}
+    license: {spdx: unknown, label: Minecraft built-in proprietary assets, source_url: "https://www.minecraft.net/en-us/usage-guidelines"}
+    permissions: *permissions_unknown
+    resolution: {status: not_applicable, values_px: []}
+    pbr_capability: none
+    eligibility: *research_only
+    notes: UI-only accessibility control; it does not provide a high-contrast world-material style.

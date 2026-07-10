@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/resourcepack_catalog.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_snapshot_date",
+    "required_style_families",
+    "candidates"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "catalog_snapshot_date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "required_style_families": {
+      "type": "array",
+      "minItems": 9,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/styleFamily"}
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/candidate"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[a-z0-9_-]*[a-z0-9])?$"
+    },
+    "styleFamily": {
+      "enum": [
+        "realism_pbr",
+        "architectural_cinematic",
+        "vanilla_plus",
+        "handpainted_fantasy_medieval",
+        "cartoon_minimal",
+        "retro_lowres",
+        "scifi_cyber",
+        "dark_horror",
+        "accessibility_high_contrast"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "project_id", "project_url", "author_contact_url"],
+      "properties": {
+        "provider": {
+          "enum": ["modrinth", "curseforge", "planetminecraft", "creator_site", "minecraft_builtin"]
+        },
+        "project_id": {"type": "string", "minLength": 1},
+        "project_url": {"type": "string", "pattern": "^https://"},
+        "author_contact_url": {
+          "oneOf": [
+            {"type": "string", "pattern": "^https://"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "configured_asset_keys",
+        "runtime_verified_game_versions",
+        "evidence_paths"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "configured_not_runtime_verified",
+            "runtime_verified",
+            "research_only",
+            "compatibility_unknown"
+          ]
+        },
+        "configured_asset_keys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "runtime_verified_game_versions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "evidence_paths": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "label", "source_url"],
+      "properties": {
+        "spdx": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "source_url": {
+          "oneOf": [
+            {"type": "string", "pattern": "^https://"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "permissionStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_url"],
+      "properties": {
+        "status": {"enum": ["explicit", "unknown", "denied"]},
+        "evidence_url": {
+          "oneOf": [
+            {"type": "string", "pattern": "^https://"},
+            {"type": "null"}
+          ]
+        }
+      }
+    },
+    "writtenAuthorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_path", "scope", "rights_holder"],
+      "properties": {
+        "status": {"enum": ["not_requested", "pending", "granted", "denied"]},
+        "evidence_path": {"type": ["string", "null"]},
+        "scope": {"type": ["string", "null"]},
+        "rights_holder": {"type": ["string", "null"]}
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ml_training", "redistribution", "written_authorization"],
+      "properties": {
+        "ml_training": {"$ref": "#/$defs/permissionStatus"},
+        "redistribution": {"$ref": "#/$defs/permissionStatus"},
+        "written_authorization": {"$ref": "#/$defs/writtenAuthorization"}
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "values_px"],
+      "properties": {
+        "status": {"enum": ["exact", "range", "mixed", "unknown", "not_applicable"]},
+        "values_px": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "eligibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["train", "heldout"],
+      "properties": {
+        "train": {"enum": ["publishable_train", "research_only", "denied"]},
+        "heldout": {"enum": ["publishable_heldout", "research_only", "denied"]}
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_id",
+        "lineage_id",
+        "display_name",
+        "candidate_role",
+        "style_family",
+        "source",
+        "access_tier",
+        "integration",
+        "license",
+        "permissions",
+        "resolution",
+        "pbr_capability",
+        "eligibility",
+        "notes"
+      ],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/identifier"},
+        "lineage_id": {"$ref": "#/$defs/identifier"},
+        "display_name": {"type": "string", "minLength": 1},
+        "candidate_role": {"enum": ["primary_style", "visual_overlay", "ui_only"]},
+        "style_family": {"$ref": "#/$defs/styleFamily"},
+        "source": {"$ref": "#/$defs/source"},
+        "access_tier": {"enum": ["free", "paid"]},
+        "integration": {"$ref": "#/$defs/integration"},
+        "license": {"$ref": "#/$defs/license"},
+        "permissions": {"$ref": "#/$defs/permissions"},
+        "resolution": {"$ref": "#/$defs/resolution"},
+        "pbr_capability": {"enum": ["labpbr", "seus_pbr", "pbr", "none", "unknown"]},
+        "eligibility": {"$ref": "#/$defs/eligibility"},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

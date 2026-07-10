@@ -39,6 +39,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "paths": set(),
     "scene_model": {"config"},
     "terrain": {"config", "scene_model"},
+    "resourcepack_catalog": {"config"},
     "action_curriculum": {"action_placement"},
     "action_placement": set(),
     "net": set(),

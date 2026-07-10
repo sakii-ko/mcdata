@@ -58,6 +58,7 @@
 | `mcdata.qa` | paths（可选 numpy/Pillow） | render、actions（只消费 run dir） |
 | `mcdata.scene_model` / `mcdata.manifest` / `mcdata.runlog` / `mcdata.settings` | config（scene_model/settings）, paths（settings/manifest/runlog） | render、actions、qa（被依赖方，不反向依赖） |
 | `mcdata.terrain` | config, scene_model（纯校验/哈希；只读 canonical registry 与所绑定配置） | render、actions、qa、manifest、dataset（Phase 1 尚未 wiring） |
+| `mcdata.resourcepack_catalog` | config（只读候选、许可、lineage 与 split 契约） | packs、render、actions、qa、dataset（不下载资产，也不推断训练许可） |
 | `mcdata.action_curriculum` / `mcdata.action_placement` | action_curriculum 可依赖 action_placement；其余仅标准库 | 所有上层模块（taxonomy、placement 计划/回执验证与证据归纳） |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
@@ -65,6 +66,12 @@
 | `mcdata.cli` | 所有模块 | —（但只做参数解析和调用，不写业务逻辑） |
 
 注：`actions.replay` 是运行时输入注入后端（消费 trajectory JSON、驱动 X 输入），允许被 render 调用，但它自身必须保持零 mcdata 依赖；长期可能迁出 actions 包成为独立模块。
+
+材质候选与训练权利使用独立的 `configs/resourcepack_catalog.yml` /
+`resourcepack_catalog.schema.json` 契约。候选的 source、视觉 family、lineage、分辨率、PBR、
+接入状态与 ML/再分发许可分别记录；不同分辨率/版本/付费档保持同一 lineage，训练 split 必须
+整族闭合。未知许可、ARR/付费但无书面授权、ML 权限不明确或缺 runtime evidence 时一律不能标为
+`publishable_train`。能下载、能进游戏或能发布录屏均不等于 ML 训练授权。
 
 白名单由 `scripts/check_standards.py` 机械执行（dev_check.sh 的一部分），与本表不一致时以先修文档、再改 checker 为流程。函数/文件级行为规范（环境变量纪律、错误处理、日志要求等）见 `docs/CODE_STANDARDS.md`。违反依赖规则的 PR 一律打回。
 
