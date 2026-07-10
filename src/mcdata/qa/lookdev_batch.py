@@ -16,6 +16,7 @@ class LookdevRunRequest:
     qa_rc: int
     unique_run_count: int
     expected_trajectory_sha256: str
+    expected_sync: str
     shared_trajectory: Path
     instance_manifest: Path
     bootstrap_manifest_sha256: str
@@ -52,21 +53,51 @@ def _load_mapping(path: Path) -> tuple[dict[str, Any], str | None]:
     return value, None
 
 
+def _float_or_none(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_none(value: object) -> int | None:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 def _manifest_checks(
     manifest: dict[str, Any], request: LookdevRunRequest
 ) -> dict[str, bool]:
     profile = manifest.get("profile")
     trajectory = manifest.get("trajectory")
     capture = manifest.get("capture")
+    git = manifest.get("git")
+    resources = manifest.get("resources")
     if not isinstance(profile, dict):
         profile = {}
     if not isinstance(trajectory, dict):
         trajectory = {}
     if not isinstance(capture, dict):
         capture = {}
+    if not isinstance(git, dict):
+        git = {}
+    if not isinstance(resources, dict):
+        resources = {}
     settings = capture.get("settings")
+    ffprobe = capture.get("ffprobe")
+    resourcepack_runtime = resources.get("resourcepack_runtime")
     if not isinstance(settings, dict):
         settings = {}
+    if not isinstance(ffprobe, dict):
+        ffprobe = {}
+    if not isinstance(resourcepack_runtime, dict):
+        resourcepack_runtime = {}
+    streams = ffprobe.get("streams")
+    stream = streams[0] if isinstance(streams, list) and streams else {}
+    if not isinstance(stream, dict):
+        stream = {}
     return {
         "manifest_identity": (
             profile.get("name") == request.profile
@@ -84,6 +115,19 @@ def _manifest_checks(
             and settings.get("height") == request.expected_height
             and settings.get("fps") == request.expected_fps
             and settings.get("display") == request.display
+        ),
+        "manifest_provenance": (
+            git.get("commit") == request.expected_sync
+            and git.get("dirty") is False
+            and git.get("source") == "sync_commit"
+        ),
+        "manifest_resourcepack_runtime": resourcepack_runtime.get("status") == "pass",
+        "manifest_video_stream": (
+            stream.get("width") == request.expected_width
+            and stream.get("height") == request.expected_height
+            and stream.get("avg_frame_rate") == f"{int(request.expected_fps)}/1"
+            and _int_or_none(stream.get("nb_frames"))
+            == round(request.expected_duration_sec * request.expected_fps)
         ),
     }
 
@@ -109,15 +153,17 @@ def _qa_checks(
         video_evidence = {}
     if not isinstance(trajectory_evidence, dict):
         trajectory_evidence = {}
-    duration = float(probe.get("duration_sec") or 0.0)
-    fps = float(probe.get("fps") or 0.0)
+    duration = _float_or_none(probe.get("duration_sec"))
+    fps = _float_or_none(probe.get("fps"))
     return {
         "route_reference": route.get("passed") is True,
         "capture_probe": (
             probe.get("codec") == "h264"
             and probe.get("width") == request.expected_width
             and probe.get("height") == request.expected_height
+            and fps is not None
             and abs(fps - request.expected_fps) <= 0.01
+            and duration is not None
             and abs(duration - request.expected_duration_sec) <= 1.0
         ),
         "qa_frames": (
@@ -133,6 +179,7 @@ def _qa_checks(
             and trajectory_evidence.get("sha256")
             == request.expected_trajectory_sha256
         ),
+        "qa_warnings": qa_report.get("warnings") == [],
     }
 
 
@@ -150,11 +197,15 @@ def _missing_run_checks() -> dict[str, bool]:
             "manifest_identity",
             "manifest_trajectory",
             "manifest_capture",
+            "manifest_provenance",
+            "manifest_resourcepack_runtime",
+            "manifest_video_stream",
             "route_reference",
             "capture_probe",
             "qa_frames",
             "qa_outputs",
             "qa_evidence",
+            "qa_warnings",
             "capture_exists",
             "run_trajectory_unchanged",
         )
@@ -284,7 +335,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Validate look-dev batch evidence")
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate = subparsers.add_parser("validate-run")
-    for option in ("profile", "expected-trajectory-sha256", "lane", "strategy", "display"):
+    for option in (
+        "profile",
+        "expected-trajectory-sha256",
+        "expected-sync",
+        "lane",
+        "strategy",
+        "display",
+    ):
         validate.add_argument(f"--{option}", required=True)
     for option in ("render-rc", "qa-rc", "unique-run-count", "server-port"):
         validate.add_argument(f"--{option}", required=True, type=int)
@@ -321,6 +379,7 @@ def _validate_command(args: argparse.Namespace) -> int:
         qa_rc=args.qa_rc,
         unique_run_count=args.unique_run_count,
         expected_trajectory_sha256=args.expected_trajectory_sha256,
+        expected_sync=args.expected_sync,
         shared_trajectory=args.shared_trajectory,
         instance_manifest=args.instance_manifest,
         bootstrap_manifest_sha256=args.bootstrap_manifest_sha256,

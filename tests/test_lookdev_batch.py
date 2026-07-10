@@ -85,7 +85,19 @@ def _passing_request(tmp_path: Path) -> LookdevRunRequest:
                     "fps": 24,
                     "display": ":77",
                 },
+                "ffprobe": {
+                    "streams": [
+                        {
+                            "width": 1920,
+                            "height": 1080,
+                            "avg_frame_rate": "24/1",
+                            "nb_frames": "1440",
+                        }
+                    ]
+                },
             },
+            "git": {"commit": "a" * 40, "dirty": False, "source": "sync_commit"},
+            "resources": {"resourcepack_runtime": {"status": "pass"}},
         },
     )
     _write_json(
@@ -119,6 +131,7 @@ def _passing_request(tmp_path: Path) -> LookdevRunRequest:
         qa_rc=0,
         unique_run_count=1,
         expected_trajectory_sha256=trajectory_sha,
+        expected_sync="a" * 40,
         shared_trajectory=shared,
         instance_manifest=instance_manifest,
         bootstrap_manifest_sha256=bootstrap_sha,
@@ -165,6 +178,26 @@ def test_run_fails_on_lane_or_fixed_server_port_drift(tmp_path: Path) -> None:
 
     assert record["passed"] is False
     assert record["checks"]["manifest_identity"] is False
+
+
+def test_run_fails_on_warning_provenance_or_resourcepack_runtime_drift(tmp_path: Path) -> None:
+    request = _passing_request(tmp_path)
+    qa_path = request.run_dir / "qa_report.json"  # type: ignore[union-attr]
+    qa = json.loads(qa_path.read_text(encoding="utf-8"))
+    qa["warnings"] = ["route reference check failed"]
+    _write_json(qa_path, qa)
+    manifest_path = request.run_dir / "manifest.json"  # type: ignore[union-attr]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["git"]["commit"] = "b" * 40
+    manifest["resources"]["resourcepack_runtime"]["status"] = "fail"
+    _write_json(manifest_path, manifest)
+
+    record = validate_lookdev_run(request)
+
+    assert record["passed"] is False
+    assert record["checks"]["qa_warnings"] is False
+    assert record["checks"]["manifest_provenance"] is False
+    assert record["checks"]["manifest_resourcepack_runtime"] is False
 
 
 def test_batch_summary_requires_exact_profile_order_and_all_passes() -> None:

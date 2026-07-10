@@ -408,6 +408,7 @@ for index in "${!PROFILES[@]}"; do
     --qa-rc "$qa_rc" \
     --unique-run-count "${#candidates[@]}" \
     --expected-trajectory-sha256 "$EXPECTED_TRAJECTORY_SHA256" \
+    --expected-sync "$EXPECTED_SYNC" \
     --shared-trajectory "$SHARED_TRAJECTORY" \
     --instance-manifest "$MCDATA_WORK_DIR/$profile/mcdata_manifest.json" \
     --bootstrap-manifest-sha256 "$bootstrap_sha" \
