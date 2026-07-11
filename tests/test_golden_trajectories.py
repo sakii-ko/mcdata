@@ -9,11 +9,13 @@ from mcdata.scene_model import load_scene, walk_obstacles
 ROOT = Path(__file__).resolve().parents[1]
 
 COMPACT_TRAJECTORY_SHA256 = {
+    "celestial_cardinal_scan_diagnostic": "6a319c1eff7f2c31d397d545bb0788aa7985a07053ef3f929ea00160bbeb9b01",
     "feedback_roam_10min_seed402": "015d9ba6a3705bc959cc96dd043211ba08cee67734af292b80efe4654c7a1f42",
     "feedback_roam_10min_seed403": "1cbcdc70cf21d300b94865b612c9bd5927eece57d654682ccd0a2a3b6068708e",
     "feedback_roam_10min_seed404": "c39b9772df9439d452f686c1603bd9e88acf44997597faf306f865361dedcf1a",
     "feedback_roam_10min_seed405": "29a163c3e94435b438d22b147e426ba0550e2ef90debaa40693787f5ca0b3849",
     "feedback_roam_10min_seed406": "00745f40c3c25824c3938d07cbf589d1f32c99665238259e906141b258987ffd",
+    "lookdev_lighting_showcase_60s": "43048e088ae39b15098154c87cdfedc6a3e461acc70ca08baf22ee3c078d8c5f",
 }
 
 
@@ -40,7 +42,7 @@ def test_configured_trajectories_match_golden_bytes() -> None:
         assert actual == expected
 
 
-def test_long_feedback_variants_match_compact_hash_evidence() -> None:
+def test_compact_trajectory_hash_evidence_matches() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml").get("strategies", {})
     obstacles = walk_obstacles(load_scene(ROOT / "configs"))
 
