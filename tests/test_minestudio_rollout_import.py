@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import random
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -65,6 +67,108 @@ def test_rollout_manifest_matches_schema_and_semantic_hash() -> None:
     assert runner.MODEL_SHA256 == manifest["producer"]["model_sha256"]
     assert runner.ENGINE_REVISION == manifest["engine"]["revision"]
     assert runner.ENGINE_ARCHIVE_SHA256 == manifest["engine"]["archive_sha256"]
+
+
+@pytest.mark.parametrize(
+    ("sampling_mode", "deterministic", "reproducibility"),
+    [
+        ("deterministic_argmax", True, "argmax_no_sampling_rng"),
+        ("seeded_stochastic", False, "seeded_rng_not_cross_run_validated"),
+    ],
+)
+def test_schema_v2_records_explicit_sampling_provenance(
+    sampling_mode: str, deterministic: bool, reproducibility: str
+) -> None:
+    manifest = _manifest()
+    manifest["schema_version"] = 2
+    manifest["rollout"].update(
+        deterministic_policy=deterministic,
+        sampling_mode=sampling_mode,
+        sampling_seed=manifest["rollout"]["seed"],
+        policy_sampling_reproducibility=reproducibility,
+    )
+    manifest["rollout_sha256"] = rollout_manifest_sha256(manifest)
+    schema = json.loads(
+        (ROOT / "src/mcdata/schemas/minestudio_neutral_rollout.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    validate(instance=manifest, schema=schema)
+    assert validate_rollout_manifest(manifest) == manifest
+
+
+def test_schema_v2_rejects_inconsistent_sampling_provenance() -> None:
+    manifest = _manifest()
+    manifest["schema_version"] = 2
+    manifest["rollout"].update(
+        deterministic_policy=True,
+        sampling_mode="seeded_stochastic",
+        sampling_seed=manifest["rollout"]["seed"],
+        policy_sampling_reproducibility="seeded_rng_not_cross_run_validated",
+    )
+    manifest["rollout_sha256"] = rollout_manifest_sha256(manifest)
+
+    with pytest.raises(MineStudioRolloutImportError, match="sampling provenance"):
+        validate_rollout_manifest(manifest)
+
+
+def test_schema_v2_seeded_stochastic_import_preserves_sampling_binding(tmp_path: Path) -> None:
+    copied = tmp_path / "schema-v2-rollout"
+    copied.mkdir()
+    for source in FIXTURE.iterdir():
+        (copied / source.name).write_bytes(source.read_bytes())
+    manifest = _manifest()
+    manifest["schema_version"] = 2
+    manifest["rollout"].update(
+        deterministic_policy=False,
+        sampling_mode="seeded_stochastic",
+        sampling_seed=manifest["rollout"]["seed"],
+        policy_sampling_reproducibility="seeded_rng_not_cross_run_validated",
+    )
+    manifest["rollout_sha256"] = rollout_manifest_sha256(manifest)
+    (copied / "rollout_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    trace_out = tmp_path / "trace.json"
+
+    import_minestudio_rollout(
+        copied,
+        expected_rollout_sha256=manifest["rollout_sha256"],
+        expected_ticks=4,
+        camera_calibration_path=CALIBRATION,
+        trace_out=trace_out,
+        trajectory_out=tmp_path / "trajectory.json",
+    )
+
+    binding = json.loads(trace_out.read_text())["adapter"]["parameters"]["rollout_binding"]
+    assert binding["rollout_schema_version"] == 2
+    assert binding["deterministic_policy"] is False
+    assert binding["sampling_mode"] == "seeded_stochastic"
+    assert binding["sampling_seed"] == 401
+    assert binding["policy_sampling_reproducibility"] == "seeded_rng_not_cross_run_validated"
+
+
+def test_runner_cli_keeps_argmax_default_and_accepts_seeded_stochastic(tmp_path: Path) -> None:
+    runner = _runner()
+    base = [
+        "--minestudio-repo",
+        str(tmp_path / "repo"),
+        "--minestudio-home",
+        str(tmp_path / "home"),
+        "--model-dir",
+        str(tmp_path / "model"),
+        "--reset-contract",
+        str(tmp_path / "reset.json"),
+        "--output-dir",
+        str(tmp_path / "rollout"),
+        "--ticks",
+        "3",
+    ]
+
+    assert runner._parse_args(base).sampling_mode == "deterministic_argmax"
+    assert (
+        runner._parse_args([*base, "--sampling-mode", "seeded_stochastic"]).sampling_mode
+        == "seeded_stochastic"
+    )
 
 
 def test_import_matches_trace_and_trajectory_goldens(tmp_path: Path) -> None:
@@ -250,6 +354,7 @@ class _UnusedRecordCallback(_FakeCallback):
 
 class _FakePolicy:
     loaded_from: str | None = None
+    deterministic_calls: list[bool] = []
 
     @classmethod
     def from_pretrained(cls, path: str) -> _FakePolicy:
@@ -272,7 +377,8 @@ class _FakePolicy:
         input_shape: str,
     ) -> tuple[dict[str, int], int]:
         del observations
-        assert deterministic is True and input_shape == "*"
+        assert input_shape == "*"
+        self.deterministic_calls.append(deterministic)
         tick = 0 if memory is None else memory + 1
         return {"buttons": tick, "camera": tick}, tick
 
@@ -413,6 +519,7 @@ def test_fake_runner_records_post_mapper_actions_after_neutral_mask(
     config, runtime = _fake_runner_inputs(tmp_path, monkeypatch)
     _FakeSim.instances.clear()
     _FakeSim.fail_tick = None
+    _FakePolicy.deterministic_calls.clear()
 
     manifest = _runner().run_rollout(config, runtime=runtime)
 
@@ -420,6 +527,10 @@ def test_fake_runner_records_post_mapper_actions_after_neutral_mask(
     assert sim.kwargs["action_type"] == "agent"
     assert sim.closed is True
     assert manifest["rollout"]["tick_count"] == 3
+    assert manifest["schema_version"] == 2
+    assert manifest["rollout"]["sampling_mode"] == "deterministic_argmax"
+    assert manifest["rollout"]["policy_sampling_reproducibility"] == "argmax_no_sampling_rng"
+    assert _FakePolicy.deterministic_calls == [True, True, True]
     assert manifest["rollout"]["callback_order"] == [
         "neutral_mask",
         "post_mapper_env_action_recorder",
@@ -434,6 +545,46 @@ def test_fake_runner_records_post_mapper_actions_after_neutral_mask(
     assert manifest["rollout_sha256"] == _runner()._semantic_sha256(
         manifest, exclude="rollout_sha256"
     )
+
+
+def test_fake_runner_seeded_stochastic_sampling_is_explicit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, runtime = _fake_runner_inputs(tmp_path, monkeypatch)
+    config = replace(
+        config,
+        output_dir=tmp_path / "stochastic-rollout",
+        sampling_mode="seeded_stochastic",
+    )
+    _FakeSim.instances.clear()
+    _FakeSim.fail_tick = None
+    _FakePolicy.deterministic_calls.clear()
+
+    manifest = _runner().run_rollout(config, runtime=runtime)
+
+    assert _FakePolicy.deterministic_calls == [False, False, False]
+    assert manifest["rollout"]["deterministic_policy"] is False
+    assert manifest["rollout"]["sampling_mode"] == "seeded_stochastic"
+    assert manifest["rollout"]["sampling_seed"] == 401
+    assert (
+        manifest["rollout"]["policy_sampling_reproducibility"]
+        == "seeded_rng_not_cross_run_validated"
+    )
+
+
+def test_runner_reseeds_python_numpy_and_torch_rngs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _, runtime = _fake_runner_inputs(tmp_path, monkeypatch)
+
+    _runner()._set_determinism(runtime, 401)
+    first = (random.random(), float(np.random.random()))
+    _runner()._set_determinism(runtime, 401)
+    second = (random.random(), float(np.random.random()))
+
+    assert second == first
+    assert _FakeTorch.seed == 401
+    assert _FakeTorch.deterministic_algorithms is True
 
 
 def test_fake_runner_closes_and_removes_staging_on_exception(

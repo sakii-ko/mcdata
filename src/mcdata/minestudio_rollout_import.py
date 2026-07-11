@@ -195,8 +195,9 @@ def validate_rollout_manifest(value: Any) -> dict[str, Any]:
         "rollout_sha256",
     }
     manifest = _exact_mapping(value, expected, "rollout manifest")
-    if manifest["schema_version"] != 1 or manifest["status"] != "complete":
-        raise MineStudioRolloutImportError("rollout manifest must be complete schema v1")
+    schema_version = manifest["schema_version"]
+    if schema_version not in {1, 2} or manifest["status"] != "complete":
+        raise MineStudioRolloutImportError("rollout manifest must be complete schema v1 or v2")
     _require_sha256(manifest["rollout_sha256"], "rollout_sha256")
     if manifest["rollout_sha256"] != rollout_manifest_sha256(manifest):
         raise MineStudioRolloutImportError("rollout_sha256 disagrees with canonical manifest payload")
@@ -204,7 +205,7 @@ def validate_rollout_manifest(value: Any) -> dict[str, Any]:
     _validate_producer(manifest["producer"])
     _validate_engine(manifest["engine"])
     _validate_reset_ref(manifest["reset_contract"])
-    _validate_rollout_spec(manifest["rollout"])
+    _validate_rollout_spec(manifest["rollout"], schema_version=schema_version)
     _validate_runtime_record(manifest["runtime"])
     _validate_artifacts(manifest["artifacts"])
     if manifest["artifacts"]["actions"]["tick_count"] != manifest["rollout"]["tick_count"]:
@@ -382,8 +383,8 @@ def _file_artifact(path: Path, root: Path) -> dict[str, Any]:
 
 
 def _rollout_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "rollout_schema_version": 1,
+    result = {
+        "rollout_schema_version": manifest["schema_version"],
         "rollout_sha256": manifest["rollout_sha256"],
         "minestudio_repository_commit": manifest["source_environment"]["repository_commit"],
         "engine_archive_sha256": manifest["engine"]["archive_sha256"],
@@ -392,6 +393,15 @@ def _rollout_binding(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "deterministic_policy": manifest["rollout"]["deterministic_policy"],
         "masked_controls": manifest["rollout"]["masked_controls"],
     }
+    if manifest["schema_version"] == 2:
+        result.update(
+            sampling_mode=manifest["rollout"]["sampling_mode"],
+            sampling_seed=manifest["rollout"]["sampling_seed"],
+            policy_sampling_reproducibility=manifest["rollout"][
+                "policy_sampling_reproducibility"
+            ],
+        )
+    return result
 
 
 def _validate_source_environment(value: Any) -> None:
@@ -482,7 +492,7 @@ def _validate_reset_ref(value: Any) -> None:
         raise MineStudioRolloutImportError("reset contract world_seed must be an integer")
 
 
-def _validate_rollout_spec(value: Any) -> None:
+def _validate_rollout_spec(value: Any, *, schema_version: int) -> None:
     expected = {
         "tick_rate_hz",
         "tick_count",
@@ -494,6 +504,14 @@ def _validate_rollout_spec(value: Any) -> None:
         "masked_controls",
         "learned_controls",
     }
+    if schema_version == 2:
+        expected.update(
+            {
+                "sampling_mode",
+                "sampling_seed",
+                "policy_sampling_reproducibility",
+            }
+        )
     record = _exact_mapping(value, expected, "rollout")
     ticks = record["tick_count"]
     if not isinstance(ticks, int) or isinstance(ticks, bool) or ticks <= 0:
@@ -504,14 +522,31 @@ def _validate_rollout_spec(value: Any) -> None:
     if (
         record["tick_rate_hz"] != TICK_RATE_HZ
         or record["duration_sec"] != ticks / TICK_RATE_HZ
-        or record["deterministic_policy"] is not True
         or record["action_type"] != "agent"
         or record["masked_controls"] != list(MASKED_CONTROLS)
         or record["learned_controls"] != list(LEARNED_CONTROLS)
     ):
-        raise MineStudioRolloutImportError("rollout is not fixed deterministic 20 Hz neutral policy")
+        raise MineStudioRolloutImportError("rollout is not a fixed 20 Hz neutral policy")
     if not isinstance(record["seed"], int) or isinstance(record["seed"], bool):
         raise MineStudioRolloutImportError("rollout seed must be an integer")
+    if schema_version == 1:
+        if record["deterministic_policy"] is not True:
+            raise MineStudioRolloutImportError("schema v1 rollout must use deterministic policy")
+        return
+    sampling_mode = record["sampling_mode"]
+    expected_sampling = {
+        "deterministic_argmax": (True, "argmax_no_sampling_rng"),
+        "seeded_stochastic": (False, "seeded_rng_not_cross_run_validated"),
+    }
+    if sampling_mode not in expected_sampling:
+        raise MineStudioRolloutImportError("rollout sampling_mode is unknown")
+    deterministic, reproducibility = expected_sampling[sampling_mode]
+    if (
+        record["deterministic_policy"] is not deterministic
+        or record["sampling_seed"] != record["seed"]
+        or record["policy_sampling_reproducibility"] != reproducibility
+    ):
+        raise MineStudioRolloutImportError("rollout sampling provenance is inconsistent")
 
 
 def _validate_runtime_record(value: Any) -> None:

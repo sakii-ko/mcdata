@@ -16,7 +16,7 @@
     "rollout_sha256"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"enum": [1, 2]},
     "status": {"const": "complete"},
     "rollout_sha256": {"$ref": "#/$defs/sha256"},
     "source_environment": {
@@ -123,7 +123,12 @@
         "tick_count": {"type": "integer", "minimum": 1},
         "duration_sec": {"type": "number", "exclusiveMinimum": 0},
         "seed": {"type": "integer"},
-        "deterministic_policy": {"const": true},
+        "deterministic_policy": {"type": "boolean"},
+        "sampling_mode": {"enum": ["deterministic_argmax", "seeded_stochastic"]},
+        "sampling_seed": {"type": "integer"},
+        "policy_sampling_reproducibility": {
+          "enum": ["argmax_no_sampling_rng", "seeded_rng_not_cross_run_validated"]
+        },
         "action_type": {"const": "agent"},
         "callback_order": {
           "oneOf": [
@@ -201,6 +206,67 @@
       "additionalProperties": false
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "required": ["schema_version"],
+        "properties": {"schema_version": {"const": 1}}
+      },
+      "then": {
+        "properties": {
+          "rollout": {
+            "properties": {"deterministic_policy": {"const": true}},
+            "not": {
+              "anyOf": [
+                {"required": ["sampling_mode"]},
+                {"required": ["sampling_seed"]},
+                {"required": ["policy_sampling_reproducibility"]}
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["schema_version"],
+        "properties": {"schema_version": {"const": 2}}
+      },
+      "then": {
+        "properties": {
+          "rollout": {
+            "required": [
+              "sampling_mode",
+              "sampling_seed",
+              "policy_sampling_reproducibility"
+            ],
+            "allOf": [
+              {
+                "if": {"properties": {"sampling_mode": {"const": "deterministic_argmax"}}},
+                "then": {
+                  "properties": {
+                    "deterministic_policy": {"const": true},
+                    "policy_sampling_reproducibility": {"const": "argmax_no_sampling_rng"}
+                  }
+                }
+              },
+              {
+                "if": {"properties": {"sampling_mode": {"const": "seeded_stochastic"}}},
+                "then": {
+                  "properties": {
+                    "deterministic_policy": {"const": false},
+                    "policy_sampling_reproducibility": {
+                      "const": "seeded_rng_not_cross_run_validated"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
   "additionalProperties": false,
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}

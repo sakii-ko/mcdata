@@ -110,6 +110,7 @@ python external/minestudio_vpt_neutral/runner.py \
   --output-dir "$PHASE2_ROOT/rollouts/neutral_seed401_ticks1200" \
   --ticks 1200 \
   --device cuda \
+  --sampling-mode seeded_stochastic \
   --save-video
 ```
 
@@ -124,11 +125,19 @@ The simulator is always constructed with `action_type="agent"`. MineStudio perfo
 3. optional video recorder.
 
 Thus the raw JSONL preserves learned forward/back/strafe/sneak/sprint and degree camera deltas, while
-advanced controls cannot leak into this first spike. The run is deterministic-policy inference with
-fixed Python/NumPy/Torch seeds, deterministic Torch algorithms, exactly 20 Hz semantics, and exactly
-the requested number of steps. Early termination is a hard failure. `sim.close()` runs on both the
-success and exception paths, and the output directory is published only after all artifacts and
-hashes are complete.
+advanced controls cannot leak into this first spike. Sampling is an explicit contract:
+
+- `--sampling-mode deterministic_argmax` is the backwards-compatible default. It passes
+  `deterministic=True` to MineStudio and records `argmax_no_sampling_rng`.
+- `--sampling-mode seeded_stochastic` follows MineStudio's documented/default `get_action`
+  behavior. It fixes the Python, NumPy, Torch CPU, and all Torch CUDA RNGs, but deliberately records
+  `seeded_rng_not_cross_run_validated`; a seed is provenance, not an untested cross-run guarantee.
+
+Schema-v2 manifests bind `sampling_mode`, `sampling_seed`, `deterministic_policy`, and
+`policy_sampling_reproducibility`. The runner also enables deterministic Torch algorithms, preserves
+exactly 20 Hz semantics, and executes exactly the requested number of steps. Early termination is a
+hard failure. `sim.close()` runs on both the success and exception paths, and the output directory is
+published only after all artifacts and hashes are complete.
 
 Expected output:
 

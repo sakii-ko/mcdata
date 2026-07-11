@@ -30,6 +30,8 @@ MINESTUDIO_REPOSITORY = "https://github.com/CraftJarvis/MineStudio.git"
 MINESTUDIO_COMMIT = "278aa8553668d591339dbf30d281594ed06ee882"
 SOURCE_MINECRAFT_VERSION = "1.16.5"
 TICK_RATE_HZ = 20
+ROLLOUT_SCHEMA_VERSION = 2
+SAMPLING_MODES = ("deterministic_argmax", "seeded_stochastic")
 
 MODEL_REPOSITORY = "CraftJarvis/MineStudio_VPT.foundation_model_1x"
 MODEL_REVISION = "17a5f43b30c4f734489902fdc6a55bf47781be3a"
@@ -93,6 +95,7 @@ class RunnerConfig:
     device: str
     save_frames: bool
     save_video: bool
+    sampling_mode: str = "deterministic_argmax"
 
 
 @dataclass(frozen=True)
@@ -161,7 +164,7 @@ def run_rollout(config: RunnerConfig, *, runtime: RuntimeBindings | None = None)
             agent_action, memory = policy.get_action(
                 observations,
                 memory,
-                deterministic=True,
+                deterministic=config.sampling_mode == "deterministic_argmax",
                 input_shape="*",
             )
             observations, _, terminated, truncated, _ = sim.step(agent_action)
@@ -208,6 +211,8 @@ def _validate_inputs(config: RunnerConfig) -> dict[str, Any]:
         raise RolloutError("ticks must be a positive integer")
     if config.device not in {"cpu", "cuda"}:
         raise RolloutError("device must be exactly 'cpu' or 'cuda'")
+    if config.sampling_mode not in SAMPLING_MODES:
+        raise RolloutError(f"sampling_mode must be one of {SAMPLING_MODES}")
     _verify_minestudio_checkout(config.minestudio_repo)
     engine_archive = config.minestudio_home / ENGINE_ARCHIVE_FILENAME
     engine_jar = config.minestudio_home / ENGINE_RUNTIME_JAR
@@ -396,7 +401,7 @@ def _build_manifest(
 ) -> dict[str, Any]:
     reset = validated["reset_contract"]
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": ROLLOUT_SCHEMA_VERSION,
         "status": "complete",
         "source_environment": {
             "name": "MineStudio",
@@ -438,7 +443,14 @@ def _build_manifest(
             "tick_count": config.ticks,
             "duration_sec": config.ticks / TICK_RATE_HZ,
             "seed": reset["world_seed"],
-            "deterministic_policy": True,
+            "deterministic_policy": config.sampling_mode == "deterministic_argmax",
+            "sampling_mode": config.sampling_mode,
+            "sampling_seed": reset["world_seed"],
+            "policy_sampling_reproducibility": (
+                "argmax_no_sampling_rng"
+                if config.sampling_mode == "deterministic_argmax"
+                else "seeded_rng_not_cross_run_validated"
+            ),
             "action_type": "agent",
             "callback_order": [
                 "neutral_mask",
@@ -639,6 +651,15 @@ def _parse_args(argv: Sequence[str] | None = None) -> RunnerConfig:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--ticks", type=int, required=True)
     parser.add_argument("--device", choices=("cpu", "cuda"), default="cuda")
+    parser.add_argument(
+        "--sampling-mode",
+        choices=SAMPLING_MODES,
+        default="deterministic_argmax",
+        help=(
+            "policy action selection: deterministic argmax (legacy default) or seeded "
+            "stochastic sampling"
+        ),
+    )
     parser.add_argument("--save-frames", action="store_true")
     parser.add_argument("--save-video", action="store_true")
     args = parser.parse_args(argv)
@@ -652,6 +673,7 @@ def _parse_args(argv: Sequence[str] | None = None) -> RunnerConfig:
         device=args.device,
         save_frames=args.save_frames,
         save_video=args.save_video,
+        sampling_mode=args.sampling_mode,
     )
 
 
