@@ -120,6 +120,14 @@ scene:
 
 分支：`iter/04-feedback-roam-visuals`。
 
+2026-07-11 checkpoint：T0--T4 的实现与 60 秒真 GPU action showcase 已闭环，L1--L4
+效果证据均独立复算通过；T1/T2 的公开材质、风格、三套 shader 与昼夜/雨雪 look-dev grid
+已经实渲染，但“最终顶级光照”仍未视觉通过。T5 的 canonical trace、MineStudio bridge、
+MC26.2 quarantine replay 入口和 Solaris trace-only adapter 已进入主分支工作流；两条真实 VPT
+source rollout 均按 coverage gate 判废，未导入。ITER-04 仍为进行中：下一步是带 source
+position truth 的 L1+L2 VPT gate、真实 Solaris rollout-only producer、至少一条 600 秒反馈漫游
+复验，以及最终三档 10 分钟/顶级视觉端点验收。
+
 用户验收指出两项实质问题：上一轮 10 分钟预览只有固定左右 pan，不是自动寻路游走；
 Faithful 32x + 默认 Complementary 的材质差异和水反质量也不足。此前被拒绝的 16 圈长
 A* 证明，重复开环键鼠轨迹会累积亚格误差，最终撞入水池或跌出平台；本轮禁止恢复该方案，

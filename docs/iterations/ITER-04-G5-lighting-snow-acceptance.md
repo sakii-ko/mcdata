@@ -1,7 +1,9 @@
 # G5 bright-moon and snow-surface iteration
 
-Status: fix03 is locally implemented and tested; **neither Unbound fix03 nor the
-Solas fallback is visually accepted yet**. The grid under
+Status: fix03 has now been rendered on the L40S and mechanically accepted, and the
+Solas/Bliss fallbacks plus one tuned Bliss moon candidate have also been rendered.
+**No renderer is yet visually accepted as the final top-tier lighting endpoint.**
+The grid under
 `runs/evidence/iter04_lighting_e8ed51b_fix02` honestly proves the new snow scene,
 but it is **not a valid visual evaluation of fix02's stronger night parameters**:
 the client instance retained the pre-fix shader sidecar. Its midnight frames are
@@ -152,18 +154,71 @@ control. Changing shared opacity/general particle controls would also alter the
 accepted rain behavior. Oversized vanilla snow sprites therefore remain a known
 limitation; fix03 does not claim to repair them.
 
-## Next remote acceptance
+## 2026-07-11 remote acceptance result
 
-1. Render all six Unbound lighting profiles from the same fix03 commit and the same
-   trajectory. Deliberately retain one stale instance in a smoke test to prove the
-   per-run writer replaces it before launch.
-2. Require the runtime sidecars to retain the selected non-default night controls
-   (`LIGHT_NIGHT_G/B/I`, `ATM_NIGHT_G/B/I`, all moon-phase controls and
-   `LIGHTSHAFT_NIGHT_I`) and require one literal post-runtime SHA-256 across all six
-   profiles, plus unchanged shader/resource runtime receipts and 12 extra snow
-   mutation receipts.
-3. Regenerate the four-moment grid and independently score midnight brightness and
-   directional shaping; retain snow/noon/rain regression checks.
-4. If Unbound remains non-directional, render the controlled Solas noon/midnight
-   candidate before choosing a renderer. No local implementation result is a visual
-   pass.
+The six-profile fix03 batch at
+`/root/nas/bigdata1/tmp/mcdata/runs/iter04_lighting_25acb99_fix03` completed 6/6.
+Configuration and bootstrap inputs remained immutable, every route reference passed,
+and the current profile was re-applied before every launch. The lossless four-moment
+grid is mirrored under
+`runs/evidence/iter04_lighting_25acb99_fix03/grid_lighting6/`; its PNG SHA-256 is
+`b6ee2fa5f3841834013b326558a72d280c833dd128771a707b7f8a34f9d57e53`.
+
+Independent visual review found:
+
+- noon, golden hour, rain and the clear snow-surface endpoint are useful and visually
+  distinct;
+- snowfall is only partial because the sprites remain coarse;
+- Unbound midnight is readable, but still lacks the strong directional moonlight
+  requested for the final endpoint;
+- the resource pack logs contain compatibility warnings for old model/block names,
+  even though no missing surface is visible in the selected frames.
+
+Controlled Solas and Bliss noon/midnight pairs were then rendered from the identical
+scene and trajectory. The six-column renderer grid is stored under
+`runs/evidence/iter04_lighting_25acb99_fix03/shader_comparison6/`; its PNG SHA-256 is
+`82c77f67566c7f3c2d5446d1f8dd8e9ff422d45e657718ddd38f2e7420be860d`.
+Solas produces a cinematic aurora sky but a darker ground. Default Bliss has the
+brightest noon and strong colored emissives, but its default midnight is too dark.
+None of Unbound, Solas, or default Bliss wins sky, ground readability, directionality,
+and water/material response simultaneously.
+
+## Tuned Bliss moon candidate
+
+Commit `c670bd4` added a fixed-midnight candidate using only options exposed by the
+actual Bliss 2.1.2 ZIP: `moon_illuminance=1000`, `ambient_brightness=1.5`,
+`MIN_LIGHT_AMOUNT=2.0`, and `EXPOSURE_MULTIPLIER=1.3`. A controlled render proves a
+large ground-readability gain over default Bliss; mean image intensity rises from
+0.077--0.152 to 0.218--0.269 across the four standard moments. It also introduces
+heavy blue haze and locally washed highlights, so brightness alone does not pass the
+strict visual gate.
+
+The original showcase never framed the celestial source. A diagnostic-only cardinal
+scan found the moon heading and was correctly rejected by action QA because it had no
+L1 displacement. The measured view was then moved to the open start pad of
+`lookdev_lighting_showcase_60s`; it is a pre-walk camera hold followed by the normal
+moving route, not a replacement for navigation data. The final L40S run at clean
+commit `9dbc1fc8ca69f65f0e0c85473db740d9d883641e` passed mechanical, resource and route
+QA with a 59.033-second/70-event trajectory and a 60-second, 1,440-frame capture:
+
+- trajectory SHA-256:
+  `1a988af3be4f9404cb12fb1ea60f0f8f9afefd81b1b5707ca8b66400ada8646b`;
+- capture SHA-256:
+  `edececabbe23c5d90e841fb07da968424d6f753229174e1b993c6e06822f6be7`;
+- moon frame SHA-256:
+  `dff986bcccaa4256a63ff08ef5a7239a4ebf4ebdc79414a0581e7391eb374264`.
+
+The video now genuinely contains a bright crescent moon and broad halo before the
+material/water walk. It remains a **candidate**, not an accepted top-tier endpoint:
+the sky/ground balance is overly blue and hazy, and directional shafts/shadows are
+not yet convincing. The complete subjective decision is recorded in ignored evidence
+`runs/evidence/iter04_lighting_25acb99_fix03/bliss_bright_moon/visual_review.json`.
+
+## Remaining visual gate
+
+Keep all mechanically valid renders as look-dev evidence, but exclude the tuned Bliss
+profile from the accepted top-tier dataset until one controlled renderer passes moon
+visibility, terrain readability, directional shaping, water response and material
+detail together. Public 128x assets can continue to be tuned. The absolute 512x/1024x
+and KappaPT target remains separately blocked on legally supplied paid assets; public
+assets must not be relabeled as that tier.

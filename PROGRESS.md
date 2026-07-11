@@ -18,6 +18,18 @@
 > `runs/remote_l40s/accepted_full19_dbca539/`）。实现/拒收批次根因/验收证据见
 > `docs/iterations/ITER-02-t3-report.md`。
 
+> **ITER-04 运行更新（2026-07-11，尚未完成）**：反馈漫游、prompt-edit pair、terrain/action/render
+> 解耦契约和累积式 L1--L4 action curriculum 已实现；L2 四次真实跳跃、L3 两次真实方块放置、
+> L4 受控玩家攻击均在 L40S 上通过独立机械/效果/视频审计。写实/风格化公开材质 look-dev、
+> Unbound/Solas/Bliss 光影对照和昼夜/雨雪 controlled pair 已完成大范围实渲染。调亮 Bliss
+> 候选现在能在正常移动路线中拍到明亮新月且 route QA 通过，但蓝雾、局部泛白和不足的方向光
+> 使它仍未达到“最终顶级光照”门槛；合法 512x/1024x/KappaPT 资产仍需用户提供。外部 action
+> 方面，Solaris trace-only `scripted_skill_agent` bridge 已 fail-closed 接入；两条真实 MineStudio/VPT
+> 1200-tick rollout 均被 source gate 拒绝（argmax 恒定 pan；seeded stochastic 动作丰富但没有有效
+> 场景覆盖），因此没有导入或 MC26.2 重放。当前分支 clean `dev_check` 为 standards 0 failure、
+> Ruff PASS、`573 passed`。详见 `docs/iterations/ITER-04-external-rollout-runtime-audit.md`、
+> `docs/iterations/ITER-04-G5-lighting-snow-acceptance.md` 与 L2/L3/L4 acceptance 文档。
+
 ## 任务目标
 
 用户希望构建一个 Minecraft 游戏渲染数据采集仓库，核心需求如下：
