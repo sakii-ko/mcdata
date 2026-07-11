@@ -15,7 +15,7 @@ COMPACT_TRAJECTORY_SHA256 = {
     "feedback_roam_10min_seed404": "c39b9772df9439d452f686c1603bd9e88acf44997597faf306f865361dedcf1a",
     "feedback_roam_10min_seed405": "29a163c3e94435b438d22b147e426ba0550e2ef90debaa40693787f5ca0b3849",
     "feedback_roam_10min_seed406": "00745f40c3c25824c3938d07cbf589d1f32c99665238259e906141b258987ffd",
-    "lookdev_lighting_showcase_60s": "43048e088ae39b15098154c87cdfedc6a3e461acc70ca08baf22ee3c078d8c5f",
+    "lookdev_lighting_showcase_60s": "17f977fd87ad5cd654c9cd605651d96abd7abbc35110303f6e43bf6b5ca09695",
 }
 
 

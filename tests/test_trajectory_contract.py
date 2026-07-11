@@ -321,8 +321,10 @@ def test_lighting_showcase_preserves_route_and_adds_a_restored_zenith_view() -> 
         "celestial_zenith",
         "material_closeup_alt",
     ]
-    assert lighting["events"][zenith_index - 1]["mouse_dy"] == -650
-    assert lighting["events"][zenith_index + 1]["mouse_dy"] == 650
+    aim = lighting["events"][zenith_index - 1]
+    restore = lighting["events"][zenith_index + 1]
+    assert (aim["mouse_dx"], aim["mouse_dy"]) == (600, -530)
+    assert (restore["mouse_dx"], restore["mouse_dy"]) == (-600, 530)
     assert lighting["events"][zenith_index - 1]["route_index"] == zenith_hold["route_index"]
     assert lighting["events"][zenith_index + 1]["route_index"] == zenith_hold["route_index"]
 

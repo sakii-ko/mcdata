@@ -302,7 +302,10 @@ strategies:
       - at: [15, 11]
         moment: "celestial_zenith"
         pause_sec: 0.4
-        look_dy_px: -650
+        # Arrive facing yaw 270; the diagnostic cardinal scan measured the
+        # midnight moon at yaw 0 and roughly pitch -57 degrees.
+        look_dx_px: 600
+        look_dy_px: -530
         look_hold_sec: 2.5
       - at: [10, -12]
         moment: "material_closeup_alt"
