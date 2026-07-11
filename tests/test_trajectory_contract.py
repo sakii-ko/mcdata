@@ -312,21 +312,20 @@ def test_lighting_showcase_preserves_route_and_adds_a_restored_zenith_view() -> 
     zenith_index = lighting["events"].index(zenith_hold)
 
     assert lighting["route"] == base["route"]
-    assert lighting["duration_sec"] == base["duration_sec"]
+    assert lighting["duration_sec"] == pytest.approx(base["duration_sec"], abs=0.001)
     assert [event["look_moment"] for event in held_views] == [
+        "celestial_zenith",
         "material_closeup",
         "water_reflection_alt",
         "water_reflection",
         "scene_wide",
-        "celestial_zenith",
         "material_closeup_alt",
     ]
     aim = lighting["events"][zenith_index - 1]
     restore = lighting["events"][zenith_index + 1]
-    assert (aim["mouse_dx"], aim["mouse_dy"]) == (600, -530)
-    assert (restore["mouse_dx"], restore["mouse_dy"]) == (-600, 530)
-    assert lighting["events"][zenith_index - 1]["route_index"] == zenith_hold["route_index"]
-    assert lighting["events"][zenith_index + 1]["route_index"] == zenith_hold["route_index"]
+    assert (aim["mouse_dx"], aim["mouse_dy"]) == (-600, -530)
+    assert (restore["mouse_dx"], restore["mouse_dy"]) == (600, 530)
+    assert all("route_index" not in event for event in (aim, zenith_hold, restore))
 
 
 def test_celestial_cardinal_scan_is_camera_only_and_restores_pitch() -> None:

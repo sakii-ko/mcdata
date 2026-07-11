@@ -245,6 +245,18 @@ def _walk_events(
         events.append({"t": round(t, 3), "mouse_dx": 0, "mouse_dy": look_pitch_px, "duration": 0.4})
         t += 0.4 + scan_pause_sec
 
+    initial_view = spec.get("initial_view")
+    if initial_view is not None:
+        if not isinstance(initial_view, dict):
+            raise RuntimeError("initial_view must be a mapping")
+        t = _append_camera_view(
+            events,
+            t,
+            initial_view,
+            route_index=None,
+            scan_pause_sec=scan_pause_sec,
+        )
+
     route_index = 0
     waypoint_stop_indices = _waypoint_stop_indices(goal_indices, waypoint_actions)
     for desired, distance in _route_segments_with_waypoints(route, waypoint_stop_indices):
@@ -426,6 +438,65 @@ def _waypoint_actions(spec: dict[str, Any]) -> dict[tuple[int, int], list[dict[s
     return result
 
 
+def _append_camera_view(
+    events: list[dict[str, Any]],
+    t: float,
+    action: dict[str, Any],
+    *,
+    route_index: int | None,
+    scan_pause_sec: float,
+) -> float:
+    binding = {} if route_index is None else {"route_index": route_index}
+    pause_sec = float(action.get("pause_sec", 0))
+    if pause_sec > 0:
+        events.append(
+            {
+                "t": round(t, 3),
+                "duration": round(pause_sec, 3),
+                "pause": True,
+                **binding,
+            }
+        )
+        t += pause_sec
+    look_dx_px = int(action.get("look_dx_px", 0))
+    look_dy_px = int(action.get("look_dy_px", 0))
+    if not (look_dx_px or look_dy_px):
+        return t
+    events.append(
+        {
+            "t": round(t, 3),
+            "mouse_dx": look_dx_px,
+            "mouse_dy": look_dy_px,
+            "duration": 0.35,
+            **binding,
+        }
+    )
+    t += 0.35 + scan_pause_sec
+    look_hold_sec = float(action.get("look_hold_sec", 0))
+    if look_hold_sec > 0:
+        hold_event = {
+            "t": round(t, 3),
+            "duration": round(look_hold_sec, 3),
+            "pause": True,
+            "look_hold": True,
+            **binding,
+        }
+        if action.get("moment"):
+            hold_event["look_moment"] = str(action["moment"])
+        events.append(hold_event)
+        t += look_hold_sec
+    events.append(
+        {
+            "t": round(t, 3),
+            "mouse_dx": -look_dx_px,
+            "mouse_dy": -look_dy_px,
+            "duration": 0.35,
+            **binding,
+        }
+    )
+    return t + 0.35 + scan_pause_sec
+
+
 def _apply_waypoint_actions(
     events: list[dict[str, Any]],
     t: float,
@@ -439,53 +510,13 @@ def _apply_waypoint_actions(
     if route_index not in goal_indices.get(point, []):
         return t
     for action in waypoint_actions.get(point, []):
-        pause_sec = float(action.get("pause_sec", 0))
-        if pause_sec > 0:
-            events.append(
-                {
-                    "t": round(t, 3),
-                    "duration": round(pause_sec, 3),
-                    "pause": True,
-                    "route_index": route_index,
-                }
-            )
-            t += pause_sec
-        look_dx_px = int(action.get("look_dx_px", 0))
-        look_dy_px = int(action.get("look_dy_px", 0))
-        if look_dx_px or look_dy_px:
-            events.append(
-                {
-                    "t": round(t, 3),
-                    "mouse_dx": look_dx_px,
-                    "mouse_dy": look_dy_px,
-                    "duration": 0.35,
-                    "route_index": route_index,
-                }
-            )
-            t += 0.35 + scan_pause_sec
-            look_hold_sec = float(action.get("look_hold_sec", 0))
-            if look_hold_sec > 0:
-                hold_event = {
-                    "t": round(t, 3),
-                    "duration": round(look_hold_sec, 3),
-                    "pause": True,
-                    "look_hold": True,
-                    "route_index": route_index,
-                }
-                if action.get("moment"):
-                    hold_event["look_moment"] = str(action["moment"])
-                events.append(hold_event)
-                t += look_hold_sec
-            events.append(
-                {
-                    "t": round(t, 3),
-                    "mouse_dx": -look_dx_px,
-                    "mouse_dy": -look_dy_px,
-                    "duration": 0.35,
-                    "route_index": route_index,
-                }
-            )
-            t += 0.35 + scan_pause_sec
+        t = _append_camera_view(
+            events,
+            t,
+            action,
+            route_index=route_index,
+            scan_pause_sec=scan_pause_sec,
+        )
         t = append_block_placement(
             events,
             t,
