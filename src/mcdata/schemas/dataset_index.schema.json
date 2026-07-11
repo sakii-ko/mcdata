@@ -247,7 +247,12 @@
                 "action_source": {
                   "properties": {
                     "id": {
-                      "enum": ["human_demo", "learned_visual_policy", "llm_skill_agent"]
+                      "enum": [
+                        "scripted_skill_agent",
+                        "human_demo",
+                        "learned_visual_policy",
+                        "llm_skill_agent"
+                      ]
                     }
                   }
                 }
@@ -282,6 +287,7 @@
       "required": [
         "taxonomy_version",
         "scripted_astar",
+        "scripted_skill_agent",
         "feedback_planner",
         "human_demo",
         "learned_visual_policy",
@@ -290,6 +296,7 @@
       "properties": {
         "taxonomy_version": {"const": 1},
         "scripted_astar": {"$ref": "#/$defs/actionSourceBucket"},
+        "scripted_skill_agent": {"$ref": "#/$defs/actionSourceBucket"},
         "feedback_planner": {"$ref": "#/$defs/actionSourceBucket"},
         "human_demo": {"$ref": "#/$defs/actionSourceBucket"},
         "learned_visual_policy": {"$ref": "#/$defs/actionSourceBucket"},
@@ -367,6 +374,7 @@
               "action_source": {
                 "enum": [
                   "scripted_astar",
+                  "scripted_skill_agent",
                   "feedback_planner",
                   "human_demo",
                   "learned_visual_policy",
@@ -474,6 +482,7 @@
         "id": {
           "enum": [
             "scripted_astar",
+            "scripted_skill_agent",
             "feedback_planner",
             "human_demo",
             "learned_visual_policy",

@@ -1,0 +1,162 @@
+{
+  "action_source": {
+    "id": "scripted_skill_agent",
+    "provenance": "declared",
+    "taxonomy_version": 1
+  },
+  "camera_calibration": {
+    "artifact_sha256": "4509afdcf7dce4d00fba7267bcc2f4c396ee942e36bd4c84434d30df20ac7bdc",
+    "calibration_id": "solaris-synthetic-mc26.2-fixture",
+    "pitch_pixels_per_degree": 4.0,
+    "yaw_pixels_per_degree": 4.0
+  },
+  "curriculum_binding": {
+    "has_attack_input": true,
+    "has_jump_input": true,
+    "has_use_input": true,
+    "status": "requires_semantic_effect_validation"
+  },
+  "duration_sec": 0.25,
+  "events": [
+    {
+      "action": "down",
+      "key": "w",
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "action": "down",
+      "key": "left_control",
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "action": "tap",
+      "key": "2",
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": 5,
+      "mouse_dy": 0,
+      "native_trace_tick": 0,
+      "t": 0.0
+    },
+    {
+      "action": "down",
+      "key": "space",
+      "native_trace_tick": 1,
+      "t": 0.05
+    },
+    {
+      "action": "down",
+      "mouse_button": 1,
+      "native_trace_tick": 1,
+      "t": 0.05
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": 8,
+      "mouse_dy": -2,
+      "native_trace_tick": 1,
+      "t": 0.05
+    },
+    {
+      "action": "up",
+      "key": "w",
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "down",
+      "key": "d",
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "up",
+      "key": "space",
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "up",
+      "key": "left_control",
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "up",
+      "mouse_button": 1,
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "duration": 0.05,
+      "mouse_dx": -4,
+      "mouse_dy": 2,
+      "native_trace_tick": 2,
+      "t": 0.1
+    },
+    {
+      "action": "up",
+      "key": "d",
+      "native_trace_tick": 3,
+      "t": 0.15
+    },
+    {
+      "action": "down",
+      "key": "left_shift",
+      "native_trace_tick": 3,
+      "t": 0.15
+    },
+    {
+      "action": "down",
+      "mouse_button": 3,
+      "native_trace_tick": 3,
+      "t": 0.15
+    },
+    {
+      "action": "tap",
+      "key": "4",
+      "native_trace_tick": 3,
+      "t": 0.15
+    },
+    {
+      "action": "up",
+      "key": "left_shift",
+      "native_trace_tick": 4,
+      "t": 0.2
+    },
+    {
+      "action": "up",
+      "mouse_button": 3,
+      "native_trace_tick": 4,
+      "t": 0.2
+    }
+  ],
+  "native_trace": {
+    "schema_version": 1,
+    "sha256": "021fe9c0f073aea140703e03cad3df0f50e902458a6175342c32ac6a38003850",
+    "tick_rate_hz": 20
+  },
+  "solaris_rollout_binding": {
+    "action_artifact_sha256": "a54e7c6d7e597aa306883fb6642abfbcbe0c76797195678d6bedd89b9651b34d",
+    "camera_calibration_sha256": "4509afdcf7dce4d00fba7267bcc2f4c396ee942e36bd4c84434d30df20ac7bdc",
+    "episode_id": 7,
+    "episode_role": "Alpha",
+    "episode_type": "walkLook",
+    "rollout_schema_version": 1,
+    "rollout_sha256": "b323138a42c46bc6a6a6eff45fc07d17bea7288402aa2ffa7ddffae77b194e50",
+    "shared_rng_sha256": "c6d3406459d6289d3cbb8f20413410a1e44f6524a405409f81e342bee9760736",
+    "solaris_repository_commit": "430f56f787405d6a7818e79e95e4ddee026dd6b7",
+    "source_minecraft_version": "1.21",
+    "source_timing_status": "source_timing_not_yet_validated",
+    "target_client_profile": "feedback_legendary_rt_unbound_1080p",
+    "target_minecraft_version": "26.2",
+    "target_replay_status": "target_replay_not_yet_validated",
+    "world_snapshot_sha256": "0c29a977248400f3d75b9f06e4162b9b317d8d36a071d7d00529ce71f13b1f5f"
+  },
+  "type": "native_action_trace_replay"
+}

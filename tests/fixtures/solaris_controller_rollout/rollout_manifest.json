@@ -1,0 +1,44 @@
+{
+  "artifacts": {
+    "actions": {
+      "path": "normalized_controller_actions.jsonl",
+      "sha256": "a54e7c6d7e597aa306883fb6642abfbcbe0c76797195678d6bedd89b9651b34d",
+      "size_bytes": 1745,
+      "tick_count": 5
+    },
+    "world_snapshot": {
+      "path": "world_snapshot.json",
+      "sha256": "0c29a977248400f3d75b9f06e4162b9b317d8d36a071d7d00529ce71f13b1f5f",
+      "size_bytes": 117
+    }
+  },
+  "episode": {
+    "episode_id": 7,
+    "episode_type": "walkLook",
+    "role": "Alpha",
+    "shared_rng": {
+      "base_seed": "synthetic-fixture",
+      "episode_seed": "synthetic-fixture_7",
+      "library": "seedrandom",
+      "version": "3.0.5"
+    }
+  },
+  "rollout_sha256": "b323138a42c46bc6a6a6eff45fc07d17bea7288402aa2ffa7ddffae77b194e50",
+  "schema_version": 1,
+  "source_environment": {
+    "action_format": "solaris_normalized_controller_boundary_v1",
+    "action_tick_rate_hz": 20,
+    "camera_convention": "minecraft_input_degrees_yaw_right_pitch_down",
+    "minecraft_version": "1.21",
+    "name": "Solaris Engine",
+    "repository": "https://github.com/solaris-wm/solaris-engine",
+    "repository_commit": "430f56f787405d6a7818e79e95e4ddee026dd6b7"
+  },
+  "source_timing_status": "source_timing_not_yet_validated",
+  "target_replay_status": "target_replay_not_yet_validated",
+  "world": {
+    "seed": "synthetic-fixture-world-seed",
+    "snapshot_id": "solaris-synthetic-fixture-world",
+    "snapshot_sha256": "0c29a977248400f3d75b9f06e4162b9b317d8d36a071d7d00529ce71f13b1f5f"
+  }
+}

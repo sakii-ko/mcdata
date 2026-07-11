@@ -1,0 +1,5 @@
+{
+  "fixture_only": true,
+  "snapshot_id": "solaris-synthetic-fixture-world",
+  "source_minecraft_version": "1.21"
+}

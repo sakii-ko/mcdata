@@ -10,7 +10,7 @@ therefore keep two orthogonal labels:
 | Axis | Values | Meaning |
 |---|---|---|
 | action curriculum | `l1`, `l1_l2`, `l1_l2_l3`, `l1_l2_l3_l4` | what was semantically planned and proved by effect QA |
-| action source | `scripted_astar`, `feedback_planner`, `human_demo`, `learned_visual_policy`, `llm_skill_agent` | who produced the primitive input stream |
+| action source | `scripted_astar`, `scripted_skill_agent`, `feedback_planner`, `human_demo`, `learned_visual_policy`, `llm_skill_agent` | who produced the primitive input stream |
 
 A VPT rollout containing only navigation can still be L1. An A* trajectory with the controlled
 placement executor can be L3. Primitive Space/use/attack input never upgrades a curriculum bucket
@@ -21,7 +21,8 @@ by itself; the existing semantic and physical-effect gates still apply.
 `src/mcdata/schemas/canonical_action_trace.schema.json` defines schema v1. Every trace is exactly
 20 Hz and records:
 
-- producer name/version and model or agent-config SHA-256 (`null` only for a human producer);
+- producer name/version and model or agent-config SHA-256 (a deterministic scripted producer or
+  human demo may use `null`, but its repository/config provenance must be separately SHA-bound);
 - the source environment name/version, its own Minecraft version, action format, and tick rate;
 - source world seed plus the exact starting snapshot/checkpoint ID and SHA-256;
 - each tick's held movement buttons, derived press/release edges, pitch/yaw deltas in degrees,
@@ -139,6 +140,9 @@ following:
 - Mineflayer/Voyager-style task agents use `llm_skill_agent`. Their high-level code/task transcript
   is provenance, not the replay interface: primitive input must still be captured at the engine
   boundary and converted to the same trace. External LLM calls do not occur inside data replay.
+- Deterministic episode/skill programs such as Solaris use `scripted_skill_agent`, not A* or an LLM
+  label. The current trace-only, fail-closed boundary is specified in
+  [`solaris_engine_phase1_contract.md`](solaris_engine_phase1_contract.md).
 - A* and online position/yaw feedback remain `scripted_astar` and `feedback_planner`. Legacy runs
   are mapped only from known trajectory type/execution-mode pairs; an unknown `external` trajectory
   fails rather than being mislabeled.

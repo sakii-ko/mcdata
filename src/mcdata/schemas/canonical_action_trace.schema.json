@@ -63,6 +63,7 @@
         "id": {
           "enum": [
             "scripted_astar",
+            "scripted_skill_agent",
             "feedback_planner",
             "human_demo",
             "learned_visual_policy",

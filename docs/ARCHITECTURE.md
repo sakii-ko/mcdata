@@ -69,6 +69,7 @@
 | `mcdata.action_source` / `mcdata.action_trace` / `mcdata.external_action_adapters` | source 为零依赖 taxonomy；trace 只依赖 source，负责 20 Hz canonical trace 与标定后 replay 编译；adapters 只依赖 trace 并完成外部动作纯转换 | render、qa、dataset、游戏/模拟器运行时 |
 | `mcdata.reference_replay` | action_source、action_trace；严格校验 imported L1 native trace、calibration 与 MC26.2 target profile/version 绑定 | render、qa、dataset、游戏/模拟器运行时（本模块不反向依赖；render 仅单向调用纯验证 API） |
 | `mcdata.minestudio_rollout_import` / `mcdata.minestudio_rollout_support` | import 依赖 action_trace、external_action_adapters 和零依赖 support；只验证已落盘的 neutral rollout 并编译目标轨迹 | render、qa、dataset、MineStudio/PyTorch/游戏运行时 |
+| `mcdata.solaris_rollout_import` | 依赖 action_source/action_trace/external_action_adapters；只导入规范化的 20 Hz controller-boundary trace，保留 MC1.21、episode/role/RNG/snapshot/artifact provenance 与双重未验证状态 | Solaris Docker/Mineflayer/Paper/Minecraft 运行时；当前 quarantine 轨迹禁止 render/dataset |
 | `mcdata.packs` / `modrinth` / `mojang` | net, paths（packs 另可 config, modrinth） | 上层模块 |
 | `mcdata.resourcepack_format` / `mcdata.resourcepacks` | 仅标准库（resourcepacks 可依赖 resourcepack_format） | packs/render（资源格式发现、effective ZIP 规范化与双 SHA 溯源） |
 | `mcdata.dataset` / `mcdata.dataset_support` | action_curriculum、action_effect、action_source；dataset 另依赖 dataset_support；support 包内可互相依赖 | render/actions/qa（只聚合落盘的 manifest 与 QA evidence） |

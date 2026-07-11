@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import Any
 
 from mcdata.action_effect import REPORT_FILENAME
-from mcdata.action_source import ActionSourceError, validate_external_rollout_binding
+from mcdata.action_source import (
+    ActionSourceError,
+    validate_external_rollout_binding,
+    validate_solaris_rollout_binding,
+)
 from mcdata.action_curriculum import (
     ActionCurriculumError,
     summarize_action_run,
@@ -169,6 +173,16 @@ def _validate_manifest(manifest: dict[str, Any], run_dir: Path) -> None:
             raise DatasetValidationError(str(exc)) from exc
         raise DatasetValidationError(
             f"External rollout target replay is not yet compatibility-validated: {run_dir.name}"
+        )
+    solaris_binding = trajectory.get("solaris_rollout_binding")
+    if solaris_binding is not None:
+        try:
+            validate_solaris_rollout_binding(solaris_binding)
+        except ActionSourceError as exc:
+            raise DatasetValidationError(str(exc)) from exc
+        raise DatasetValidationError(
+            "Solaris rollout source timing and target replay are not yet validated: "
+            f"{run_dir.name}"
         )
     if manifest.get("error") is not None or not manifest.get("ended_at"):
         raise DatasetValidationError(f"Run did not finish cleanly: {run_dir.name}")

@@ -86,7 +86,8 @@
         },
         "curriculum_binding": {"$ref": "#/$defs/nativeCurriculumBinding"},
         "camera_calibration": {"$ref": "#/$defs/cameraCalibration"},
-        "external_rollout_binding": {"$ref": "#/$defs/externalRolloutBinding"}
+        "external_rollout_binding": {"$ref": "#/$defs/externalRolloutBinding"},
+        "solaris_rollout_binding": {"$ref": "#/$defs/solarisRolloutBinding"}
       },
       "additionalProperties": true,
       "allOf": [
@@ -97,7 +98,12 @@
               "action_source": {
                 "properties": {
                   "id": {
-                    "enum": ["human_demo", "learned_visual_policy", "llm_skill_agent"]
+                    "enum": [
+                      "scripted_skill_agent",
+                      "human_demo",
+                      "learned_visual_policy",
+                      "llm_skill_agent"
+                    ]
                   }
                 }
               }
@@ -107,6 +113,19 @@
         },
         {
           "if": {"required": ["external_rollout_binding"]},
+          "then": {
+            "required": [
+              "action_source",
+              "native_trace",
+              "curriculum_binding",
+              "camera_calibration",
+              "source_path",
+              "source_sha256"
+            ]
+          }
+        },
+        {
+          "if": {"required": ["solaris_rollout_binding"]},
           "then": {
             "required": [
               "action_source",
@@ -215,6 +234,49 @@
       },
       "additionalProperties": false
     },
+    "solarisRolloutBinding": {
+      "type": "object",
+      "required": [
+        "rollout_schema_version",
+        "rollout_sha256",
+        "solaris_repository_commit",
+        "source_minecraft_version",
+        "episode_id",
+        "episode_type",
+        "episode_role",
+        "shared_rng_sha256",
+        "world_snapshot_sha256",
+        "action_artifact_sha256",
+        "source_timing_status",
+        "target_minecraft_version",
+        "target_client_profile",
+        "camera_calibration_sha256",
+        "target_replay_status"
+      ],
+      "properties": {
+        "rollout_schema_version": {"const": 1},
+        "rollout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "solaris_repository_commit": {
+          "const": "430f56f787405d6a7818e79e95e4ddee026dd6b7"
+        },
+        "source_minecraft_version": {"const": "1.21"},
+        "episode_id": {"type": "integer", "minimum": 0},
+        "episode_type": {"type": "string", "minLength": 1},
+        "episode_role": {"enum": ["Alpha", "Bravo"]},
+        "shared_rng_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "world_snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "action_artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "source_timing_status": {"const": "source_timing_not_yet_validated"},
+        "target_minecraft_version": {"const": "26.2"},
+        "target_client_profile": {"type": "string", "minLength": 1},
+        "camera_calibration_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "target_replay_status": {"const": "target_replay_not_yet_validated"}
+      },
+      "additionalProperties": false
+    },
     "actionSource": {
       "type": "object",
       "required": ["taxonomy_version", "id", "provenance"],
@@ -223,6 +285,7 @@
         "id": {
           "enum": [
             "scripted_astar",
+            "scripted_skill_agent",
             "feedback_planner",
             "human_demo",
             "learned_visual_policy",

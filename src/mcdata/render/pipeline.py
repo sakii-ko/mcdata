@@ -37,6 +37,7 @@ from mcdata.action_source import (
     resolve_manifest_action_source,
     validate_external_rollout_binding,
     validate_native_trace_ref,
+    validate_solaris_rollout_binding,
 )
 from mcdata.config import load_asset_config, load_profile
 from mcdata.manifest import build_run_manifest, write_run_manifest
@@ -1707,6 +1708,13 @@ def _trajectory_manifest(
     data = json.loads(trajectory_path.read_text(encoding="utf-8"))
     if data.get("external_rollout_binding") is not None:
         validate_reference_replay_trajectory(data)
+    if data.get("solaris_rollout_binding") is not None:
+        binding = validate_solaris_rollout_binding(data["solaris_rollout_binding"])
+        raise ReferenceReplayError(
+            "Solaris rollout cannot be replayed while "
+            f"source_timing_status={binding['source_timing_status']} and "
+            f"target_replay_status={binding['target_replay_status']}"
+        )
     _require_native_trace_curriculum_ready(data)
     planned_action_contract(data)
     route = data.get("route", [])

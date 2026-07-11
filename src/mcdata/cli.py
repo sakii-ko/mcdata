@@ -24,6 +24,10 @@ from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.qa.visual_grid import VisualGridError, write_visual_grid
 from mcdata.reference_replay import ReferenceReplayError
+from mcdata.solaris_rollout_import import (
+    SolarisRolloutImportError,
+    import_solaris_rollout,
+)
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
@@ -168,6 +172,33 @@ def import_minestudio_rollout_command(
     console.print(
         f"Imported {result['tick_count']} ticks: {result['trace_sha256']} "
         f"({result['compatibility_status']})"
+    )
+
+
+@app.command("import-solaris-rollout")
+def import_solaris_rollout_command(
+    rollout_dir: Path = typer.Argument(...),
+    expected_rollout_sha256: str = typer.Option(..., "--expected-rollout-sha256"),
+    expected_ticks: int = typer.Option(..., "--expected-ticks", min=1),
+    camera_calibration: Path = typer.Option(..., "--camera-calibration"),
+    trace_out: Path = typer.Option(..., "--trace-out"),
+    trajectory_out: Path = typer.Option(..., "--trajectory-out"),
+) -> None:
+    """Import one pinned Solaris controller trace into fail-closed quarantine."""
+    try:
+        result = import_solaris_rollout(
+            rollout_dir.resolve(),
+            expected_rollout_sha256=expected_rollout_sha256,
+            expected_ticks=expected_ticks,
+            camera_calibration_path=camera_calibration.resolve(),
+            trace_out=trace_out.resolve(),
+            trajectory_out=trajectory_out.resolve(),
+        )
+    except SolarisRolloutImportError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(
+        f"Quarantined {result['tick_count']} Solaris ticks: {result['trace_sha256']} "
+        f"({result['source_timing_status']}; {result['target_replay_status']})"
     )
 
 

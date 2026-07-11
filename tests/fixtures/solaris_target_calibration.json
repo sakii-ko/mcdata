@@ -1,0 +1,8 @@
+{
+  "calibration_id": "solaris-synthetic-mc26.2-fixture",
+  "pitch_pixels_per_degree": 4.0,
+  "schema_version": 1,
+  "target_client_profile": "feedback_legendary_rt_unbound_1080p",
+  "target_minecraft_version": "26.2",
+  "yaw_pixels_per_degree": 4.0
+}

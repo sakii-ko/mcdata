@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcdata.local/schemas/solaris_controller_rollout.schema.json",
+  "title": "Quarantined Solaris normalized controller rollout",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_timing_status",
+    "target_replay_status",
+    "source_environment",
+    "episode",
+    "world",
+    "artifacts",
+    "rollout_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "source_timing_status": {"const": "source_timing_not_yet_validated"},
+    "target_replay_status": {"const": "target_replay_not_yet_validated"},
+    "rollout_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source_environment": {
+      "type": "object",
+      "required": [
+        "name",
+        "repository",
+        "repository_commit",
+        "minecraft_version",
+        "action_format",
+        "action_tick_rate_hz",
+        "camera_convention"
+      ],
+      "properties": {
+        "name": {"const": "Solaris Engine"},
+        "repository": {"const": "https://github.com/solaris-wm/solaris-engine"},
+        "repository_commit": {"const": "430f56f787405d6a7818e79e95e4ddee026dd6b7"},
+        "minecraft_version": {"const": "1.21"},
+        "action_format": {"const": "solaris_normalized_controller_boundary_v1"},
+        "action_tick_rate_hz": {"const": 20},
+        "camera_convention": {
+          "const": "minecraft_input_degrees_yaw_right_pitch_down"
+        }
+      },
+      "additionalProperties": false
+    },
+    "episode": {
+      "type": "object",
+      "required": ["episode_id", "episode_type", "role", "shared_rng"],
+      "properties": {
+        "episode_id": {"type": "integer", "minimum": 0},
+        "episode_type": {
+          "enum": [
+            "straightLineWalk",
+            "chase",
+            "orbit",
+            "walkLook",
+            "walkLookAway",
+            "pvp",
+            "pve",
+            "buildStructure",
+            "buildTower",
+            "mine",
+            "towerBridge",
+            "buildHouse",
+            "collector",
+            "placeAndMine",
+            "structureEval",
+            "translationEval",
+            "bothLookAwayEval",
+            "oneLooksAwayEval",
+            "rotationEval",
+            "turnToLookEval",
+            "turnToLookOppositeEval"
+          ]
+        },
+        "role": {"enum": ["Alpha", "Bravo"]},
+        "shared_rng": {
+          "type": "object",
+          "required": ["library", "version", "base_seed", "episode_seed"],
+          "properties": {
+            "library": {"const": "seedrandom"},
+            "version": {"const": "3.0.5"},
+            "base_seed": {"type": "string", "minLength": 1},
+            "episode_seed": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "world": {
+      "type": "object",
+      "required": ["seed", "snapshot_id", "snapshot_sha256"],
+      "properties": {
+        "seed": {"type": ["integer", "string"]},
+        "snapshot_id": {"type": "string", "minLength": 1},
+        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["actions", "world_snapshot"],
+      "properties": {
+        "actions": {
+          "allOf": [
+            {"$ref": "#/$defs/artifact"},
+            {
+              "type": "object",
+              "required": ["tick_count"],
+              "properties": {"tick_count": {"type": "integer", "minimum": 1}}
+            }
+          ]
+        },
+        "world_snapshot": {"$ref": "#/$defs/artifact"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "tick_count": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    }
+  }
+}

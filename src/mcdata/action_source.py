@@ -7,12 +7,14 @@ from typing import Any
 TAXONOMY_VERSION = 1
 ACTION_SOURCES = (
     "scripted_astar",
+    "scripted_skill_agent",
     "feedback_planner",
     "human_demo",
     "learned_visual_policy",
     "llm_skill_agent",
 )
 NATIVE_TRACE_REQUIRED_SOURCES = {
+    "scripted_skill_agent",
     "human_demo",
     "learned_visual_policy",
     "llm_skill_agent",
@@ -162,6 +164,69 @@ def validate_external_rollout_binding(value: Any) -> dict[str, Any]:
         raise ActionSourceError("external rollout target_client_profile must be non-empty")
     if value["compatibility_status"] != "target_replay_not_yet_validated":
         raise ActionSourceError("unknown external rollout compatibility status")
+    return dict(value)
+
+
+def validate_solaris_rollout_binding(value: Any) -> dict[str, Any]:
+    """Validate a quarantined Solaris controller-trace provenance binding.
+
+    This is deliberately separate from ``external_rollout_binding``: that contract is the
+    pinned MineStudio/MC1.16.5 reference-replay spike.  Solaris records remain ineligible for
+    replay/dataset admission until both explicit validation states can be replaced by a future
+    versioned contract.
+    """
+    fields = {
+        "rollout_schema_version",
+        "rollout_sha256",
+        "solaris_repository_commit",
+        "source_minecraft_version",
+        "episode_id",
+        "episode_type",
+        "episode_role",
+        "shared_rng_sha256",
+        "world_snapshot_sha256",
+        "action_artifact_sha256",
+        "source_timing_status",
+        "target_minecraft_version",
+        "target_client_profile",
+        "camera_calibration_sha256",
+        "target_replay_status",
+    }
+    if not isinstance(value, Mapping) or set(value) != fields:
+        raise ActionSourceError("solaris_rollout_binding has an unstable field set")
+    if value["rollout_schema_version"] != 1:
+        raise ActionSourceError("Solaris rollout schema_version must be 1")
+    for field in (
+        "rollout_sha256",
+        "shared_rng_sha256",
+        "world_snapshot_sha256",
+        "action_artifact_sha256",
+        "camera_calibration_sha256",
+    ):
+        if not _is_sha256(value[field]):
+            raise ActionSourceError(f"Solaris rollout {field} must be a SHA-256")
+    if value["solaris_repository_commit"] != (
+        "430f56f787405d6a7818e79e95e4ddee026dd6b7"
+    ):
+        raise ActionSourceError("Solaris rollout repository commit is not the audited pin")
+    if value["source_minecraft_version"] != "1.21":
+        raise ActionSourceError("Solaris rollout source Minecraft version must be 1.21")
+    episode_id = value["episode_id"]
+    if not isinstance(episode_id, int) or isinstance(episode_id, bool) or episode_id < 0:
+        raise ActionSourceError("Solaris rollout episode_id must be a nonnegative integer")
+    if not isinstance(value["episode_type"], str) or not value["episode_type"].strip():
+        raise ActionSourceError("Solaris rollout episode_type must be non-empty")
+    if value["episode_role"] not in {"Alpha", "Bravo"}:
+        raise ActionSourceError("Solaris rollout episode_role must be Alpha or Bravo")
+    if value["source_timing_status"] != "source_timing_not_yet_validated":
+        raise ActionSourceError("unknown Solaris source timing status")
+    if value["target_minecraft_version"] != "26.2":
+        raise ActionSourceError("Solaris target replay must name Minecraft 26.2")
+    profile = value["target_client_profile"]
+    if not isinstance(profile, str) or not profile.strip():
+        raise ActionSourceError("Solaris target_client_profile must be non-empty")
+    if value["target_replay_status"] != "target_replay_not_yet_validated":
+        raise ActionSourceError("unknown Solaris target replay status")
     return dict(value)
 
 

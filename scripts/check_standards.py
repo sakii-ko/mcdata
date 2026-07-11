@@ -58,6 +58,11 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
         "minestudio_rollout_support",
     },
     "minestudio_rollout_support": set(),
+    "solaris_rollout_import": {
+        "action_source",
+        "action_trace",
+        "external_action_adapters",
+    },
     "action_effect": {"action_jump"},
     "action_combat": {"action_placement"},
     "action_jump": set(),
