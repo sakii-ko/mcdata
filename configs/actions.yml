@@ -55,6 +55,20 @@ strategies:
       - {t: 17.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
       - {t: 20.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
 
+  # Visual-QA diagnostic only: look into the upper sky and sample the four
+  # cardinal headings at normal input-turn speed.  This camera-only trace is
+  # deliberately ineligible for navigation/action training data.
+  celestial_cardinal_scan_diagnostic:
+    type: "scripted"
+    duration_sec: 18
+    steps:
+      - {t: 2.0, mouse_dx: 0, mouse_dy: -500, duration: 0.35}
+      - {t: 4.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 7.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 9.5, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 12.0, mouse_dx: 600, mouse_dy: 0, duration: 0.35}
+      - {t: 15.0, mouse_dx: 0, mouse_dy: 500, duration: 0.35}
+
   walk_calibration_probe:
     type: "scripted"
     duration_sec: 32

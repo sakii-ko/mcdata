@@ -327,6 +327,20 @@ def test_lighting_showcase_preserves_route_and_adds_a_restored_zenith_view() -> 
     assert lighting["events"][zenith_index + 1]["route_index"] == zenith_hold["route_index"]
 
 
+def test_celestial_cardinal_scan_is_camera_only_and_restores_pitch() -> None:
+    spec = load_yaml(ROOT / "configs" / "actions.yml")["strategies"][
+        "celestial_cardinal_scan_diagnostic"
+    ]
+    trajectory = _build_configured("celestial_cardinal_scan_diagnostic", spec)
+
+    assert trajectory["type"] == "scripted"
+    assert trajectory["duration_sec"] == 18
+    assert not any("key" in event for event in trajectory["events"])
+    assert [event["mouse_dx"] for event in trajectory["events"]] == [0, 600, 600, 600, 600, 0]
+    assert sum(event["mouse_dy"] for event in trajectory["events"]) == 0
+    assert all(event["duration"] == 0.35 for event in trajectory["events"])
+
+
 def test_l2_jump_showcase_uses_complete_running_holds_on_a_safe_route() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     base = _build_configured("lookdev_showcase_60s", strategies["lookdev_showcase_60s"])
