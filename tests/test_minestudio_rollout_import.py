@@ -133,12 +133,14 @@ def test_external_rollout_binding_validates_in_run_manifest_schema() -> None:
     manifest = json.loads(
         (ROOT / "docs/examples/run_manifest_example.json").read_text(encoding="utf-8")
     )
-    trajectory = json.loads(
-        (ROOT / "tests/golden/action_traces/minestudio_neutral_phase2_trajectory.json").read_text()
+    trajectory_manifest = _trajectory_manifest(
+        ROOT / "tests/golden/action_traces/minestudio_neutral_phase2_trajectory.json",
+        source_path=ROOT
+        / "tests/golden/action_traces/minestudio_neutral_phase2_trajectory.json",
+        strategy=None,
     )
-    manifest["trajectory"]["external_rollout_binding"] = trajectory[
-        "external_rollout_binding"
-    ]
+    assert trajectory_manifest is not None
+    manifest["trajectory"] = trajectory_manifest
     schema = json.loads(
         (ROOT / "src/mcdata/schemas/manifest.schema.json").read_text(encoding="utf-8")
     )

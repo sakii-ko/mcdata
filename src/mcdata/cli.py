@@ -23,6 +23,7 @@ from mcdata.minestudio_rollout_import import (
 from mcdata.paths import ProjectPaths
 from mcdata.qa.report import write_compare_report, write_run_report
 from mcdata.qa.visual_grid import VisualGridError, write_visual_grid
+from mcdata.reference_replay import ReferenceReplayError
 from mcdata.render.pipeline import (
     bootstrap_profile,
     launch_profile,
@@ -70,6 +71,16 @@ def run(
     dry_run: bool = typer.Option(False, "--dry-run"),
     capture: bool = typer.Option(False, "--capture"),
     strategy: Optional[str] = typer.Option(None, "--strategy"),
+    trajectory_file: Optional[Path] = typer.Option(
+        None,
+        "--trajectory-file",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        resolve_path=True,
+        help="Replay one imported MC26.2 reference trajectory; mutually exclusive with --strategy.",
+    ),
     duration: Optional[int] = typer.Option(None, "--duration"),
     with_server: bool = typer.Option(False, "--with-server"),
     replay_actions: bool = typer.Option(False, "--replay-actions"),
@@ -84,34 +95,42 @@ def run(
     """Launch Minecraft for a profile."""
     debug_no_reapply = debug_no_reapply if isinstance(debug_no_reapply, bool) else False
     debug_no_replay_gate = debug_no_replay_gate if isinstance(debug_no_replay_gate, bool) else False
+    trajectory_file = trajectory_file if isinstance(trajectory_file, Path) else None
     probe_interval = _hidden_positive_float(probe_interval, 5.0, "--probe-interval")
+    if strategy is not None and trajectory_file is not None:
+        raise typer.BadParameter("--strategy and --trajectory-file are mutually exclusive")
+    if trajectory_file is not None and not replay_actions:
+        raise typer.BadParameter("--trajectory-file requires --replay-actions")
     if display:
         apply_display_override(display)
     root = root.resolve()
     paths = ProjectPaths.from_root(root)
-    trajectory_path: Path | None = None
+    trajectory_path: Path | None = trajectory_file.resolve() if trajectory_file else None
     if strategy:
         out = paths.output_dir / "trajectories" / f"{strategy}.json"
         generate_strategy(paths.configs, strategy, out)
         trajectory_path = out
         console.print(f"Wrote trajectory: {out}")
-    launch_profile(
-        root,
-        profile,
-        dry_run=dry_run,
-        capture=capture,
-        strategy=strategy,
-        duration=duration,
-        with_server=with_server,
-        replay_actions=replay_actions,
-        trajectory_path=trajectory_path,
-        game_version=game_version,
-        server_port=server_port,
-        lane=lane,
-        probe_interval=probe_interval,
-        debug_no_reapply=debug_no_reapply,
-        debug_no_replay_gate=debug_no_replay_gate,
-    )
+    try:
+        launch_profile(
+            root,
+            profile,
+            dry_run=dry_run,
+            capture=capture,
+            strategy=strategy,
+            duration=duration,
+            with_server=with_server,
+            replay_actions=replay_actions,
+            trajectory_path=trajectory_path,
+            game_version=game_version,
+            server_port=server_port,
+            lane=lane,
+            probe_interval=probe_interval,
+            debug_no_reapply=debug_no_reapply,
+            debug_no_replay_gate=debug_no_replay_gate,
+        )
+    except ReferenceReplayError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 @app.command("make-trajectory")

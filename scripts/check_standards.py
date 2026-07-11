@@ -50,6 +50,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "action_curriculum": {"action_combat", "action_jump", "action_placement"},
     "action_source": set(),
     "action_trace": {"action_source"},
+    "reference_replay": {"action_source", "action_trace"},
     "external_action_adapters": {"action_trace"},
     "minestudio_rollout_import": {
         "action_trace",
@@ -82,7 +83,7 @@ IMPORT_WHITELIST: dict[str, set[str]] = {
     "render": {
         "config", "paths", "packs", "resourcepacks", "mojang", "modrinth", "net", "scene_model",
         "manifest", "runlog", "settings", "action_curriculum", "action_combat",
-        "action_placement", "action_effect", "action_source",
+        "action_placement", "action_effect", "action_source", "reference_replay",
         "actions.replay", "qa.probe", "render",
     },  # "render" target covers render-internal modules: pipeline/server/scene/probe/options.
     "qa": {"paths", "qa", "action_effect"},

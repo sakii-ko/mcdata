@@ -177,7 +177,42 @@ descriptor. The trajectory binds the calibration SHA and remains L1-only. The ru
 `target_replay_not_yet_validated`, and `dataset-index` rejects such an episode; documentation alone
 cannot upgrade it to accepted data.
 
-## 6. Required compatibility work before accepted N-way data
+## 6. Run the MC26.2 reference-replay smoke
+
+Use the profile named verbatim by `target_client_profile` in the calibration artifact. The run entry
+does not permit a strategy and an imported file at the same time, and an imported file requires
+action replay:
+
+```bash
+mcdata run \
+  --profile neutral_reference_profile \
+  --trajectory-file "$PHASE2_ROOT/imported/trajectory.json" \
+  --game-version 26.2 \
+  --with-server \
+  --replay-actions \
+  --capture \
+  --duration 60
+```
+
+`--trajectory-file` is intentionally not a general arbitrary-JSON replay escape hatch. Before an
+instance is bootstrapped or a run directory is created, it requires the exact imported
+`native_action_trace_replay` field set, a declared `learned_visual_policy`, a canonical 20 Hz native
+trace reference, the calibration binding, the MineStudio 1.16.5-to-MC26.2 rollout boundary, and a
+neutral `l1_candidate` curriculum. Only canonical movement/camera events are accepted; jump, use,
+attack, inventory, hotbar, and script-only event shapes fail closed. The selected profile must equal
+the calibration's `target_client_profile`, and the resolved client version must be exactly `26.2`.
+
+Both `metadata.json` and `manifest.json` retain the copied trajectory SHA, source-file SHA, native
+trace reference, action source, camera calibration record, external rollout binding, and
+`target_replay_not_yet_validated` status. A mechanically clean smoke still does **not** change that
+status and remains rejected by `dataset-index`. It is evidence used to design the later compatibility
+gate, not accepted training data.
+
+For useful compatibility evidence, keep `--with-server` and `--capture` enabled even though the CLI
+only makes `--replay-actions` mandatory. Match `--duration` to the imported rollout duration so the
+capture does not truncate the trace.
+
+## 7. Required compatibility work before accepted N-way data
 
 1. Reconstruct or explicitly migrate the source start state in MC26.2; prove blocks, player pose,
    inventory, entities, gamerules, and world state.

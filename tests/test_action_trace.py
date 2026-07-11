@@ -136,6 +136,8 @@ def test_compiled_trace_binding_propagates_into_run_manifest(tmp_path: Path) -> 
         "tick_rate_hz": 20,
     }
     assert manifest["curriculum_binding"]["status"] == "l1_candidate"
+    assert manifest["camera_calibration"] == trajectory["camera_calibration"]
+    assert manifest["source_sha256"] == manifest["sha256"]
 
 
 def test_unverified_advanced_native_trace_cannot_be_mislabeled_as_l1(

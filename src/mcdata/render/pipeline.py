@@ -62,6 +62,11 @@ from mcdata.render.resourcepack_gate import (
     ResourcePackRuntimeError,
     validate_resourcepack_runtime,
 )
+from mcdata.reference_replay import (
+    ReferenceReplayError,
+    validate_compiled_camera_calibration,
+    validate_reference_replay_trajectory,
+)
 from mcdata.render.scene import (
     apply_join_state,
     expected_scene_fill_count,
@@ -516,15 +521,16 @@ def _plan_run(
         server_port=options.server_port,
     )
     game_version = options.game_version or resolve_game_version(profile)
+    _validate_reference_run_options(
+        options, target_profile=profile_name, target_minecraft_version=game_version
+    )
     work_dir = paths.instance_dir(profile_name)
     _bootstrap_missing_work_dir(root, profile_name, game_version, work_dir, options)
 
     run_dir = _run_dir(paths.output_dir, profile_name, lane=options.lane)
     started_at = datetime.now(timezone.utc).isoformat()
     capture_settings = CaptureSettings.from_env(profile)
-    run_trajectory_path = (
-        _copy_trajectory(run_dir, options.trajectory_path) if options.trajectory_path else None
-    )
+    run_trajectory_path = _copy_trajectory(run_dir, options.trajectory_path) if options.trajectory_path else None
     trajectory_info = _trajectory_manifest(
         run_trajectory_path,
         source_path=options.trajectory_path,
@@ -546,6 +552,7 @@ def _plan_run(
         debug_no_replay_gate=options.debug_no_replay_gate,
         started_at=started_at,
     )
+    metadata["trajectory"] = trajectory_info
     _write_json(run_dir / "metadata.json", metadata)
 
     cmd = _launch_command(
@@ -580,6 +587,31 @@ def _plan_run(
         probe_interval=options.probe_interval,
         debug_no_reapply=options.debug_no_reapply,
         debug_no_replay_gate=options.debug_no_replay_gate,
+    )
+
+
+def _validate_reference_run_options(
+    options: RunOptions,
+    *,
+    target_profile: str,
+    target_minecraft_version: str,
+) -> None:
+    if options.trajectory_path is None or options.strategy is not None:
+        return
+    if not options.replay_actions:
+        raise ReferenceReplayError("reference trajectory requires action replay")
+    try:
+        reference_trajectory = json.loads(
+            options.trajectory_path.read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReferenceReplayError(
+            f"could not read reference trajectory {options.trajectory_path}: {exc}"
+        ) from exc
+    validate_reference_replay_trajectory(
+        reference_trajectory,
+        target_profile=target_profile,
+        target_minecraft_version=target_minecraft_version,
     )
 
 
@@ -1673,14 +1705,20 @@ def _trajectory_manifest(
     if trajectory_path is None:
         return None
     data = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    if data.get("external_rollout_binding") is not None:
+        validate_reference_replay_trajectory(data)
     _require_native_trace_curriculum_ready(data)
     planned_action_contract(data)
     route = data.get("route", [])
+    trajectory_sha256 = _sha256(trajectory_path)
+    source_sha256 = _sha256(source_path) if source_path else None
+    if source_sha256 is not None and source_sha256 != trajectory_sha256:
+        raise ReferenceReplayError("copied trajectory SHA disagrees with its source file")
     result = {
         "strategy": strategy,
         "path": str(trajectory_path),
         "source_path": str(source_path) if source_path else None,
-        "sha256": _sha256(trajectory_path),
+        "sha256": trajectory_sha256,
         "event_count": len(data.get("events", [])),
         "duration_sec": data.get("duration_sec"),
         "type": data.get("type"),
@@ -1691,10 +1729,16 @@ def _trajectory_manifest(
         ),
         "route_point_count": len(route) if isinstance(route, list) else 0,
     }
+    if source_sha256 is not None:
+        result["source_sha256"] = source_sha256
     if data.get("native_trace") is not None:
         result["native_trace"] = validate_native_trace_ref(data["native_trace"])
     if data.get("curriculum_binding") is not None:
         result["curriculum_binding"] = data["curriculum_binding"]
+    if data.get("camera_calibration") is not None:
+        result["camera_calibration"] = validate_compiled_camera_calibration(
+            data["camera_calibration"]
+        )
     if data.get("action_source") is not None:
         result["action_source"] = data["action_source"]
     if data.get("external_rollout_binding") is not None:

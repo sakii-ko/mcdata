@@ -65,6 +65,10 @@
         "strategy": { "type": ["string", "null"] },
         "path": { "type": "string" },
         "source_path": { "type": "string" },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
         "sha256": { "type": "string" },
         "event_count": { "type": "integer" },
         "duration_sec": { "type": ["number", "null"] },
@@ -81,6 +85,7 @@
           ]
         },
         "curriculum_binding": {"$ref": "#/$defs/nativeCurriculumBinding"},
+        "camera_calibration": {"$ref": "#/$defs/cameraCalibration"},
         "external_rollout_binding": {"$ref": "#/$defs/externalRolloutBinding"}
       },
       "additionalProperties": true,
@@ -99,6 +104,19 @@
             }
           },
           "then": {"required": ["native_trace", "curriculum_binding"]}
+        },
+        {
+          "if": {"required": ["external_rollout_binding"]},
+          "then": {
+            "required": [
+              "action_source",
+              "native_trace",
+              "curriculum_binding",
+              "camera_calibration",
+              "source_path",
+              "source_sha256"
+            ]
+          }
         }
       ]
     },
@@ -159,6 +177,22 @@
     }
   ],
   "$defs": {
+    "cameraCalibration": {
+      "type": "object",
+      "required": [
+        "calibration_id",
+        "artifact_sha256",
+        "yaw_pixels_per_degree",
+        "pitch_pixels_per_degree"
+      ],
+      "properties": {
+        "calibration_id": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "yaw_pixels_per_degree": {"type": "number"},
+        "pitch_pixels_per_degree": {"type": "number"}
+      },
+      "additionalProperties": false
+    },
     "externalRolloutBinding": {
       "type": "object",
       "required": [
