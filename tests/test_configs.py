@@ -614,6 +614,30 @@ def test_bliss_bright_moon_fallback_is_a_time_only_candidate() -> None:
     assert noon["shader_options"] == midnight["shader_options"]
 
 
+def test_bliss_bright_moon_candidate_uses_supported_directional_controls() -> None:
+    baseline = load_profile(
+        ROOT / "configs", "lookdev_candidate_pair_legendary_bliss_midnight_1080p"
+    )
+    bright = load_profile(
+        ROOT / "configs", "lookdev_candidate_legendary_bliss_bright_moon_1080p"
+    )
+
+    assert bright["world_state"] == baseline["world_state"]
+    assert bright["asset_set"] == baseline["asset_set"] == "legendary_rt_bliss"
+    changed = {
+        key: value
+        for key, value in bright["shader_options"].items()
+        if baseline["shader_options"].get(key) != value
+    }
+    assert changed == {
+        "EXPOSURE_MULTIPLIER": "1.3",
+        "MIN_LIGHT_AMOUNT": "2.0",
+        "ambient_brightness": "1.5",
+        "moon_illuminance": "1000.0",
+    }
+    assert set(baseline["shader_options"]) <= set(bright["shader_options"])
+
+
 def test_bliss_profile_emits_verified_max_realism_motion_options(tmp_path: Path) -> None:
     profile = load_profile(
         ROOT / "configs", "lookdev_legendary_rt_bliss_1080p"
