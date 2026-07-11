@@ -298,6 +298,35 @@ def test_lookdev_showcase_walks_and_holds_horizontal_water_views() -> None:
     assert all(isinstance(event.get("route_index"), int) for event in held_views)
 
 
+def test_lighting_showcase_preserves_route_and_adds_a_restored_zenith_view() -> None:
+    strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
+    base = _build_configured("lookdev_showcase_60s", strategies["lookdev_showcase_60s"])
+    lighting = _build_configured(
+        "lookdev_lighting_showcase_60s",
+        strategies["lookdev_lighting_showcase_60s"],
+    )
+    held_views = [event for event in lighting["events"] if event.get("look_hold") is True]
+    zenith_hold = next(
+        event for event in held_views if event.get("look_moment") == "celestial_zenith"
+    )
+    zenith_index = lighting["events"].index(zenith_hold)
+
+    assert lighting["route"] == base["route"]
+    assert lighting["duration_sec"] == base["duration_sec"]
+    assert [event["look_moment"] for event in held_views] == [
+        "material_closeup",
+        "water_reflection_alt",
+        "water_reflection",
+        "scene_wide",
+        "celestial_zenith",
+        "material_closeup_alt",
+    ]
+    assert lighting["events"][zenith_index - 1]["mouse_dy"] == -650
+    assert lighting["events"][zenith_index + 1]["mouse_dy"] == 650
+    assert lighting["events"][zenith_index - 1]["route_index"] == zenith_hold["route_index"]
+    assert lighting["events"][zenith_index + 1]["route_index"] == zenith_hold["route_index"]
+
+
 def test_l2_jump_showcase_uses_complete_running_holds_on_a_safe_route() -> None:
     strategies = load_yaml(ROOT / "configs" / "actions.yml")["strategies"]
     base = _build_configured("lookdev_showcase_60s", strategies["lookdev_showcase_60s"])

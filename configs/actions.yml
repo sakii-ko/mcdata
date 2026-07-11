@@ -254,6 +254,48 @@ strategies:
     initial_pause_sec: 1.0
     scan_pause_sec: 0.2
 
+  # Lighting acceptance uses the identical route and timing as the general
+  # lookdev showcase, but spends the second wide-view hold looking high enough
+  # to expose the celestial light source.  This prevents a mechanically valid
+  # midnight render from passing without ever showing the moon/sky lighting it
+  # is supposed to demonstrate.
+  lookdev_lighting_showcase_60s:
+    <<: *lookdev_showcase_60s
+    waypoint_actions:
+      - at: [-10, -12]
+        moment: "material_closeup"
+        pause_sec: 0.4
+        look_dy_px: 45
+        look_hold_sec: 2.0
+      - at: [-3, 3]
+        moment: "water_reflection_alt"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+      - at: [-3, 8]
+        moment: "water_reflection"
+        pause_sec: 0.4
+        look_dx_px: 600
+        look_dy_px: 20
+        look_hold_sec: 3.5
+      - at: [0, 10]
+        moment: "scene_wide"
+        pause_sec: 0.4
+        look_dx_px: -600
+        look_dy_px: -30
+        look_hold_sec: 2.5
+      - at: [15, 11]
+        moment: "celestial_zenith"
+        pause_sec: 0.4
+        look_dy_px: -650
+        look_hold_sec: 2.5
+      - at: [10, -12]
+        moment: "material_closeup_alt"
+        pause_sec: 0.4
+        look_dy_px: -25
+        look_hold_sec: 0.4
+
   curriculum_l2_jump_showcase_60s: &curriculum_action_showcase_60s
     <<: *lookdev_showcase_60s
     # The action curriculum uses a dedicated two-cell-clearance loop. Four
